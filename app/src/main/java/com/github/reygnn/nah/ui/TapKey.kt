@@ -19,6 +19,9 @@ import com.github.reygnn.nah.layout.KeyAction
 import com.github.reygnn.nah.layout.KeyboardKey
 import com.github.reygnn.nah.viewmodel.ShiftState
 
+/** Nicht klickbarer Rand ringsum jede Taste (Totzone gegen Fehltipper). */
+private val KEY_GAP = 5.dp
+
 /**
  * Eine grosse, deterministische Tipp-Taste. Ein Tap = genau diese [key]. Labels
  * sind immer sichtbar → ab Tag eins per hunt-and-peck benutzbar, keine Lernwand.
@@ -46,8 +49,12 @@ fun TapKey(
     val fg = if (key is CharKey) NahColors.OnKey else NahColors.OnKeyDim
 
     Box(
+        // Gleichmässige Totzone ringsum: das Padding liegt VOR clickable, ist also
+        // nicht klickbar. Ein knapper Fehlgriff landet im Zwischenraum → kein
+        // Zeichen statt falsches Zeichen. Zwischen zwei Tasten ergibt das 2 × KEY_GAP
+        // tote Fläche. Grösser = weniger Fehltipper, aber kleinere Tasten — tunebar.
         modifier = modifier
-            .padding(2.dp)
+            .padding(KEY_GAP)
             .clip(RoundedCornerShape(8.dp))
             .background(bg)
             .clickable { onKey(key) },
