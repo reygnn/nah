@@ -42,11 +42,13 @@ object NahIcons {
     /** ⇧ — Shift aus (nur Kontur): unterscheidet OFF sichtbar vom armierten [Shift]. */
     val ShiftOutline: ImageVector = materialIcon("ShiftOutline", ARROW_UP, filled = false)
 
-    /** ⇪ — Caps Lock (Material `keyboard_capslock`, gefüllt: Pfeil mit Unterstrich). */
-    val ShiftCaps: ImageVector = materialIcon(
-        "ShiftCaps",
-        "M12 8.41L16.59 13 18 11.59l-6-6-6 6L7.41 13 12 8.41zM6 18h12v-2H6v2z",
-    )
+    /**
+     * ⇪ — Caps Lock: derselbe gefüllte Pfeil wie [Shift], plus ein Unterstrich.
+     * Bewusst NICHT Material `keyboard_capslock` (anderes Chevron-Glyph) — so
+     * teilen sich alle drei Zustände dasselbe Symbol, nur outline/gefüllt/+Strich.
+     * Der Balken sitzt unter dem Pfeil (y22–24); Abstand/Breite hier tunebar.
+     */
+    val ShiftCaps: ImageVector = materialIcon("ShiftCaps", "$ARROW_UP M6 22h12v2H6z")
 }
 
 /**
