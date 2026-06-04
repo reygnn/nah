@@ -11,20 +11,23 @@ package com.github.reygnn.nah.layout
  * breitere Tasten — schafft Platz für Totzonen ringsum (gegen Fehltipper), ohne
  * die Tasten zu verkleinern.
  *
- *   q ä c o b f ü j
+ *   q j c o b f y ä
  *   p v h u r a k ö
- *   x z s i e g l y
+ *   x z s i e g l ü
  *   w t n d m            (Shift davor, Backspace danach)
  *
  * Hochfrequente Buchstaben (a r e i n s t d) clustern zentral und unten (nah am
- * Space-Roundtrip). Kein scharfes S (de-CH, "ss"). Die Anordnung ist mit einem
- * grösseren Korpus regenerierbar — siehe das Tool — kostet dann aber Umlernen.
+ * Space-Roundtrip). ä/ö/ü sind bewusst als Gruppe in der rechten Aussenspalte
+ * gestapelt — eine Lernbarkeits-Entscheidung (vorhersagbar auffindbar), die nur
+ * ~0,8 % Reise kostet (die Umlaute sind selten). Kein scharfes S (de-CH, "ss").
+ * Die Anordnung ist mit einem grösseren Korpus regenerierbar — siehe das Tool —
+ * kostet dann aber Umlernen.
  */
 object OptimizedLayout {
 
-    private const val ROW0 = "qäcobfüj"
+    private const val ROW0 = "qjcobfyä"
     private const val ROW1 = "pvhurakö"
-    private const val ROW2 = "xzsiegly"
+    private const val ROW2 = "xzsieglü"
     private const val ROW3 = "wtndm"
 
     fun deCh(): KeyboardLayout = KeyboardLayout(
