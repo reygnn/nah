@@ -10,7 +10,10 @@ object NahColors {
     val Background = Color(0xFF121212)
     val CharKey = Color(0xFF2C2C2E)
     val FunctionKey = Color(0xFF1C1C1E)
-    val Accent = Color(0xFF3D5AFE)
     val OnKey = Color(0xFFFFFFFF)
     val OnKeyDim = Color(0xFFB0B0B0)
+
+    // Shift-Status-Farben (Material-Palette): einmaliges Shift vs. Caps Lock.
+    val ShiftActive = Color(0xFF4F83CC) // Stahlblau (einmaliges Shift)
+    val CapsActive = Color(0xFFEC407A)  // Rosa (Caps Lock, Material Pink 400)
 }

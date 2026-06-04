@@ -49,12 +49,19 @@ fun TapKey(
         is FunctionKey -> key.label
     }
 
+    // Shift-Taste signalisiert ihren Status per Farbe: Stahlblau = einmaliges
+    // Shift, Rosa = Caps Lock, sonst neutrale Funktionstasten-Farbe.
     val bg = when {
-        shiftActive -> NahColors.Accent
+        isShiftKey && shift == ShiftState.SHIFTED -> NahColors.ShiftActive
+        isShiftKey && shift == ShiftState.CAPS -> NahColors.CapsActive
         key is CharKey -> NahColors.CharKey
         else -> NahColors.FunctionKey
     }
-    val fg = if (key is CharKey) NahColors.OnKey else NahColors.OnKeyDim
+    val fg = when {
+        shiftActive -> NahColors.OnKey   // weisser Text auf der farbigen Shift-Taste
+        key is CharKey -> NahColors.OnKey
+        else -> NahColors.OnKeyDim
+    }
 
     val isBackspace = key is FunctionKey && key.action == KeyAction.BACKSPACE
     // Backspace löscht beim Gedrückthalten fortlaufend; alle anderen Tasten sind
