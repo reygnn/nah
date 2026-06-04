@@ -19,7 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
+import com.github.reygnn.nah.ui.NahTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -37,7 +37,7 @@ class SettingsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val repository = SettingsRepository(applicationContext)
         setContent {
-            MaterialTheme(colorScheme = darkColorScheme()) {
+            NahTheme {
                 SettingsScreen(
                     repository = repository,
                     onOpenImePicker = {

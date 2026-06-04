@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -42,25 +43,27 @@ fun TapKey(
     onKey: (KeyboardKey) -> Unit,
 ) {
     val isShiftKey = key is FunctionKey && key.action == KeyAction.SHIFT
-    val shiftActive = isShiftKey && shift != ShiftState.OFF
 
     val label = when (key) {
         is CharKey -> if (shift != ShiftState.OFF) key.char.uppercaseChar().toString() else key.char.toString()
         is FunctionKey -> key.label
     }
 
-    // Shift-Taste signalisiert ihren Status per Farbe: Stahlblau = einmaliges
-    // Shift, Rosa = Caps Lock, sonst neutrale Funktionstasten-Farbe.
+    // Farben aus dem Material-3-Schema (Material You, dynamisch). Shift-Status über
+    // die Rollen: einmaliges Shift = primary, Caps Lock = tertiary; sonst neutrale
+    // Container-Tiers (Buchstaben heller/erhabener als Funktionstasten).
+    val colors = MaterialTheme.colorScheme
     val bg = when {
-        isShiftKey && shift == ShiftState.SHIFTED -> NahColors.ShiftActive
-        isShiftKey && shift == ShiftState.CAPS -> NahColors.CapsActive
-        key is CharKey -> NahColors.CharKey
-        else -> NahColors.FunctionKey
+        isShiftKey && shift == ShiftState.SHIFTED -> colors.primary
+        isShiftKey && shift == ShiftState.CAPS -> colors.tertiary
+        key is CharKey -> colors.surfaceContainerHigh
+        else -> colors.surfaceContainerLow
     }
     val fg = when {
-        shiftActive -> NahColors.OnKey   // weisser Text auf der farbigen Shift-Taste
-        key is CharKey -> NahColors.OnKey
-        else -> NahColors.OnKeyDim
+        isShiftKey && shift == ShiftState.SHIFTED -> colors.onPrimary
+        isShiftKey && shift == ShiftState.CAPS -> colors.onTertiary
+        key is CharKey -> colors.onSurface
+        else -> colors.onSurfaceVariant
     }
 
     val isBackspace = key is FunctionKey && key.action == KeyAction.BACKSPACE

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.unit.Dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -25,11 +26,13 @@ private val BOTTOM_INSET: Dp = 48.dp
 @Composable
 fun KeyboardScreen(viewModel: KeyboardViewModel) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    KeyboardContent(
-        state = state,
-        onKey = viewModel::onKey,
-        onSuggestion = viewModel::onSuggestionTap,
-    )
+    NahTheme {
+        KeyboardContent(
+            state = state,
+            onKey = viewModel::onKey,
+            onSuggestion = viewModel::onSuggestionTap,
+        )
+    }
 }
 
 /** Reine, zustandslose Darstellung — direkt in Previews/Tests verwendbar. */
@@ -42,7 +45,7 @@ fun KeyboardContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(NahColors.Background)
+            .background(MaterialTheme.colorScheme.surfaceContainerLowest)
             // Fester Unterrand: schiebt die Tasten über die System-Gestenzone,
             // damit die unterste Reihe nicht mit den Wischgesten kollidiert. Der
             // Hintergrund (oben gesetzt) füllt weiter bis zur Unterkante, nur die
