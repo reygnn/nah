@@ -2,6 +2,7 @@ package com.github.reygnn.nah.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -18,9 +20,15 @@ import com.github.reygnn.nah.layout.FunctionKey
 import com.github.reygnn.nah.layout.KeyAction
 import com.github.reygnn.nah.layout.KeyboardKey
 import com.github.reygnn.nah.viewmodel.ShiftState
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** Nicht klickbarer Rand ringsum jede Taste (Totzone gegen Fehltipper). */
 private val KEY_GAP = 5.dp
+
+/** Backspace-Auto-Repeat: Verzögerung bis das Halten zu wiederholen beginnt … */
+private const val BACKSPACE_INITIAL_DELAY_MS = 400L
+/** … und der Abstand zwischen den Wiederhol-Löschungen danach. */
+private const val BACKSPACE_REPEAT_MS = 55L
 
 /**
  * Eine grosse, deterministische Tipp-Taste. Ein Tap = genau diese [key]. Labels
@@ -48,16 +56,38 @@ fun TapKey(
     }
     val fg = if (key is CharKey) NahColors.OnKey else NahColors.OnKeyDim
 
+    val isBackspace = key is FunctionKey && key.action == KeyAction.BACKSPACE
+    // Backspace löscht beim Gedrückthalten fortlaufend; alle anderen Tasten sind
+    // ein simpler Tap. Erst einmal sofort löschen, dann — falls nach der
+    // Anfangsverzögerung noch gehalten — im Repeat-Takt, bis losgelassen wird.
+    val tapModifier = if (isBackspace) {
+        Modifier.pointerInput(key) {
+            detectTapGestures(
+                onPress = {
+                    onKey(key)
+                    if (withTimeoutOrNull(BACKSPACE_INITIAL_DELAY_MS) { tryAwaitRelease() } == null) {
+                        while (true) {
+                            onKey(key)
+                            if (withTimeoutOrNull(BACKSPACE_REPEAT_MS) { tryAwaitRelease() } != null) break
+                        }
+                    }
+                },
+            )
+        }
+    } else {
+        Modifier.clickable { onKey(key) }
+    }
+
     Box(
-        // Gleichmässige Totzone ringsum: das Padding liegt VOR clickable, ist also
-        // nicht klickbar. Ein knapper Fehlgriff landet im Zwischenraum → kein
+        // Gleichmässige Totzone ringsum: das Padding liegt VOR der Tap-Erkennung, ist
+        // also nicht klickbar. Ein knapper Fehlgriff landet im Zwischenraum → kein
         // Zeichen statt falsches Zeichen. Zwischen zwei Tasten ergibt das 2 × KEY_GAP
         // tote Fläche. Grösser = weniger Fehltipper, aber kleinere Tasten — tunebar.
         modifier = modifier
             .padding(KEY_GAP)
             .clip(RoundedCornerShape(8.dp))
             .background(bg)
-            .clickable { onKey(key) },
+            .then(tapModifier),
         contentAlignment = Alignment.Center,
     ) {
         Text(
