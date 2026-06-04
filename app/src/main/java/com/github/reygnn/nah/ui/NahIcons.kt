@@ -52,8 +52,15 @@ object NahIcons {
 }
 
 /**
+ * Strichstärke der Kontur-Variante (inaktiver Shift). Bewusst dünn: 2f wirkte
+ * fetter als der gefüllte aktive Pfeil — der Ruhezustand soll der leichteste sein.
+ * Hier tunebar, falls die Kontur zu zart/zu kräftig wirkt.
+ */
+private const val OUTLINE_STROKE = 1.25f
+
+/**
  * Baut aus einem 24×24-SVG-Pfad eine [ImageVector]. [filled] = gefüllte Silhouette;
- * sonst nur die Kontur (Stroke) — die `Icon`-Composable tintet beides über `tint`.
+ * sonst nur die zarte Kontur (Stroke) — die `Icon`-Composable tintet beides über `tint`.
  */
 private fun materialIcon(name: String, pathStr: String, filled: Boolean = true): ImageVector =
     ImageVector.Builder(
@@ -67,6 +74,6 @@ private fun materialIcon(name: String, pathStr: String, filled: Boolean = true):
             pathData = PathParser().parsePathString(pathStr).toNodes(),
             fill = if (filled) SolidColor(Color.Black) else null,
             stroke = if (filled) null else SolidColor(Color.Black),
-            strokeLineWidth = if (filled) 0f else 2f,
+            strokeLineWidth = if (filled) 0f else OUTLINE_STROKE,
         )
     }.build()
