@@ -50,17 +50,25 @@ object OptimizedLayout {
         ),
     )
 
+    // Symbol/Zahlen-Layer: 5 Reihen wie der Buchstaben-Layer, damit die Tastatur
+    // beim Wechsel ?123 ↔ ABC NICHT in der Höhe springt. Funktionsreihe identisch
+    // zum Buchstaben-Layer ( , / Space / . / ⏎ an denselben Positionen), nur der
+    // Toggle links zeigt ABC statt ?123. Darum sind , und . NICHT in den
+    // Inhaltsreihen — sie leben in der Funktionsreihe.
     fun symbols(): KeyboardLayout = KeyboardLayout(
         rows = listOf(
             charRow("1234567890"),
-            charRow("@#&*-+=/()"),
+            charRow("@#€$%&*-+="),
+            charRow("()[]{}<>/\\"),
             buildList {
-                addAll(charRow("!?\"':;,."))
+                addAll(charRow("!?:;'\"_~|"))
                 add(FunctionKey(KeyAction.BACKSPACE, weight = 1.5f))
             },
             listOf(
                 FunctionKey(KeyAction.ALPHA, weight = 1.5f),
+                FunctionKey(KeyAction.COMMA, weight = 1f),
                 FunctionKey(KeyAction.SPACE, weight = 5f),
+                FunctionKey(KeyAction.PERIOD, weight = 1f),
                 FunctionKey(KeyAction.RETURN, weight = 1.5f),
             ),
         ),
