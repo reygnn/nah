@@ -5,13 +5,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -42,29 +45,33 @@ fun TapKey(
     modifier: Modifier = Modifier,
     onKey: (KeyboardKey) -> Unit,
 ) {
-    val isShiftKey = key is FunctionKey && key.action == KeyAction.SHIFT
-
     val label = when (key) {
         is CharKey -> if (shift != ShiftState.OFF) key.char.uppercaseChar().toString() else key.char.toString()
         is FunctionKey -> key.label
     }
 
-    // Farben aus dem Material-3-Schema (Material You, dynamisch). Shift-Status über
-    // die Rollen: einmaliges Shift = primary, Caps Lock = tertiary; sonst neutrale
-    // Container-Tiers (Buchstaben heller/erhabener als Funktionstasten).
+    // Backspace, Shift und Return zeigen ein Material-Vektor-Icon statt der
+    // Unicode-Glyphe; alle anderen Tasten (Space, ?123, ABC, ., ,) bleiben Text.
+    // Das Shift-Icon trägt den Zustand selbst (kein Sonderfarben mehr nötig):
+    // Kontur-Pfeil = aus, gefüllter Pfeil = armiert, Capslock = Caps Lock.
+    val icon: ImageVector? = when {
+        key !is FunctionKey -> null
+        key.action == KeyAction.BACKSPACE -> NahIcons.Backspace
+        key.action == KeyAction.RETURN -> NahIcons.Return
+        key.action == KeyAction.SHIFT -> when (shift) {
+            ShiftState.CAPS -> NahIcons.ShiftCaps
+            ShiftState.SHIFTED -> NahIcons.Shift
+            ShiftState.OFF -> NahIcons.ShiftOutline
+        }
+        else -> null
+    }
+
+    // Farben aus dem Material-3-Schema (Material You, dynamisch). Neutrale
+    // Container-Tiers: Buchstaben heller/erhabener als Funktionstasten. Der
+    // Shift-Zustand läuft jetzt allein übers Icon, nicht mehr über Sonderfarben.
     val colors = MaterialTheme.colorScheme
-    val bg = when {
-        isShiftKey && shift == ShiftState.SHIFTED -> colors.primary
-        isShiftKey && shift == ShiftState.CAPS -> colors.tertiary
-        key is CharKey -> colors.surfaceContainerHigh
-        else -> colors.surfaceContainerLow
-    }
-    val fg = when {
-        isShiftKey && shift == ShiftState.SHIFTED -> colors.onPrimary
-        isShiftKey && shift == ShiftState.CAPS -> colors.onTertiary
-        key is CharKey -> colors.onSurface
-        else -> colors.onSurfaceVariant
-    }
+    val bg = if (key is CharKey) colors.surfaceContainerHigh else colors.surfaceContainerLow
+    val fg = if (key is CharKey) colors.onSurface else colors.onSurfaceVariant
 
     val isBackspace = key is FunctionKey && key.action == KeyAction.BACKSPACE
     // Backspace löscht beim Gedrückthalten fortlaufend; alle anderen Tasten sind
@@ -100,11 +107,20 @@ fun TapKey(
             .then(tapModifier),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = label,
-            color = fg,
-            fontSize = if (key is CharKey) 22.sp else 18.sp,
-            textAlign = TextAlign.Center,
-        )
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = fg,
+                modifier = Modifier.size(24.dp),
+            )
+        } else {
+            Text(
+                text = label,
+                color = fg,
+                fontSize = if (key is CharKey) 22.sp else 18.sp,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
