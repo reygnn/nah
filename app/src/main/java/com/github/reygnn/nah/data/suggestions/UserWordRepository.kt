@@ -43,6 +43,27 @@ class UserWordRepository(private val context: Context) {
         return error
     }
 
+    /**
+     * Ersetzt [old] durch [raw] (Tippfehler korrigieren). `null` = erfolgreich, sonst
+     * der Ablehnungsgrund. Die Duplikat-Prüfung ignoriert das bearbeitete Wort selbst,
+     * damit reine Gross-/Kleinschreibungs- oder Tippfehler-Korrekturen durchgehen.
+     */
+    suspend fun update(old: String, raw: String): UserWordError? {
+        val word = raw.trim()
+        var error: UserWordError? = null
+        context.userWordsDataStore.edit { prefs ->
+            val current = prefs[KEY] ?: emptySet()
+            val others = current.filterNot { it.equals(old, ignoreCase = true) }.toSet()
+            val reason = UserWordValidation.validate(word, others)
+            if (reason != null) {
+                error = reason
+                return@edit
+            }
+            prefs[KEY] = others + word
+        }
+        return error
+    }
+
     suspend fun remove(word: String) {
         context.userWordsDataStore.edit { prefs ->
             prefs[KEY] = (prefs[KEY] ?: emptySet())

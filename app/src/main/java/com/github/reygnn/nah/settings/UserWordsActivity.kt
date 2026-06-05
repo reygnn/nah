@@ -3,6 +3,7 @@ package com.github.reygnn.nah.settings
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -54,6 +56,7 @@ fun UserWordsScreen(repository: UserWordRepository) {
     val words by repository.words.collectAsStateWithLifecycle(initialValue = emptySet())
     var input by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+    var editing by remember { mutableStateOf<String?>(null) }
 
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -118,7 +121,15 @@ fun UserWordsScreen(repository: UserWordRepository) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(word, style = MaterialTheme.typography.bodyLarge)
+                            // Antippen zum Korrigieren — grosser Tap-Bereich (Fat-Finger).
+                            Text(
+                                word,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { editing = word }
+                                    .padding(vertical = 12.dp),
+                            )
                             TextButton(onClick = { scope.launch { repository.remove(word) } }) {
                                 Text("Entfernen")
                             }
@@ -127,6 +138,39 @@ fun UserWordsScreen(repository: UserWordRepository) {
                 }
             }
         }
+    }
+
+    val target = editing
+    if (target != null) {
+        var draft by remember(target) { mutableStateOf(target) }
+        var dialogError by remember(target) { mutableStateOf<String?>(null) }
+        AlertDialog(
+            onDismissRequest = { editing = null },
+            title = { Text("Wort bearbeiten") },
+            text = {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it; dialogError = null },
+                    singleLine = true,
+                    isError = dialogError != null,
+                    supportingText = dialogError?.let { msg -> { Text(msg) } },
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            val reason = repository.update(target, draft)
+                            if (reason == null) editing = null else dialogError = reason.message()
+                        }
+                    },
+                    enabled = draft.isNotBlank(),
+                ) { Text("Speichern") }
+            },
+            dismissButton = {
+                TextButton(onClick = { editing = null }) { Text("Abbrechen") }
+            },
+        )
     }
 }
 
