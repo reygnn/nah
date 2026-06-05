@@ -153,6 +153,18 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `clipboard-aenderung schaltet die Einfuege-Taste live`() {
+        val fake = FakeIc()
+        val vm = vm(fake)
+        vm.onStartInput(pasteAvailable = false)
+        assertFalse(vm.state.value.pasteAvailable)
+        vm.onPasteAvailabilityChanged(true) // Nutzer kopiert bei offener Tastatur
+        assertTrue(vm.state.value.pasteAvailable)
+        vm.onPasteAvailabilityChanged(false)
+        assertFalse(vm.state.value.pasteAvailable)
+    }
+
+    @Test
     fun `alternative committet genau den gewaehlten Text`() {
         val fake = FakeIc()
         val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }

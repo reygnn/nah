@@ -203,6 +203,18 @@ class KeyboardViewModel(
         }
     }
 
+    /**
+     * Die Zwischenablage hat sich geändert (Service-Listener `OnPrimaryClipChangedListener`).
+     * Schaltet die Einfügen-Taste live aktiv/inaktiv — auch während die Tastatur offen ist,
+     * nicht erst beim nächsten Feldwechsel. Liest NUR die Metadaten (kein Inhalt → kein
+     * „Zwischenablage gelesen"-Toast); der Service reicht das Ergebnis herein.
+     */
+    fun onPasteAvailabilityChanged(available: Boolean) {
+        if (_state.value.pasteAvailable != available) {
+            _state.value = _state.value.copy(pasteAvailable = available)
+        }
+    }
+
     /** Vorschlag angetippt: ersetzt NUR das aktuelle unfertige Präfix, nie fertigen Text. */
     fun onSuggestionTap(word: String) {
         val prefix = currentWord()

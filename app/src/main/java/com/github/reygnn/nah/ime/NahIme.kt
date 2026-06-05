@@ -82,6 +82,8 @@ class NahIme :
         lifecycleScope.launch {
             userWordRepository.words.collect { suggester.setUserWords(it) }
         }
+
+        clipboard?.addPrimaryClipChangedListener(primaryClipChangedListener)
     }
 
     override fun onCreateInputView(): View {
@@ -119,6 +121,13 @@ class NahIme :
     }
 
     private val clipboard by lazy { getSystemService(ClipboardManager::class.java) }
+
+    // Hält die Einfügen-Taste live aktuell, wenn der Nutzer bei offener Tastatur etwas
+    // kopiert (sonst aktualisierte sich der Zustand erst beim nächsten Feldwechsel). Liest
+    // nur Metadaten (kein Toast). Registriert in onCreate, abgemeldet in onDestroy.
+    private val primaryClipChangedListener = ClipboardManager.OnPrimaryClipChangedListener {
+        viewModel.onPasteAvailabilityChanged(clipboardHasText())
+    }
 
     /** Hat die Zwischenablage Text? Prüft nur die Metadaten (ClipDescription) —
      *  liest NICHT den Inhalt, löst also keinen „Zwischenablage gelesen"-Toast aus. */
@@ -186,6 +195,7 @@ class NahIme :
     }
 
     override fun onDestroy() {
+        clipboard?.removePrimaryClipChangedListener(primaryClipChangedListener)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         super.onDestroy()
     }
