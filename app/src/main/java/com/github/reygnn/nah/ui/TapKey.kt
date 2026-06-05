@@ -45,6 +45,7 @@ fun TapKey(
     key: KeyboardKey,
     shift: ShiftState,
     modifier: Modifier = Modifier,
+    colorHints: Boolean = false,
     onKey: (KeyboardKey) -> Unit,
 ) {
     val label = when (key) {
@@ -72,8 +73,19 @@ fun TapKey(
     // Container-Tiers: Buchstaben heller/erhabener als Funktionstasten. Der
     // Shift-Zustand läuft jetzt allein übers Icon, nicht mehr über Sonderfarben.
     val colors = MaterialTheme.colorScheme
-    val bg = if (key is CharKey) colors.surfaceContainerHigh else colors.surfaceContainerLow
-    val fg = if (key is CharKey) colors.onSurface else colors.onSurfaceVariant
+    // „Stützräder": Vokale/häufige Konsonanten bekommen fixe Lern-Farben, sobald der
+    // Schalter an ist. Sonst die neutralen Container-Tiers wie gehabt.
+    val hint = if (colorHints && key is CharKey) NahColors.hintFor(key.char) else null
+    val bg = when (hint) {
+        NahColors.Hint.Vowel -> NahColors.VowelKey
+        NahColors.Hint.Consonant -> NahColors.ConsonantKey
+        null -> if (key is CharKey) colors.surfaceContainerHigh else colors.surfaceContainerLow
+    }
+    val fg = when (hint) {
+        NahColors.Hint.Vowel -> NahColors.VowelOn
+        NahColors.Hint.Consonant -> NahColors.ConsonantOn
+        null -> if (key is CharKey) colors.onSurface else colors.onSurfaceVariant
+    }
 
     // Leichtes haptisches Feedback beim Tasten-Tap — hilft beim Ein-Finger-Tippen
     // ohne Hinsehen. KEYBOARD_TAP respektiert die System-Einstellung („Haptik beim

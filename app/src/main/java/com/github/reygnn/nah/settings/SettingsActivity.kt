@@ -117,6 +117,16 @@ fun SettingsScreen(
                     scope.launch { repository.update { it.copy(autoCapEnabled = value) } }
                 },
             )
+
+            HorizontalDivider()
+
+            SwitchRow(
+                label = "Lern-Farben (Vokale & häufige Konsonanten)",
+                checked = settings.letterColorHintsEnabled,
+                onChange = { value ->
+                    scope.launch { repository.update { it.copy(letterColorHintsEnabled = value) } }
+                },
+            )
         }
     }
 }

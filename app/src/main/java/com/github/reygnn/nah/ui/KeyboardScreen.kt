@@ -77,6 +77,7 @@ fun KeyboardContent(
                     TapKey(
                         key = key,
                         shift = state.shift,
+                        colorHints = state.colorHints,
                         modifier = Modifier
                             .weight(key.weight)
                             .fillMaxHeight(),

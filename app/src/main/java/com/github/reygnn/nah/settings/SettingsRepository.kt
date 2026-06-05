@@ -17,6 +17,7 @@ class SettingsRepository(private val context: Context) {
         val suggestionsEnabled = booleanPreferencesKey("suggestions_enabled")
         val userWordsEnabled = booleanPreferencesKey("user_words_enabled")
         val autoCapEnabled = booleanPreferencesKey("auto_cap_enabled")
+        val letterColorHintsEnabled = booleanPreferencesKey("letter_color_hints_enabled")
     }
 
     val settings: Flow<Settings> = context.dataStore.data.map { it.toSettings() }
@@ -27,6 +28,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.suggestionsEnabled] = next.suggestionsEnabled
             prefs[Keys.userWordsEnabled] = next.userWordsEnabled
             prefs[Keys.autoCapEnabled] = next.autoCapEnabled
+            prefs[Keys.letterColorHintsEnabled] = next.letterColorHintsEnabled
         }
     }
 
@@ -34,6 +36,7 @@ class SettingsRepository(private val context: Context) {
         suggestionsEnabled = this[Keys.suggestionsEnabled] ?: DEFAULT.suggestionsEnabled,
         userWordsEnabled = this[Keys.userWordsEnabled] ?: DEFAULT.userWordsEnabled,
         autoCapEnabled = this[Keys.autoCapEnabled] ?: DEFAULT.autoCapEnabled,
+        letterColorHintsEnabled = this[Keys.letterColorHintsEnabled] ?: DEFAULT.letterColorHintsEnabled,
     )
 
     private companion object {

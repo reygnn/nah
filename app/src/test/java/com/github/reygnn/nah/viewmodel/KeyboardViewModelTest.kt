@@ -189,6 +189,16 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `lern-farben spiegeln sich im State`() {
+        val fake = FakeIc()
+        val vm = vm(fake)
+        vm.applySettings(Settings(letterColorHintsEnabled = true))
+        assertTrue(vm.state.value.colorHints)
+        vm.applySettings(Settings(letterColorHintsEnabled = false))
+        assertFalse(vm.state.value.colorHints)
+    }
+
+    @Test
     fun `layer-wechsel zu Symbolen und zurueck`() {
         val fake = FakeIc()
         val vm = vm(fake).apply { applySettings(Settings()) }

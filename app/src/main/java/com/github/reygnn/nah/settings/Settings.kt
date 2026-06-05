@@ -14,4 +14,8 @@ data class Settings(
     val userWordsEnabled: Boolean = false,
     /** Auto-Grossschreibung am Satzanfang (toggelbar). Kein Autocorrect. */
     val autoCapEnabled: Boolean = true,
+    /** „Stützräder": Vokale und die häufigsten Konsonanten farbig einfärben, bis das
+     *  Muskelgedächtnis sitzt. Fixe Farben (kein Material You) — stabiler Lern-Anker.
+     *  Standard AUS. */
+    val letterColorHintsEnabled: Boolean = false,
 )

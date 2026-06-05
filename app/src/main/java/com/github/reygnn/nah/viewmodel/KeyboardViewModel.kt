@@ -25,6 +25,8 @@ data class KeyboardUiState(
      *  gerade leer ist. So springt die Tastatur beim Erscheinen/Verschwinden der
      *  Vorschläge nicht in der Höhe. Aus, wenn die Funktion ganz deaktiviert ist. */
     val suggestionBarVisible: Boolean = false,
+    /** „Stützräder": Vokale/häufige Konsonanten farbig einfärben (Lernhilfe). */
+    val colorHints: Boolean = false,
 )
 
 /**
@@ -64,6 +66,9 @@ class KeyboardViewModel(
 
     fun applySettings(newSettings: Settings) {
         settings = newSettings
+        if (_state.value.colorHints != newSettings.letterColorHintsEnabled) {
+            _state.value = _state.value.copy(colorHints = newSettings.letterColorHintsEnabled)
+        }
         refreshSuggestions() // gated intern — kümmert sich selbst ums Leeren
     }
 
