@@ -247,13 +247,14 @@ class KeyboardViewModel(
     /** Vorschlag angetippt: ersetzt NUR das aktuelle unfertige Präfix, nie fertigen Text. */
     fun onSuggestionTap(word: String) {
         val prefix = currentWord()
-        // Die Schreibweise des getippten Präfix auf den Vorschlag übertragen, damit ein
-        // am Satzanfang gross begonnenes „De" nicht durch ein klein vorgeschlagenes „der"
-        // ersetzt wird. Kein Autocorrect: weiterhin wird nur das unfertige Präfix ersetzt.
-        val cased = casedLikePrefix(word, prefix)
+        // Eigene Wörter (Namen/Adressen/E-Mails) wörtlich committen — ihre Schreibweise ist
+        // massgeblich. Nur Wörterbuch-Vorschläge dem Präfix-Casing anpassen, damit ein am
+        // Satzanfang gross begonnenes „De" nicht durch klein vorgeschlagenes „der" ersetzt
+        // wird. Kein Autocorrect: in beiden Fällen wird nur das unfertige Präfix ersetzt.
+        val out = if (suggester?.isUserWord(word) == true) word else casedLikePrefix(word, prefix)
         safeIc { ic ->
             if (prefix.isNotEmpty()) ic.deleteSurroundingText(prefix.length, 0)
-            ic.commitText("$cased ", 1)
+            ic.commitText("$out ", 1)
         }
         selEnd = selStart // nach dem Eigen-Edit gibt es keine aktive Auswahl mehr
         setShift(ShiftState.OFF)

@@ -444,6 +444,37 @@ class KeyboardViewModelTest {
         assertEquals("Der ", fake.buffer.toString())
     }
 
+    /** Suggester, der seine Treffer als eigene Wörter meldet (wörtlich zu committen). */
+    private fun userWordSuggester(vararg words: String) = object : Suggester {
+        override fun suggest(prefix: String, includeBuiltIn: Boolean, includeUser: Boolean) = words.toList()
+        override fun isUserWord(word: String) = words.contains(word)
+    }
+
+    @Test
+    fun `eigenes Wort wird unter Caps-Lock NICHT grossgeschrieben`() {
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = userWordSuggester("max@firma.ch"))
+            .apply { applySettings(Settings(userWordsEnabled = true, autoCapEnabled = false)) }
+        vm.onKey(FunctionKey(KeyAction.SHIFT))
+        vm.onKey(FunctionKey(KeyAction.SHIFT)) // CAPS
+        vm.type("max")          // unter Caps → „MAX"
+        vm.onSuggestionTap("max@firma.ch")
+        // Eigenes Wort bleibt wörtlich — keine Anpassung an Caps-Lock.
+        assertEquals("max@firma.ch ", fake.buffer.toString())
+    }
+
+    @Test
+    fun `eigenes Wort behaelt am Satzanfang seine Schreibweise`() {
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = userWordSuggester("max@firma.ch"))
+            .apply { applySettings(Settings(userWordsEnabled = true, autoCapEnabled = true)) }
+        vm.onStartInput()       // leeres Feld → Auto-Cap armiert SHIFTED
+        vm.type("ma")           // → „Ma"
+        vm.onSuggestionTap("max@firma.ch")
+        // Trotz gross begonnenem Präfix wird die E-Mail nicht kapitalisiert.
+        assertEquals("max@firma.ch ", fake.buffer.toString())
+    }
+
     @Test
     fun `vorschlag-tap unter Caps-Lock schreibt den ganzen Vorschlag gross`() {
         val fake = FakeIc()

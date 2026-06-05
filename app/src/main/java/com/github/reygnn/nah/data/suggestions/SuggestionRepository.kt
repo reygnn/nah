@@ -67,6 +67,13 @@ class SuggestionRepository : Suggester {
             .map { it.first }
     }
 
+    /**
+     * Liegt [word] im User-Trie? Dann wird es wörtlich committet (siehe [Suggester.isUserWord]).
+     * [Trie.contains] prüft den exakten Eintrag case-insensitiv — der Vorschlagstext ist die
+     * gespeicherte Originalform, trifft also seinen eigenen Eintrag.
+     */
+    override fun isUserWord(word: String): Boolean = userTrie?.contains(word) ?: false
+
     private companion object {
         const val MIN_PREFIX_LENGTH = 2
         const val MAX_SUGGESTIONS = 3

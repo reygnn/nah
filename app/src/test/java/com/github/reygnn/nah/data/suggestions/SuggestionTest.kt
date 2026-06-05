@@ -103,6 +103,22 @@ class SuggestionRepositoryTest {
     }
 
     @Test
+    fun `isUserWord erkennt eigene Eintraege case-insensitiv, eingebaute nicht`() {
+        val r = SuggestionRepository().apply { warmUpBuiltIn() }
+        r.setUserWords(setOf("Müller", "max@firma.ch"))
+        assertTrue(r.isUserWord("Müller"))
+        assertTrue(r.isUserWord("müller")) // case-insensitiv (Trie.contains)
+        assertTrue(r.isUserWord("max@firma.ch"))
+        // Ein reines Wörterbuch-Wort ist KEIN eigenes Wort → bekommt Präfix-Casing.
+        assertFalse(r.isUserWord("Zeit"))
+    }
+
+    @Test
+    fun `isUserWord ist false ohne gesetzte eigene Woerter`() {
+        assertFalse(SuggestionRepository().isUserWord("egal"))
+    }
+
+    @Test
     fun `nur User-Quelle liefert ausschliesslich eigene Woerter`() {
         val r = SuggestionRepository()
         r.setUserWords(setOf("zzabc"))

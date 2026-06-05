@@ -15,4 +15,12 @@ fun interface Suggester {
      * (ohne das Dictionary-Rauschen) bekommen.
      */
     fun suggest(prefix: String, includeBuiltIn: Boolean, includeUser: Boolean): List<String>
+
+    /**
+     * Stammt [word] aus den benutzerdefinierten Wörtern? Solche Einträge (Vor-/Nachnamen,
+     * Adressen, E-Mails) werden **wörtlich** committet — ihre Gross-/Kleinschreibung ist
+     * massgeblich und darf NICHT an Shift/Caps-Lock angepasst werden, anders als
+     * Wörterbuch-Vorschläge. Default `false` (Fakes/Tests verhalten sich wie Wörterbuch).
+     */
+    fun isUserWord(word: String): Boolean = false
 }
