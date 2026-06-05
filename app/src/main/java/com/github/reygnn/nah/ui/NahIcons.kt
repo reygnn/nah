@@ -33,8 +33,16 @@ object NahIcons {
         "M19 7v4H5.83l3.58-3.59L8 6l-6 6 6 6 1.41-1.41L5.83 13H21V7h-2z",
     )
 
-    /** Pfad des Aufwärts-Pfeils (Material `arrow_upward`) — gefüllt wie outline. */
-    private const val ARROW_UP = "M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"
+    /**
+     * Pfad des Shift-Pfeils — der klassische „fette" ⇧-Glyph (breite Pfeilspitze
+     * über schmalerem Stamm), wie ihn Gboard rendert. Bewusst NICHT Material
+     * `arrow_upward` (dünner Linien-Pfeil): der wirkt für eine Funktionstaste zu
+     * filigran und matcht das Gboard-Vorbild nicht. Proportionen aus den
+     * Screenshots in `pics/` abgenommen: Spitze y4, Flügel y11.5 (Spanne x4–20),
+     * Stamm x8.5–15.5 bis y19.5. Polygon, mittig auf x=12.
+     */
+    private const val ARROW_UP =
+        "M12 4L20 11.5L15.5 11.5L15.5 19.5L8.5 19.5L8.5 11.5L4 11.5Z"
 
     /** ⇧ — armiertes Shift (gefüllter Pfeil). */
     val Shift: ImageVector = materialIcon("Shift", ARROW_UP)
@@ -46,9 +54,10 @@ object NahIcons {
      * ⇪ — Caps Lock: derselbe gefüllte Pfeil wie [Shift], plus ein Unterstrich.
      * Bewusst NICHT Material `keyboard_capslock` (anderes Chevron-Glyph) — so
      * teilen sich alle drei Zustände dasselbe Symbol, nur outline/gefüllt/+Strich.
-     * Der Balken sitzt unter dem Pfeil (y22–24); Abstand/Breite hier tunebar.
+     * Der Balken sitzt unter dem Stamm (Lücke ~2.5, y22–23.5), etwas breiter
+     * als der Stamm — wie im Gboard-Caps-Screenshot. Abstand/Breite hier tunebar.
      */
-    val ShiftCaps: ImageVector = materialIcon("ShiftCaps", "$ARROW_UP M6 22h12v2H6z")
+    val ShiftCaps: ImageVector = materialIcon("ShiftCaps", "$ARROW_UP M8 22h8v1.5H8z")
 }
 
 /**
