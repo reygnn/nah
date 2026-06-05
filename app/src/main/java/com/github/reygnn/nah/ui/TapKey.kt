@@ -243,7 +243,9 @@ fun TapKey(
                 scope.launch { interactionSource.emit(PressInteraction.Release(press)) } // Ripple aus
             }
         }
-        else -> Modifier.clickable { tap() }
+        // role = Button macht die normalen Tasten für TalkBack konsistent zu den
+        // Gesten-Tasten (Backspace/Alternativen setzen es oben schon explizit).
+        else -> Modifier.clickable(role = Role.Button) { tap() }
     }
 
     Box(

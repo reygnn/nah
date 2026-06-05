@@ -271,6 +271,11 @@ class KeyboardViewModel(
         val isUserWord = settings.userWordsEnabled && suggester?.isUserWord(word) == true
         val out = if (isUserWord) word else casedLikePrefix(word, prefix)
         safeIc { ic ->
+            // deleteSurroundingText zählt UTF-16-Code-Units — hier sicher, weil [prefix] aus
+            // wordBeforeCursor nur isLetterOrDigit-Zeichen sammelt; einzelne Surrogat-Hälften
+            // sind das nicht, also ist der Präfix garantiert BMP-only und prefix.length (Units)
+            // == Anzahl Zeichen. (Backspace nutzt bewusst die Code-Point-Variante, weil dort
+            // eingefügte astrale Zeichen wie Emoji im Spiel sein können — hier nie.)
             if (prefix.isNotEmpty()) ic.deleteSurroundingText(prefix.length, 0)
             ic.commitText("$out ", 1)
         }
