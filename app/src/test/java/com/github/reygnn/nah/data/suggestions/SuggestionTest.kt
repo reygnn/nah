@@ -73,6 +73,13 @@ class SuggestionRepositoryTest {
     }
 
     @Test
+    fun `numerisches eigenes Wort wird per Ziffern-Praefix vorgeschlagen`() {
+        val r = SuggestionRepository()
+        r.setUserWords(setOf("8050")) // z. B. eine PLZ
+        assertEquals(listOf("8050"), r.suggest("80", includeBuiltIn = false, includeUser = true))
+    }
+
+    @Test
     fun `nur User-Quelle liefert ausschliesslich eigene Woerter`() {
         val r = SuggestionRepository()
         r.setUserWords(setOf("zzabc"))

@@ -177,6 +177,6 @@ fun UserWordsScreen(repository: UserWordRepository) {
 private fun UserWordError.message(): String = when (this) {
     UserWordError.TooShort -> "Mindestens 2 Zeichen"
     UserWordError.TooLong -> "Höchstens 50 Zeichen"
-    UserWordError.InvalidCharacters -> "Nur Buchstaben (oder eine E-Mail-Adresse)"
+    UserWordError.InvalidCharacters -> "Nur Buchstaben und Zahlen, keine Leerzeichen (oder eine E-Mail-Adresse)"
     UserWordError.AlreadyExists -> "Schon in der Liste"
 }

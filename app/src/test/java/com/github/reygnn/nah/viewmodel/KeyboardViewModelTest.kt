@@ -267,6 +267,18 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `ziffern-praefix loest vorschlaege aus, auch auf der Symbolebene`() {
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = Suggester { prefix, _, _ ->
+            if (prefix == "80") listOf("8050") else emptyList()
+        }).apply { applySettings(Settings(userWordsEnabled = true, autoCapEnabled = false)) }
+        vm.onKey(FunctionKey(KeyAction.SYMBOLS)) // Ziffern liegen auf der Symbolebene
+        vm.type("80")
+        assertEquals(listOf("8050"), vm.state.value.suggestions)
+        assertTrue(vm.state.value.suggestionBarVisible)
+    }
+
+    @Test
     fun `vorschlag-tap ersetzt nur das aktuelle Wort, nie fertigen Text`() {
         val fake = FakeIc()
         val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("welt") })

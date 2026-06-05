@@ -5,8 +5,11 @@ enum class UserWordError { TooShort, TooLong, InvalidCharacters, AlreadyExists }
 
 /**
  * Reine, JVM-testbare Validierung für benutzerdefinierte Wörter (Logik aus vuot
- * übernommen): 2–50 Zeichen, nur Buchstaben ODER eine plausible E-Mail-Adresse,
- * keine case-insensitiven Duplikate. Persistenz ist bewusst kein Teil davon.
+ * übernommen): 2–50 Zeichen, Buchstaben UND/ODER Ziffern (ein einzelnes Token, z. B.
+ * eine PLZ wie „8050") ODER eine plausible E-Mail-Adresse, keine case-insensitiven
+ * Duplikate. Bewusst KEINE Leerzeichen/Sonderzeichen: das Matching läuft über ein
+ * zusammenhängendes alphanumerisches Präfix vor dem Cursor — eine Phrase mit
+ * Leerzeichen wäre so gar nicht auffindbar. Persistenz ist nicht Teil davon.
  */
 object UserWordValidation {
 
@@ -26,7 +29,7 @@ object UserWordValidation {
     }
 
     private fun isValidEntry(text: String): Boolean =
-        if (text.contains('@')) isValidEmail(text) else text.all { it.isLetter() }
+        if (text.contains('@')) isValidEmail(text) else text.all { it.isLetterOrDigit() }
 
     private fun isValidEmail(text: String): Boolean {
         val atIndex = text.indexOf('@')

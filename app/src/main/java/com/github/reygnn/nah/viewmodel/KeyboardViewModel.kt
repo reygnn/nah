@@ -44,7 +44,6 @@ class KeyboardViewModel(
     val state: StateFlow<KeyboardUiState> = _state.asStateFlow()
 
     private var settings = Settings()
-    private val onAlpha get() = _state.value.layout === alphaLayout
 
     // Vom Service über onSelectionChanged gepflegt. Eine aktive Auswahl (selStart !=
     // selEnd) muss Backspace löschen können; deleteSurroundingText würde sie nicht
@@ -142,12 +141,13 @@ class KeyboardViewModel(
                 }
                 afterTextChanged()
             }
-            KeyAction.SYMBOLS ->
-                _state.value = _state.value.copy(
-                    layout = symbolsLayout,
-                    suggestions = emptyList(),
-                    suggestionBarVisible = false,
-                )
+            KeyAction.SYMBOLS -> {
+                // Vorschläge laufen auch hier weiter (Ziffern liegen auf dieser Ebene —
+                // so wird z. B. eine eigene PLZ vorgeschlagen). Die reservierte Leiste
+                // bleibt auf beiden Ebenen, damit die Höhe beim Wechsel nicht springt.
+                _state.value = _state.value.copy(layout = symbolsLayout)
+                refreshSuggestions()
+            }
             KeyAction.ALPHA -> {
                 _state.value = _state.value.copy(layout = alphaLayout)
                 refreshSuggestions()
@@ -203,8 +203,8 @@ class KeyboardViewModel(
     private fun refreshSuggestions() {
         val s = suggester
         val anySource = settings.suggestionsEnabled || settings.userWordsEnabled
-        if (s == null || !onAlpha || !anySource) {
-            // Funktion aus oder Symbolebene → gar keine Leiste (kein verschwendeter Platz).
+        if (s == null || !anySource) {
+            // Funktion ganz aus → gar keine Leiste (kein verschwendeter Platz).
             _state.value = _state.value.copy(suggestions = emptyList(), suggestionBarVisible = false)
             return
         }
@@ -225,7 +225,7 @@ class KeyboardViewModel(
      */
     private fun atWordEnd(): Boolean {
         val after = safeIc { it.getTextAfterCursor(1, 0)?.toString() } ?: return true
-        return after.isEmpty() || !after[0].isLetter()
+        return after.isEmpty() || !after[0].isLetterOrDigit()
     }
 
     private fun recomputeAutoCap() {
@@ -241,7 +241,9 @@ class KeyboardViewModel(
 
     private fun currentWord(): String {
         val before = safeIc { it.getTextBeforeCursor(48, 0)?.toString() } ?: return ""
-        return before.takeLastWhile { it.isLetter() }
+        // Buchstaben UND Ziffern: so wird auch ein numerisches Token (z. B. eine
+        // eigene PLZ) als Präfix erkannt und kann vorgeschlagen werden.
+        return before.takeLastWhile { it.isLetterOrDigit() }
     }
 
     private inline fun <T> safeIc(block: (InputConnection) -> T): T? {

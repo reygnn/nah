@@ -22,8 +22,19 @@ class UserWordValidationTest {
     }
 
     @Test
-    fun `Ziffern werden abgelehnt`() {
-        assertEquals(UserWordError.InvalidCharacters, UserWordValidation.validate("abc1", emptySet()))
+    fun `Buchstaben und Ziffern werden akzeptiert`() {
+        assertNull(UserWordValidation.validate("abc1", emptySet()))
+        assertNull(UserWordValidation.validate("8050", emptySet())) // PLZ
+    }
+
+    @Test
+    fun `Leerzeichen werden abgelehnt (Phrase ist kein Token)`() {
+        assertEquals(UserWordError.InvalidCharacters, UserWordValidation.validate("8050 Zürich", emptySet()))
+    }
+
+    @Test
+    fun `Sonderzeichen werden abgelehnt`() {
+        assertEquals(UserWordError.InvalidCharacters, UserWordValidation.validate("ab-cd", emptySet()))
     }
 
     @Test
