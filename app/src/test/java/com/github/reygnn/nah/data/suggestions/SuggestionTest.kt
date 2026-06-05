@@ -80,6 +80,19 @@ class SuggestionRepositoryTest {
     }
 
     @Test
+    fun `Phrase wird ueber den Anfang des ersten Wortes vorgeschlagen`() {
+        val r = SuggestionRepository()
+        r.setUserWords(setOf("Hauptstrasse 115"))
+        // strncmp-from-start: das erste Wort matcht …
+        assertEquals(
+            listOf("Hauptstrasse 115"),
+            r.suggest("haupt", includeBuiltIn = false, includeUser = true),
+        )
+        // … aber nicht ein Teilstring mitten drin (kein strstr).
+        assertTrue(r.suggest("strasse", includeBuiltIn = false, includeUser = true).isEmpty())
+    }
+
+    @Test
     fun `nur User-Quelle liefert ausschliesslich eigene Woerter`() {
         val r = SuggestionRepository()
         r.setUserWords(setOf("zzabc"))

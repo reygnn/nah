@@ -69,7 +69,9 @@ fun UserWordsScreen(repository: UserWordRepository) {
             Text("Eigene Wörter", style = MaterialTheme.typography.headlineMedium)
             Text(
                 "Erscheinen in der Vorschlagsleiste, sobald „Eigene Wörter vorschlagen“ " +
-                    "aktiviert ist. Sie ersetzen nie fertigen Text — nur auf Antippen.",
+                    "aktiviert ist. Sie ersetzen nie fertigen Text — nur auf Antippen. Auch " +
+                    "ganze Phrasen mit Leerzeichen (z. B. „Hauptstrasse 115“) — vorgeschlagen, " +
+                    "sobald du den Anfang des ersten Wortes tippst.",
                 style = MaterialTheme.typography.bodyMedium,
             )
 
@@ -177,6 +179,6 @@ fun UserWordsScreen(repository: UserWordRepository) {
 private fun UserWordError.message(): String = when (this) {
     UserWordError.TooShort -> "Mindestens 2 Zeichen"
     UserWordError.TooLong -> "Höchstens 50 Zeichen"
-    UserWordError.InvalidCharacters -> "Nur Buchstaben und Zahlen, keine Leerzeichen (oder eine E-Mail-Adresse)"
+    UserWordError.InvalidCharacters -> "Keine Zeilenumbrüche oder Steuerzeichen"
     UserWordError.AlreadyExists -> "Schon in der Liste"
 }

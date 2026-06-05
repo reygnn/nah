@@ -28,23 +28,20 @@ class UserWordValidationTest {
     }
 
     @Test
-    fun `Leerzeichen werden abgelehnt (Phrase ist kein Token)`() {
-        assertEquals(UserWordError.InvalidCharacters, UserWordValidation.validate("8050 Zürich", emptySet()))
+    fun `Phrasen mit Leerzeichen werden akzeptiert`() {
+        assertNull(UserWordValidation.validate("Hauptstrasse 115", emptySet()))
+        assertNull(UserWordValidation.validate("8050 Zürich", emptySet()))
     }
 
     @Test
-    fun `Sonderzeichen werden abgelehnt`() {
-        assertEquals(UserWordError.InvalidCharacters, UserWordValidation.validate("ab-cd", emptySet()))
+    fun `Satzzeichen und E-Mails werden akzeptiert`() {
+        assertNull(UserWordValidation.validate("Müllerstr. 1", emptySet()))
+        assertNull(UserWordValidation.validate("max@firma.ch", emptySet()))
     }
 
     @Test
-    fun `plausible E-Mail wird akzeptiert`() {
-        assertNull(UserWordValidation.validate("a@b.ch", emptySet()))
-    }
-
-    @Test
-    fun `kaputte E-Mail wird abgelehnt`() {
-        assertEquals(UserWordError.InvalidCharacters, UserWordValidation.validate("a@@b.ch", emptySet()))
+    fun `Steuerzeichen werden abgelehnt`() {
+        assertEquals(UserWordError.InvalidCharacters, UserWordValidation.validate("ab\ncd", emptySet()))
     }
 
     @Test

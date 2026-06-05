@@ -279,6 +279,19 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `phrase-vorschlag fuegt die ganze Phrase ein, ersetzt nur das getippte Wort`() {
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = Suggester { prefix, _, _ ->
+            if ("hauptstrasse 115".startsWith(prefix)) listOf("Hauptstrasse 115") else emptyList()
+        }).apply { applySettings(Settings(userWordsEnabled = true, autoCapEnabled = false)) }
+        vm.type("haupt")
+        assertEquals(listOf("Hauptstrasse 115"), vm.state.value.suggestions)
+        vm.onSuggestionTap("Hauptstrasse 115")
+        // Nur das getippte „haupt" wird ersetzt, die ganze Phrase (inkl. Leerzeichen) eingefügt.
+        assertEquals("Hauptstrasse 115 ", fake.buffer.toString())
+    }
+
+    @Test
     fun `vorschlag-tap ersetzt nur das aktuelle Wort, nie fertigen Text`() {
         val fake = FakeIc()
         val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("welt") })
