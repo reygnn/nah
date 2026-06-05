@@ -264,7 +264,12 @@ class KeyboardViewModel(
         // massgeblich. Nur Wörterbuch-Vorschläge dem Präfix-Casing anpassen, damit ein am
         // Satzanfang gross begonnenes „De" nicht durch klein vorgeschlagenes „der" ersetzt
         // wird. Kein Autocorrect: in beiden Fällen wird nur das unfertige Präfix ersetzt.
-        val out = if (suggester?.isUserWord(word) == true) word else casedLikePrefix(word, prefix)
+        // userWordsEnabled mitprüfen: der User-Trie wird IMMER vorgehalten (siehe NahIme), also
+        // meldet isUserWord auch bei abgeschalteter Funktion noch Treffer. Ohne diese Gate würde
+        // ein Wort, das zufällig in beiden Listen steht, bei AUS­geschalteten eigenen Wörtern
+        // fälschlich wörtlich statt gecast committet (z. B. „Zeit" statt „ZEIT" unter Caps-Lock).
+        val isUserWord = settings.userWordsEnabled && suggester?.isUserWord(word) == true
+        val out = if (isUserWord) word else casedLikePrefix(word, prefix)
         safeIc { ic ->
             if (prefix.isNotEmpty()) ic.deleteSurroundingText(prefix.length, 0)
             ic.commitText("$out ", 1)

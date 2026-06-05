@@ -493,6 +493,22 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `bei abgeschalteten eigenen Woertern wird ein Treffer wie ein Woerterbuch-Wort gecast`() {
+        val fake = FakeIc()
+        // Der Suggester meldet „zeit" als eigenes Wort — aber die Funktion ist AUS. (Der
+        // reale Grund: der User-Trie wird immer vorgehalten, isUserWord triggert also weiter.)
+        val vm = vm(fake, suggester = userWordSuggester("zeit"))
+            .apply { applySettings(Settings(userWordsEnabled = false, autoCapEnabled = false)) }
+        vm.onKey(FunctionKey(KeyAction.SHIFT))
+        vm.onKey(FunctionKey(KeyAction.SHIFT)) // CAPS
+        vm.type("ze")                          // unter Caps → „ZE"
+        vm.onSuggestionTap("zeit")
+        // userWordsEnabled = false → KEINE Wörtlich-Sonderbehandlung; der Treffer folgt dem
+        // Caps-Lock-Präfix wie ein gewöhnlicher Wörterbuch-Vorschlag (sonst käme „zeit").
+        assertEquals("ZEIT ", fake.buffer.toString())
+    }
+
+    @Test
     fun `eigenes Wort behaelt am Satzanfang seine Schreibweise`() {
         val fake = FakeIc()
         val vm = vm(fake, suggester = userWordSuggester("max@firma.ch"))

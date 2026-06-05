@@ -84,9 +84,13 @@ class NahIme :
             }
         }
         lifecycleScope.launch(Dispatchers.Default) {
-            // Den User-Trie im Hintergrund bauen — konsistent zum eingebauten Trie und
-            // nie auf dem UI-Thread. setUserWords tauscht danach nur die fertig gebaute
-            // Instanz atomar (@Volatile) ein, die auf dem UI-Thread gelesen wird.
+            // Den User-Trie im Hintergrund bauen (nie auf dem UI-Thread) und IMMER vorhalten —
+            // anders als der eingebaute Trie, der erst beim Einschalten der Vorschläge lazy
+            // gebaut wird (er ist gross). Der User-Trie ist klein, das ständige Vorhalten kostet
+            // kaum etwas. OB er einfliesst, entscheidet allein der ViewModel über
+            // settings.userWordsEnabled — und zwar für Vorschläge UND die Wörtlich-Sonder-
+            // behandlung (siehe onSuggestionTap), nicht hier. setUserWords tauscht danach nur die
+            // fertig gebaute Instanz atomar (@Volatile) ein, die auf dem UI-Thread gelesen wird.
             userWordRepository.words.collect { suggester.setUserWords(it) }
         }
 
