@@ -82,16 +82,23 @@ class KeyboardViewModelTest {
     private fun vm(
         fake: FakeIc,
         suggester: Suggester? = null,
-        clipboardTextProvider: () -> String? = { null },
-    ) = KeyboardViewModel(
-        alphaLayout = alpha,
-        symbolsLayout = symbols,
-        numberLayout = number,
-        phoneLayout = phone,
-        inputConnectionProvider = { fake.ic },
-        suggester = suggester,
-        clipboardTextProvider = clipboardTextProvider,
-    )
+        clipboardText: () -> String? = { null },
+    ): KeyboardViewModel {
+        // Im Service löst der Paste-Pfad den Inhalt asynchron off-main auf und reicht ihn
+        // über commitClipboardText zurück; im Test bilden wir genau diesen Rückweg synchron
+        // nach (clipboardText() liefern → committen).
+        lateinit var vm: KeyboardViewModel
+        vm = KeyboardViewModel(
+            alphaLayout = alpha,
+            symbolsLayout = symbols,
+            numberLayout = number,
+            phoneLayout = phone,
+            inputConnectionProvider = { fake.ic },
+            suggester = suggester,
+            onPasteRequested = { vm.commitClipboardText(clipboardText()) },
+        )
+        return vm
+    }
 
     private fun KeyboardViewModel.type(text: String) {
         text.forEach { onKey(CharKey(it)) }
@@ -136,7 +143,7 @@ class KeyboardViewModelTest {
     @Test
     fun `paste committet den Zwischenablage-Text`() {
         val fake = FakeIc()
-        val vm = vm(fake, clipboardTextProvider = { "kopiert" })
+        val vm = vm(fake, clipboardText = { "kopiert" })
             .apply { applySettings(Settings(autoCapEnabled = false)) }
         vm.onKey(FunctionKey(KeyAction.PASTE))
         assertEquals("kopiert", fake.buffer.toString())
@@ -145,7 +152,7 @@ class KeyboardViewModelTest {
     @Test
     fun `paste bei leerer Zwischenablage tut nichts`() {
         val fake = FakeIc()
-        val vm = vm(fake, clipboardTextProvider = { null })
+        val vm = vm(fake, clipboardText = { null })
             .apply { applySettings(Settings(autoCapEnabled = false)) }
         vm.onKey(FunctionKey(KeyAction.PASTE))
         assertEquals("", fake.buffer.toString())
@@ -154,7 +161,7 @@ class KeyboardViewModelTest {
     @Test
     fun `paste ist woertlich, ignoriert Caps-Lock`() {
         val fake = FakeIc()
-        val vm = vm(fake, clipboardTextProvider = { "hallo" })
+        val vm = vm(fake, clipboardText = { "hallo" })
             .apply { applySettings(Settings(autoCapEnabled = false)) }
         vm.onKey(FunctionKey(KeyAction.SHIFT))
         vm.onKey(FunctionKey(KeyAction.SHIFT)) // CAPS

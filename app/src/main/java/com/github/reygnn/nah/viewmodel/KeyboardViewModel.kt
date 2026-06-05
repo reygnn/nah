@@ -62,9 +62,12 @@ class KeyboardViewModel(
     private val phoneLayout: KeyboardLayout,
     private val inputConnectionProvider: () -> InputConnection?,
     private val suggester: Suggester? = null,
-    /** Liefert den aktuellen Zwischenablage-Text (oder `null`/leer). Wird NUR beim
-     *  tatsächlichen Einfügen gelesen (Inhalt-Zugriff → System-Toast), nicht laufend. */
-    private val clipboardTextProvider: () -> String? = { null },
+    /** Fordert das Einfügen aus der Zwischenablage an. Der Service löst den (potenziell
+     *  langsamen, weil URI-auflösenden) Inhalt-Zugriff asynchron AUSSERHALB des UI-Threads
+     *  auf und reicht das Ergebnis über [commitClipboardText] zurück — so blockiert ein
+     *  Einfüge-Tap nie den Main-Thread (kein ANR). Inhalt-Zugriff weiterhin NUR bei dieser
+     *  expliziten Nutzeraktion, nicht laufend. */
+    private val onPasteRequested: () -> Unit = {},
 ) {
 
     private val _state = MutableStateFlow(KeyboardUiState(layout = alphaLayout))
@@ -208,14 +211,9 @@ class KeyboardViewModel(
             KeyAction.SPACE -> { commit(" "); afterTextChanged() }
             KeyAction.PERIOD -> { commit("."); afterTextChanged() }
             KeyAction.COMMA -> { commit(","); afterTextChanged() }
-            KeyAction.PASTE -> {
-                // Zwischenablage-Text wörtlich einfügen — kein Shift-Casing, kein Autocorrect.
-                val text = clipboardTextProvider()
-                if (!text.isNullOrEmpty()) {
-                    safeIc { it.commitText(text, 1) }
-                    afterTextChanged()
-                }
-            }
+            // Einfügen anfordern — der Service löst den Inhalt off-main auf und committet
+            // ihn über commitClipboardText (kein UI-Thread-Block, siehe onPasteRequested).
+            KeyAction.PASTE -> onPasteRequested()
             KeyAction.RETURN -> {
                 // Verlangt das Feld eine Editor-Action (Suchen/Senden/Los/Weiter),
                 // diese auslösen statt blind ein Enter zu schicken — sonst landet in
@@ -256,6 +254,18 @@ class KeyboardViewModel(
         if (_state.value.pasteAvailable != available) {
             _state.value = _state.value.copy(pasteAvailable = available)
         }
+    }
+
+    /**
+     * Committet den (vom Service asynchron aufgelösten) Zwischenablage-Text **wörtlich** —
+     * kein Shift-Casing, kein Autocorrect. Gegenstück zu [onPasteRequested]: der Service löst
+     * den Inhalt off-main auf und ruft dies auf dem Main-Thread auf. Leerer/`null` Text →
+     * No-op. [afterTextChanged] frischt danach Auto-Cap/Vorschläge zum neuen Cursor auf.
+     */
+    fun commitClipboardText(text: String?) {
+        if (text.isNullOrEmpty()) return
+        safeIc { it.commitText(text, 1) }
+        afterTextChanged()
     }
 
     /** Vorschlag angetippt: ersetzt NUR das aktuelle unfertige Präfix, nie fertigen Text. */

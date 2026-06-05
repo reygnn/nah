@@ -27,6 +27,7 @@ import com.github.reygnn.nah.viewmodel.FieldContext
 import com.github.reygnn.nah.viewmodel.KeyboardViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * IME-Einstieg. Dünner Glue: hostet die Compose-UI in einer [ComposeView] und
@@ -67,7 +68,7 @@ class NahIme :
             phoneLayout = OptimizedLayout.phone(),
             inputConnectionProvider = { currentInputConnection },
             suggester = suggester,
-            clipboardTextProvider = ::clipboardText,
+            onPasteRequested = ::requestPaste,
         )
 
         var builtInWarmStarted = false
@@ -157,8 +158,23 @@ class NahIme :
                 it.hasMimeType(ClipDescription.MIMETYPE_TEXT_HTML)
         } ?: false
 
-    /** Der Zwischenablage-Text fürs Einfügen. Liest den Inhalt (bewusst nur hier, bei
-     *  einer expliziten Nutzeraktion) und coerced auch URIs/Intents zu Text. */
+    /**
+     * Einfügen angefordert (Einfügen-Taste). Den Zwischenablage-Inhalt auf einem
+     * Hintergrund-Dispatcher auflösen — [clipboardText]s `coerceToText` kann für einen
+     * Content-URI-Clip synchron den `ContentResolver` (fremder Provider-Prozess) abfragen
+     * und würde auf dem UI-Thread bis zum ANR blockieren. Das Ergebnis dann auf dem
+     * Main-Thread committen. Inhalt-Zugriff weiterhin NUR hier, bei der expliziten Geste.
+     */
+    private fun requestPaste() {
+        lifecycleScope.launch(Dispatchers.Default) {
+            val text = clipboardText()
+            withContext(Dispatchers.Main) { viewModel.commitClipboardText(text) }
+        }
+    }
+
+    /** Der Zwischenablage-Text fürs Einfügen. Liest den Inhalt (bewusst nur bei der
+     *  expliziten Einfüge-Geste) und coerced auch URIs/Intents zu Text. **Off-main
+     *  aufzurufen** (siehe [requestPaste]) — coerceToText kann blockieren. */
     private fun clipboardText(): String? {
         val item = clipboard?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0) ?: return null
         // Schnellpfad: liegt der Text bereits als CharSequence vor (der Normalfall), ihn direkt
