@@ -9,3 +9,7 @@
 .externalNativeBuild
 .cxx
 /app/release
+
+# Python bytecode cache (optimizer tool)
+__pycache__/
+*.pyc
