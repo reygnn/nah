@@ -181,9 +181,14 @@ class KeyboardViewModel(
         val out = shift.applyTo(text)
         safeIc { it.commitText(out, 1) }
         // SHIFTED gilt „nur für den nächsten Buchstaben". Eine Ziffer/ein Symbol (etwa auf
-        // der ?123-Ebene) wird von applyTo ohnehin nicht verändert und soll eine armierte
-        // Grossschreibung NICHT verbrauchen — sonst ginge die Auto-Cap-Armierung verloren,
-        // sobald am Satzanfang erst eine Ziffer kommt. CAPS bleibt ohnehin stehen.
+        // der ?123-Ebene) wird von applyTo ohnehin nicht verändert und darf ein armiertes
+        // SHIFTED NICHT verbrauchen — so überlebt ein MANUELL gesetztes Shift eine
+        // dazwischengetippte Ziffer und schreibt den darauffolgenden Buchstaben noch gross
+        // („5" dann „h" → „5H"). Genau das ist der Sinn dieses Guards. Ein AUTO-armiertes
+        // SHIFTED wird dagegen vom folgenden refreshForCursor neu aus dem Kontext bewertet
+        // und nach einer Ziffer korrekt entwaffnet (die Ziffer hat den Satzanfang belegt; ein
+        // Punkt/!/? würde neu armieren) — gewollt, nicht durch diesen Guard verhindert. CAPS
+        // bleibt ohnehin stehen (der Guard betrifft nur SHIFTED).
         if (shift == ShiftState.SHIFTED && text.firstOrNull()?.isLetter() == true) {
             setShift(ShiftState.OFF)
         }

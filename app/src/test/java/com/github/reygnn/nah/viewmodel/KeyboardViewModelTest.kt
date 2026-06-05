@@ -777,6 +777,40 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `ein manuell armiertes SHIFTED ueberlebt eine Ziffer auch bei aktivem Auto-Cap`() {
+        val fake = FakeIc()
+        // Wie oben, aber mit eingeschaltetem Auto-Cap: der Guard (nicht das fehlende Auto-Cap)
+        // erhält das MANUELL gesetzte SHIFTED über eine Ziffer hinweg — computeAutoCapShift
+        // liefert für ein manuelles SHIFTED (autoCapArmed == false) bewusst null.
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }
+        fake.buffer.append("hallo welt ")
+        fake.select(11, 11)
+        vm.onSelectionChanged(11, 11)          // mitten im Text → kein Satzanfang
+        vm.onKey(FunctionKey(KeyAction.SHIFT))  // Nutzer armiert manuell
+        assertEquals(ShiftState.SHIFTED, vm.state.value.shift)
+        vm.onKey(CharKey('5'))                  // Ziffer dazwischen
+        assertEquals(ShiftState.SHIFTED, vm.state.value.shift) // manuelles SHIFTED bleibt
+        vm.type("k")
+        assertEquals("hallo welt 5K", fake.buffer.toString())
+    }
+
+    @Test
+    fun `eine Ziffer am Satzanfang entwaffnet ein AUTO-armiertes SHIFTED`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }
+        vm.onStartInput()                       // leerer Puffer → Auto-Cap armiert SHIFTED
+        assertEquals(ShiftState.SHIFTED, vm.state.value.shift)
+        vm.onKey(CharKey('5'))                  // Ziffer belegt den Satzanfang-Slot
+        // Der Guard verbraucht das auto-armierte SHIFTED nicht sofort (Ziffer wird nicht
+        // gecast), aber der folgende Kontext-Refresh entwaffnet korrekt: nach „5" ist kein
+        // Satzanfang mehr. Anders als ein MANUELLES SHIFTED (Test oben) überlebt die
+        // Auto-Armierung die Ziffer NICHT — der nächste Buchstabe bleibt klein.
+        assertEquals(ShiftState.OFF, vm.state.value.shift)
+        vm.type("x")
+        assertEquals("5x", fake.buffer.toString()) // nicht „5X"
+    }
+
+    @Test
     fun `ein unveraenderter Selektions-Callback rechnet nichts neu`() {
         val fake = FakeIc()
         var calls = 0
