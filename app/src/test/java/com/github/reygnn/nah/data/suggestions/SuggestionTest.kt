@@ -42,14 +42,33 @@ class SuggestionRepositoryTest {
 
     @Test
     fun `kurzes Praefix liefert keine Vorschlaege`() {
-        assertTrue(repo.suggest("h").isEmpty())
+        assertTrue(repo.suggest("h", includeBuiltIn = true, includeUser = false).isEmpty())
     }
 
     @Test
     fun `bekanntes Praefix liefert bis zu drei Vorschlaege aus der de-CH-Liste`() {
-        val result = repo.suggest("ha")
+        val result = repo.suggest("ha", includeBuiltIn = true, includeUser = false)
         assertTrue(result.isNotEmpty())
         assertTrue(result.size <= 3)
         assertTrue(result.all { it.lowercase().startsWith("ha") })
+    }
+
+    @Test
+    fun `user-woerter erscheinen nur wenn einbezogen und ranken vor der Liste`() {
+        val r = SuggestionRepository()
+        r.setUserWords(setOf("haxyz"))
+        // Ohne User-Quelle: das eigene Wort taucht nicht auf.
+        assertTrue(r.suggest("ha", includeBuiltIn = true, includeUser = false).none { it == "haxyz" })
+        // Mit User-Quelle: hohe Frequenz → ganz vorne.
+        assertEquals("haxyz", r.suggest("ha", includeBuiltIn = true, includeUser = true).first())
+    }
+
+    @Test
+    fun `nur User-Quelle liefert ausschliesslich eigene Woerter`() {
+        val r = SuggestionRepository()
+        r.setUserWords(setOf("zzabc"))
+        assertEquals(listOf("zzabc"), r.suggest("zz", includeBuiltIn = false, includeUser = true))
+        // Keine Quelle aktiv → leer, selbst wenn ein Wort passen würde.
+        assertTrue(r.suggest("zz", includeBuiltIn = false, includeUser = false).isEmpty())
     }
 }

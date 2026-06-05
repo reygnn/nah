@@ -46,6 +46,9 @@ class SettingsActivity : ComponentActivity() {
                     onOpenSystemKeyboardSettings = {
                         startActivity(Intent(AndroidSettings.ACTION_INPUT_METHOD_SETTINGS))
                     },
+                    onManageUserWords = {
+                        startActivity(Intent(this, UserWordsActivity::class.java))
+                    },
                 )
             }
         }
@@ -57,6 +60,7 @@ fun SettingsScreen(
     repository: SettingsRepository,
     onOpenImePicker: () -> Unit,
     onOpenSystemKeyboardSettings: () -> Unit,
+    onManageUserWords: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val settings by repository.settings.collectAsStateWithLifecycle(initialValue = Settings())
@@ -93,6 +97,16 @@ fun SettingsScreen(
                     scope.launch { repository.update { it.copy(suggestionsEnabled = value) } }
                 },
             )
+            SwitchRow(
+                label = "Eigene Wörter vorschlagen",
+                checked = settings.userWordsEnabled,
+                onChange = { value ->
+                    scope.launch { repository.update { it.copy(userWordsEnabled = value) } }
+                },
+            )
+            Button(onClick = onManageUserWords, modifier = Modifier.fillMaxWidth()) {
+                Text("Eigene Wörter verwalten")
+            }
             SwitchRow(
                 label = "Auto-Grossschreibung am Satzanfang",
                 checked = settings.autoCapEnabled,

@@ -9,6 +9,9 @@ data class Settings(
     /** Vorschlagsleiste. Standard AUS — Vorschläge ersetzen nie ein fertiges Wort,
      *  aber wer sie gar nicht im Augenwinkel will, lässt sie aus. */
     val suggestionsEnabled: Boolean = false,
+    /** Benutzerdefinierte Wörter vorschlagen. Unabhängig von [suggestionsEnabled],
+     *  damit man NUR die eigenen Wörter (ohne die de-CH-Liste) bekommen kann. Standard AUS. */
+    val userWordsEnabled: Boolean = false,
     /** Tastaturhöhe als Anteil der Bildschirmhöhe. */
     val keyboardHeightFraction: Float = 0.34f,
     /** Auto-Grossschreibung am Satzanfang (toggelbar). Kein Autocorrect. */

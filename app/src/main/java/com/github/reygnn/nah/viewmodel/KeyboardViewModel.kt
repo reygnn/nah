@@ -44,11 +44,7 @@ class KeyboardViewModel(
 
     fun applySettings(newSettings: Settings) {
         settings = newSettings
-        if (!newSettings.suggestionsEnabled) {
-            clearSuggestions()
-        } else {
-            refreshSuggestions()
-        }
+        refreshSuggestions() // gated intern — kümmert sich selbst ums Leeren
     }
 
     /** Neues Eingabefeld beginnt: zurück zur Buchstabenebene, Auto-Cap neu bestimmen. */
@@ -144,12 +140,17 @@ class KeyboardViewModel(
 
     private fun refreshSuggestions() {
         val s = suggester
-        if (!settings.suggestionsEnabled || s == null || !onAlpha) {
+        val anySource = settings.suggestionsEnabled || settings.userWordsEnabled
+        if (s == null || !onAlpha || !anySource) {
             clearSuggestions()
             return
         }
         val prefix = currentWord()
-        val list = if (prefix.length >= 2) s.suggest(prefix.lowercase()) else emptyList()
+        val list = if (prefix.length >= 2) {
+            s.suggest(prefix.lowercase(), settings.suggestionsEnabled, settings.userWordsEnabled)
+        } else {
+            emptyList()
+        }
         _state.value = _state.value.copy(suggestions = list)
     }
 

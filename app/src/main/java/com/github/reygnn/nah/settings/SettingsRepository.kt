@@ -16,6 +16,7 @@ class SettingsRepository(private val context: Context) {
 
     private object Keys {
         val suggestionsEnabled = booleanPreferencesKey("suggestions_enabled")
+        val userWordsEnabled = booleanPreferencesKey("user_words_enabled")
         val keyboardHeightFraction = floatPreferencesKey("keyboard_height_fraction")
         val autoCapEnabled = booleanPreferencesKey("auto_cap_enabled")
         val missMapLearningEnabled = booleanPreferencesKey("miss_map_learning_enabled")
@@ -27,6 +28,7 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { prefs ->
             val next = transform(prefs.toSettings())
             prefs[Keys.suggestionsEnabled] = next.suggestionsEnabled
+            prefs[Keys.userWordsEnabled] = next.userWordsEnabled
             prefs[Keys.keyboardHeightFraction] = next.keyboardHeightFraction
             prefs[Keys.autoCapEnabled] = next.autoCapEnabled
             prefs[Keys.missMapLearningEnabled] = next.missMapLearningEnabled
@@ -35,6 +37,7 @@ class SettingsRepository(private val context: Context) {
 
     private fun Preferences.toSettings(): Settings = Settings(
         suggestionsEnabled = this[Keys.suggestionsEnabled] ?: DEFAULT.suggestionsEnabled,
+        userWordsEnabled = this[Keys.userWordsEnabled] ?: DEFAULT.userWordsEnabled,
         keyboardHeightFraction = this[Keys.keyboardHeightFraction] ?: DEFAULT.keyboardHeightFraction,
         autoCapEnabled = this[Keys.autoCapEnabled] ?: DEFAULT.autoCapEnabled,
         missMapLearningEnabled = this[Keys.missMapLearningEnabled] ?: DEFAULT.missMapLearningEnabled,

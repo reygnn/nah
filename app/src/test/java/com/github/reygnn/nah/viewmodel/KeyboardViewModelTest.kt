@@ -122,8 +122,8 @@ class KeyboardViewModelTest {
     @Test
     fun `vorschlaege sind standardmaessig aus`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { listOf("hallo") })
-            .apply { applySettings(Settings()) } // suggestionsEnabled = false (default)
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo") })
+            .apply { applySettings(Settings()) } // beide Quellen aus (Default)
         vm.type("ha")
         assertTrue(vm.state.value.suggestions.isEmpty())
     }
@@ -131,16 +131,33 @@ class KeyboardViewModelTest {
     @Test
     fun `vorschlaege erscheinen wenn aktiviert`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { listOf("hallo", "haben") })
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo", "haben") })
             .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
         vm.type("ha")
         assertEquals(listOf("hallo", "haben"), vm.state.value.suggestions)
     }
 
     @Test
+    fun `nur eigene Woerter aktiviert zeigt User-Vorschlaege ohne die Liste`() {
+        val fake = FakeIc()
+        // Fake unterscheidet die Quellen über die Flags, die der ViewModel durchreicht.
+        val suggester = Suggester { _, builtIn, user ->
+            buildList {
+                if (builtIn) add("hallo")
+                if (user) add("reygnn")
+            }
+        }
+        val vm = vm(fake, suggester = suggester).apply {
+            applySettings(Settings(suggestionsEnabled = false, userWordsEnabled = true, autoCapEnabled = false))
+        }
+        vm.type("re")
+        assertEquals(listOf("reygnn"), vm.state.value.suggestions)
+    }
+
+    @Test
     fun `vorschlag-tap ersetzt nur das aktuelle Wort, nie fertigen Text`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { listOf("welt") })
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("welt") })
             .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
         vm.type("hallo")
         vm.onKey(FunctionKey(KeyAction.SPACE))

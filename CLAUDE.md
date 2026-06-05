@@ -59,8 +59,11 @@ app/src/main/java/com/github/reygnn/nah/
   layout/      KeyboardKey/CharKey/FunctionKey/KeyAction, KeyboardLayout
                (reihenbasiert, weight-basiert), OptimizedLayout (deCh + symbols).
   ui/          KeyboardScreen/KeyboardContent, TapKey, SuggestionBar, NahColors.
-  settings/    Settings, SettingsRepository (DataStore), SettingsActivity.
-  data/suggestions/  Trie, GermanWordList, SuggestionRepository (Suggester).
+  settings/    Settings, SettingsRepository (DataStore), SettingsActivity,
+               UserWordsActivity (eigene Wörter verwalten).
+  data/suggestions/  Trie, GermanWordList, SuggestionRepository (Suggester:
+               eingebaute Liste + unabhängig schaltbarer User-Trie),
+               UserWordRepository (DataStore), UserWordValidation (rein).
 tools/         optimize_layout.py — der Layout-Optimierer (Wegwerf, reproduzierbar).
 ```
 

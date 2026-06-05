@@ -18,6 +18,7 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.github.reygnn.nah.data.suggestions.SuggestionRepository
+import com.github.reygnn.nah.data.suggestions.UserWordRepository
 import com.github.reygnn.nah.layout.OptimizedLayout
 import com.github.reygnn.nah.settings.SettingsRepository
 import com.github.reygnn.nah.ui.KeyboardScreen
@@ -46,6 +47,7 @@ class NahIme :
 
     private lateinit var viewModel: KeyboardViewModel
     private lateinit var settingsRepository: SettingsRepository
+    private lateinit var userWordRepository: UserWordRepository
 
     override fun onCreate() {
         super.onCreate()
@@ -54,6 +56,7 @@ class NahIme :
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
 
         settingsRepository = SettingsRepository(applicationContext)
+        userWordRepository = UserWordRepository(applicationContext)
         // Lazy Trie — wird nur gebaut, wenn Vorschläge je aktiviert werden (Default aus).
         val suggester = SuggestionRepository()
 
@@ -66,6 +69,9 @@ class NahIme :
 
         lifecycleScope.launch {
             settingsRepository.settings.collect { viewModel.applySettings(it) }
+        }
+        lifecycleScope.launch {
+            userWordRepository.words.collect { suggester.setUserWords(it) }
         }
     }
 

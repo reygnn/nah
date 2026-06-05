@@ -7,5 +7,12 @@ package com.github.reygnn.nah.data.suggestions
  * Präfix auf Antippen, niemals ein bereits abgeschlossenes Wort.
  */
 fun interface Suggester {
-    fun suggest(prefix: String): List<String>
+    /**
+     * @param includeBuiltIn die eingebaute de-CH-Wortliste einbeziehen
+     * @param includeUser die benutzerdefinierten Wörter einbeziehen
+     *
+     * Beide Quellen sind unabhängig schaltbar — so kann man NUR die eigenen Wörter
+     * (ohne das Dictionary-Rauschen) bekommen.
+     */
+    fun suggest(prefix: String, includeBuiltIn: Boolean, includeUser: Boolean): List<String>
 }
