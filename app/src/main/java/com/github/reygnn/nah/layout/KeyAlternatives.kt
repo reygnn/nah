@@ -11,9 +11,10 @@ package com.github.reygnn.nah.layout
  */
 object KeyAlternatives {
     val map: Map<Char, List<String>> = mapOf(
-        'q' to listOf("q"),          // qu-Taste → einzelnes q
-        'c' to listOf("ch", "ck"),   // häufige Digraphen
-        's' to listOf("sch"),
+        'q' to listOf("q"),                 // qu-Taste → einzelnes q
+        'c' to listOf("ch", "ck"),          // häufige Konsonanten-Cluster
+        's' to listOf("sch", "st", "sp"),
+        'p' to listOf("pf", "ph"),
         'a' to listOf("à", "â"),
         'e' to listOf("é", "è", "ê"),
         'i' to listOf("î", "ì"),

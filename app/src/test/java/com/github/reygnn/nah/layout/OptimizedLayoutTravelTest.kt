@@ -73,9 +73,10 @@ class OptimizedLayoutTravelTest {
     }
 
     @Test
-    fun `die c-Taste bietet ch und ck, die s-Taste sch`() {
+    fun `Konsonanten-Cluster auf den Long-Press-Tasten`() {
         val keys = OptimizedLayout.deCh().rows.flatten().filterIsInstance<CharKey>()
         assertEquals(listOf("ch", "ck"), keys.first { it.char == 'c' }.alternatives)
-        assertEquals(listOf("sch"), keys.first { it.char == 's' }.alternatives)
+        assertEquals(listOf("sch", "st", "sp"), keys.first { it.char == 's' }.alternatives)
+        assertEquals(listOf("pf", "ph"), keys.first { it.char == 'p' }.alternatives)
     }
 }
