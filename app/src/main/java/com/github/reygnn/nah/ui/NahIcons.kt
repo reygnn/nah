@@ -37,9 +37,9 @@ object NahIcons {
      * Pfad des Shift-Pfeils — der klassische „fette" ⇧-Glyph (breite Pfeilspitze
      * über schmalerem Stamm), wie ihn Gboard rendert. Bewusst NICHT Material
      * `arrow_upward` (dünner Linien-Pfeil): der wirkt für eine Funktionstaste zu
-     * filigran und matcht das Gboard-Vorbild nicht. Proportionen aus den
-     * Screenshots in `pics/` abgenommen: Spitze y4, Flügel y11.5 (Spanne x4–20),
-     * Stamm x8.5–15.5 bis y19.5. Polygon, mittig auf x=12.
+     * filigran und matcht das Gboard-Vorbild nicht. Proportionen aus
+     * Gboard-Referenzscreenshots abgenommen: Spitze y4, Flügel y11.5 (Spanne
+     * x4–20), Stamm x8.5–15.5 bis y19.5. Polygon, mittig auf x=12.
      */
     private const val ARROW_UP =
         "M12 4L20 11.5L15.5 11.5L15.5 19.5L8.5 19.5L8.5 11.5L4 11.5Z"
