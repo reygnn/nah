@@ -105,6 +105,25 @@ class NahIme :
         viewModel.onStartInput()
     }
 
+    /**
+     * Cursor/Auswahl im Zielfeld haben sich geändert — auch durch direktes Antippen
+     * im Text, nicht nur durch unsere Tasten. Ohne diesen Durchstich blieben Auto-Cap
+     * und Vorschläge auf dem Stand des letzten Tastendrucks stehen.
+     */
+    override fun onUpdateSelection(
+        oldSelStart: Int,
+        oldSelEnd: Int,
+        newSelStart: Int,
+        newSelEnd: Int,
+        candidatesStart: Int,
+        candidatesEnd: Int,
+    ) {
+        super.onUpdateSelection(
+            oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd,
+        )
+        viewModel.onSelectionChanged(newSelStart, newSelEnd)
+    }
+
     override fun onDestroy() {
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         viewModelStore.clear()

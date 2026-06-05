@@ -55,7 +55,10 @@ fun KeyboardContent(
             .padding(bottom = BOTTOM_INSET)
             .padding(2.dp),
     ) {
-        if (state.suggestions.isNotEmpty()) {
+        // Sichtbar (mit fester Höhe), sobald die Funktion aktiv ist — auch ohne
+        // aktuelle Vorschläge. So springen die Tasten beim Tippen nicht in der Höhe;
+        // ist die Funktion aus, fehlt die Leiste ganz (kein verschwendeter Platz).
+        if (state.suggestionBarVisible) {
             SuggestionBar(suggestions = state.suggestions, onSuggestion = onSuggestion)
         }
         state.layout.rows.forEach { row ->

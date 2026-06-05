@@ -21,6 +21,10 @@ data class KeyboardUiState(
     val layout: KeyboardLayout,
     val shift: ShiftState = ShiftState.OFF,
     val suggestions: List<String> = emptyList(),
+    /** Ob die Vorschlagsleiste Platz belegt (feste Höhe), auch wenn [suggestions]
+     *  gerade leer ist. So springt die Tastatur beim Erscheinen/Verschwinden der
+     *  Vorschläge nicht in der Höhe. Aus, wenn die Funktion ganz deaktiviert ist. */
+    val suggestionBarVisible: Boolean = false,
 )
 
 /**
@@ -42,6 +46,13 @@ class KeyboardViewModel(
     private var settings = Settings()
     private val onAlpha get() = _state.value.layout === alphaLayout
 
+    // Vom Service über onSelectionChanged gepflegt. Eine aktive Auswahl (selStart !=
+    // selEnd) muss Backspace löschen können; deleteSurroundingText würde sie nicht
+    // anfassen.
+    private var selStart = 0
+    private var selEnd = 0
+    private val hasSelection get() = selStart != selEnd
+
     fun applySettings(newSettings: Settings) {
         settings = newSettings
         refreshSuggestions() // gated intern — kümmert sich selbst ums Leeren
@@ -49,9 +60,24 @@ class KeyboardViewModel(
 
     /** Neues Eingabefeld beginnt: zurück zur Buchstabenebene, Auto-Cap neu bestimmen. */
     fun onStartInput() {
+        selStart = 0
+        selEnd = 0
         _state.value = _state.value.copy(layout = alphaLayout)
         recomputeAutoCap()
         refreshSuggestions()
+    }
+
+    /**
+     * Cursor oder Auswahl haben sich geändert (Service-Callback `onUpdateSelection`).
+     * Hält Auto-Cap und Vorschläge zum neuen Cursor konsistent — sonst blieben sie
+     * stehen, wenn der Nutzer mitten in den Text tippt — und merkt sich eine aktive
+     * Auswahl für den selektionsbewussten Backspace.
+     */
+    fun onSelectionChanged(newSelStart: Int, newSelEnd: Int) {
+        selStart = newSelStart
+        selEnd = newSelEnd
+        refreshSuggestions()
+        recomputeAutoCap()
     }
 
     fun onKey(key: KeyboardKey) {
@@ -73,7 +99,14 @@ class KeyboardViewModel(
         when (action) {
             KeyAction.SHIFT -> cycleShift()
             KeyAction.BACKSPACE -> {
-                safeIc { it.deleteSurroundingText(1, 0) }
+                // Bei aktiver Auswahl diese löschen — commitText("") ersetzt die
+                // Selektion durch nichts. deleteSurroundingText würde eine Auswahl
+                // NICHT anfassen, sondern stattdessen das Zeichen davor löschen.
+                if (hasSelection) {
+                    safeIc { it.commitText("", 1) }
+                } else {
+                    safeIc { it.deleteSurroundingText(1, 0) }
+                }
                 afterTextChanged()
             }
             KeyAction.SPACE -> { commit(" "); afterTextChanged() }
@@ -87,7 +120,11 @@ class KeyboardViewModel(
                 afterTextChanged()
             }
             KeyAction.SYMBOLS ->
-                _state.value = _state.value.copy(layout = symbolsLayout, suggestions = emptyList())
+                _state.value = _state.value.copy(
+                    layout = symbolsLayout,
+                    suggestions = emptyList(),
+                    suggestionBarVisible = false,
+                )
             KeyAction.ALPHA -> {
                 _state.value = _state.value.copy(layout = alphaLayout)
                 refreshSuggestions()
@@ -142,16 +179,28 @@ class KeyboardViewModel(
         val s = suggester
         val anySource = settings.suggestionsEnabled || settings.userWordsEnabled
         if (s == null || !onAlpha || !anySource) {
-            clearSuggestions()
+            // Funktion aus oder Symbolebene → gar keine Leiste (kein verschwendeter Platz).
+            _state.value = _state.value.copy(suggestions = emptyList(), suggestionBarVisible = false)
             return
         }
+        // Ab hier ist die Leiste reserviert (feste Höhe), auch ohne aktuelle Vorschläge.
         val prefix = currentWord()
-        val list = if (prefix.length >= 2) {
+        val list = if (prefix.length >= 2 && atWordEnd()) {
             s.suggest(prefix.lowercase(), settings.suggestionsEnabled, settings.userWordsEnabled)
         } else {
             emptyList()
         }
-        _state.value = _state.value.copy(suggestions = list)
+        _state.value = _state.value.copy(suggestions = list, suggestionBarVisible = true)
+    }
+
+    /**
+     * Steht direkt hinter dem Cursor noch ein Buchstabe, sind wir mitten im Wort —
+     * dort werden keine Vorschläge angeboten: ein Antippen würde nur das Präfix vor
+     * dem Cursor ersetzen (siehe [onSuggestionTap]) und so das Wortende zerstückeln.
+     */
+    private fun atWordEnd(): Boolean {
+        val after = safeIc { it.getTextAfterCursor(1, 0)?.toString() } ?: return true
+        return after.isEmpty() || !after[0].isLetter()
     }
 
     private fun recomputeAutoCap() {

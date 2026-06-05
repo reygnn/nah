@@ -11,23 +11,48 @@ import com.github.reygnn.nah.settings.Settings
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Fake-InputConnection mit echtem Text-Puffer für die paar genutzten Methoden. */
+/**
+ * Fake-InputConnection mit echtem Text-Puffer UND einer Cursor-/Auswahl-Position
+ * für die paar genutzten Methoden. commitText ersetzt die aktuelle Auswahl (oder
+ * fügt am Cursor ein) — so wie die echte InputConnection, womit der selektions-
+ * bewusste Backspace testbar wird.
+ */
 private class FakeIc {
     val buffer = StringBuilder()
+    private var selStart = 0
+    private var selEnd = 0
+
+    /** Markiert eine Auswahl [start, end), wie es der Service via onUpdateSelection meldet. */
+    fun select(start: Int, end: Int) {
+        selStart = start
+        selEnd = end
+    }
+
     val ic: InputConnection = mockk(relaxed = true) {
         every { commitText(any(), any()) } answers {
-            buffer.append(firstArg<CharSequence>()); true
+            val text = firstArg<CharSequence>().toString()
+            buffer.replace(selStart, selEnd, text)
+            selStart += text.length
+            selEnd = selStart
+            true
         }
         every { deleteSurroundingText(any(), any()) } answers {
-            repeat(firstArg<Int>()) { if (buffer.isNotEmpty()) buffer.deleteCharAt(buffer.length - 1) }
+            val from = (selStart - firstArg<Int>()).coerceAtLeast(0)
+            buffer.delete(from, selStart)
+            selStart = from
+            selEnd = from
             true
         }
         every { getTextBeforeCursor(any(), any()) } answers {
-            buffer.takeLast(firstArg<Int>())
+            buffer.substring((selStart - firstArg<Int>()).coerceAtLeast(0), selStart)
+        }
+        every { getTextAfterCursor(any(), any()) } answers {
+            buffer.substring(selEnd, (selEnd + firstArg<Int>()).coerceAtMost(buffer.length))
         }
     }
 }
@@ -63,6 +88,18 @@ class KeyboardViewModelTest {
         vm.type("ab")
         vm.onKey(FunctionKey(KeyAction.BACKSPACE))
         assertEquals("a", fake.buffer.toString())
+    }
+
+    @Test
+    fun `backspace loescht eine aktive Auswahl statt eines Zeichens`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.type("hallo")
+        fake.select(1, 4) // "all" markiert
+        vm.onSelectionChanged(1, 4) // Service meldet die Auswahl
+        vm.onKey(FunctionKey(KeyAction.BACKSPACE))
+        // Die Auswahl wird entfernt, nicht das Zeichen vor ihr.
+        assertEquals("ho", fake.buffer.toString())
     }
 
     @Test
@@ -152,6 +189,39 @@ class KeyboardViewModelTest {
         }
         vm.type("re")
         assertEquals(listOf("reygnn"), vm.state.value.suggestions)
+    }
+
+    @Test
+    fun `leiste bleibt reserviert wenn aktiviert aber gerade keine Vorschläge`() {
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> emptyList() })
+            .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
+        // Nur ein Zeichen (< Mindestpräfix) → keine Vorschläge, aber die Leiste
+        // belegt weiter Platz, damit die Tastatur nicht in der Höhe springt.
+        vm.type("h")
+        assertTrue(vm.state.value.suggestions.isEmpty())
+        assertTrue(vm.state.value.suggestionBarVisible)
+    }
+
+    @Test
+    fun `keine Leiste wenn die Funktion ganz aus ist`() {
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo") })
+            .apply { applySettings(Settings()) } // beide Quellen aus
+        vm.type("ha")
+        assertFalse(vm.state.value.suggestionBarVisible)
+    }
+
+    @Test
+    fun `mitten im Wort gibt es keine Vorschläge`() {
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo") })
+            .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
+        vm.type("hallo")
+        fake.select(2, 2) // Cursor mitten ins Wort: "ha|llo"
+        vm.onSelectionChanged(2, 2)
+        // Hinter dem Cursor steht noch "llo" → ein Tap würde das Wortende zerstückeln.
+        assertTrue(vm.state.value.suggestions.isEmpty())
     }
 
     @Test
