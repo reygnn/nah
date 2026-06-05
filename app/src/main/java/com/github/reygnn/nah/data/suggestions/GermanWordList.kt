@@ -106,7 +106,7 @@ object GermanWordList {
         "eins" to 600, "zwei" to 600, "drei" to 600, "vier" to 600, "fünf" to 600,
         "sechs" to 590, "sieben" to 590, "acht" to 590, "neun" to 590, "zehn" to 590,
         "elf" to 580, "zwölf" to 580, "zwanzig" to 570, "dreissig" to 560, "hundert" to 550,
-        "tausend" to 540, "million" to 530, "erste" to 520, "zweite" to 510, "dritte" to 500,
+        "tausend" to 540, "Million" to 530, "erste" to 520, "zweite" to 510, "dritte" to 500,
 
         // Schweizerdeutsche/Häufige Varianten
         "grüezi" to 400, "merci" to 390, "vielmal" to 380, "tschüss" to 370, "hallo" to 360,
@@ -118,7 +118,7 @@ object GermanWordList {
         "hey" to 790, "hi" to 780, "bis" to 760,
         "später" to 750, "abend" to 710,
         "liebe" to 700, "grüsse" to 690, "kuss" to 680, "hdl" to 670, "lg" to 660,
-        "wochenende" to 650, "ferien" to 640, "party" to 630,
-        "kino" to 590, "film" to 580, "musik" to 570, "sport" to 560,
+        "Wochenende" to 650, "Ferien" to 640, "Party" to 630,
+        "Kino" to 590, "Film" to 580, "Musik" to 570, "Sport" to 560,
     )
 }

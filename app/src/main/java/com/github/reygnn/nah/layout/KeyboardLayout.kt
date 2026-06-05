@@ -11,8 +11,8 @@ data class KeyboardLayout(
     /**
      * Grid-Koordinaten der Buchstaben-Tasten (Spaltenmitte je Reihe, horizontal
      * um 0 zentriert; y = Reihenindex). Einzige Quelle der Wahrheit für die
-     * Reise-Metrik (Test) und später für das MissMap-Offset-Lernen — abgeleitet
-     * aus derselben Reihen-Definition, nicht doppelt gepflegt.
+     * Reise-Metrik (Test) — abgeleitet aus derselben Reihen-Definition, nicht
+     * doppelt gepflegt.
      */
     fun letterPositions(): Map<Char, Pair<Float, Float>> {
         val out = mutableMapOf<Char, Pair<Float, Float>>()

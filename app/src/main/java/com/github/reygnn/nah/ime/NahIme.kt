@@ -79,7 +79,10 @@ class NahIme :
                 }
             }
         }
-        lifecycleScope.launch {
+        lifecycleScope.launch(Dispatchers.Default) {
+            // Den User-Trie im Hintergrund bauen — konsistent zum eingebauten Trie und
+            // nie auf dem UI-Thread. setUserWords tauscht danach nur die fertig gebaute
+            // Instanz atomar (@Volatile) ein, die auf dem UI-Thread gelesen wird.
             userWordRepository.words.collect { suggester.setUserWords(it) }
         }
 
