@@ -144,10 +144,11 @@ personal key at install time, not by Gradle.
 
 Deliberately deferred from v1:
 
-- **Per-character offset learning** (a `MissMap`, transplantable from thumbprint):
-  the keyboard learns where your finger *actually* lands and widens the effective
-  hit target — pure geometry, still no autocorrect. The next real fat-finger win.
 - Clipboard history, theme selection, a bigger optimiser corpus.
+
+Per-character offset learning (a `MissMap`) was once earmarked as the next
+fat-finger win. **Dropped** — in practice the big keys plus the dead zone around
+each one already prevent mistypes, so the extra machinery isn't worth it.
 
 ## Status
 
