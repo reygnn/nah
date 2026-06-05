@@ -1,5 +1,6 @@
 package com.github.reygnn.nah.layout
 
+import com.github.reygnn.nah.data.suggestions.GermanWordList
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import kotlin.math.hypot
@@ -21,16 +22,37 @@ class OptimizedLayoutTravelTest {
         "re" to 12, "an" to 11, "he" to 11, "se" to 10, "nt" to 10,
     )
 
-    private fun travel(pos: Map<Char, Pair<Float, Float>>): Double {
+    private fun travel(pos: Map<Char, Pair<Float, Float>>): Double =
+        travel(pos, bigrams.mapKeys { (bg, _) -> bg[0] to bg[1] })
+
+    /** Mittlere Fingerreise pro Anschlag über die gegebenen Bigramm-Gewichte. */
+    private fun travel(pos: Map<Char, Pair<Float, Float>>, bg: Map<Pair<Char, Char>, Int>): Double {
         var sum = 0.0
         var total = 0
-        for ((bg, w) in bigrams) {
-            val a = pos[bg[0]] ?: continue
-            val b = pos[bg[1]] ?: continue
+        for ((pair, w) in bg) {
+            val a = pos[pair.first] ?: continue
+            val b = pos[pair.second] ?: continue
             sum += w * hypot((a.first - b.first).toDouble(), (a.second - b.second).toDouble())
             total += w
         }
         return sum / total
+    }
+
+    /**
+     * Frequenz-gewichtete Buchstaben-Bigramme aus dem **echten App-Korpus** ([GermanWordList])
+     * — dieselbe Liste, die auch `tools/optimize_layout.py` optimiert. So pinnt der Test die
+     * Reise gegen die tatsächlichen Daten, nicht gegen eine handgepflegte Mini-Tabelle.
+     */
+    private fun corpusBigrams(): Map<Pair<Char, Char>, Int> {
+        val bg = HashMap<Pair<Char, Char>, Int>()
+        for ((word, freq) in GermanWordList.words) {
+            val w = word.lowercase()
+            for (i in 0 until w.length - 1) {
+                val key = w[i] to w[i + 1]
+                bg[key] = (bg[key] ?: 0) + freq
+            }
+        }
+        return bg
     }
 
     /** QWERTZ-CH in gleicher Koordinatenkonvention (Reihe 0/1/2, gestaffelt). */
@@ -55,6 +77,21 @@ class OptimizedLayoutTravelTest {
         assertTrue(
             "optimiert=$optimized sollte < 0.85 * qwertz=$qwertz sein",
             optimized < 0.85 * qwertz,
+        )
+    }
+
+    @Test
+    fun `optimiertes Layout reist auf dem echten Korpus klar kuerzer als QWERTZ`() {
+        val bg = corpusBigrams()
+        val optimized = travel(OptimizedLayout.deCh().letterPositions(), bg)
+        val qwertz = travel(qwertzPositions(), bg)
+        // Auf dem vollen GermanWordList-Korpus gemessen ~0.55 (≈45 % kürzer als QWERTZ-CH).
+        // Schranke mit Reserve: deutlich unter 0.60 — schützt die Kern-Eigenschaft („~36 %
+        // weniger Reise"), ohne bei kleinem Korpus-/Layout-Rauschen falsch-rot zu werden.
+        // Anders als der Bigramm-Tabellen-Test oben pinnt das die ECHTEN Daten.
+        assertTrue(
+            "optimiert=$optimized sollte < 0.60 * qwertz=$qwertz sein (Korpus-Bigramme)",
+            optimized < 0.60 * qwertz,
         )
     }
 
