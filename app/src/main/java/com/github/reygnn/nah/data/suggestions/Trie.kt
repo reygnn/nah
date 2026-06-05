@@ -1,21 +1,18 @@
 package com.github.reygnn.nah.data.suggestions
 
-import java.util.concurrent.locks.ReentrantReadWriteLock
-import kotlin.concurrent.read
-import kotlin.concurrent.write
-
 /**
- * Präfix-Trie für Wortvorschläge. Vorsorglich thread-safe via [ReentrantReadWriteLock]:
- * aktuell laufen Lesen (Vorschläge) wie Schreiben (User-Wörter aktualisieren) auf dem
- * UI-Thread, aber die Struktur wird über einen Flow-Collector und die UI geteilt — das
- * Lock hält sie robust, falls ein Aufrufer auf einen Hintergrund-Dispatcher wechselt.
- * Portiert aus vuot.
+ * Präfix-Trie für Wortvorschläge. **Bewusst nicht thread-safe** — und braucht es nicht:
+ * Gelesen (Vorschläge) wird auf dem UI-Thread; der User-Trie wird in [SuggestionRepository]
+ * als ganze, fertig gebaute Instanz atomar über ein `@Volatile`-Feld getauscht, der
+ * eingebaute Trie einmal im Hintergrund gebaut und danach nur noch gelesen. Dieselbe
+ * Instanz wird also nie nebenläufig mutiert *und* gelesen. Portiert aus vuot — dort lag
+ * vorsorglich ein `ReentrantReadWriteLock` drum; hier kostete das nur pro Tastendruck eine
+ * Lock-Akquise, ohne je einen echten Wettlauf abzusichern.
  */
 class Trie {
     private val root = TrieNode()
-    private val lock = ReentrantReadWriteLock()
 
-    fun insert(word: String, frequency: Int = 1) = lock.write {
+    fun insert(word: String, frequency: Int = 1) {
         var node = root
         for (char in word.lowercase()) {
             node = node.children.getOrPut(char) { TrieNode() }
@@ -25,7 +22,7 @@ class Trie {
         node.originalWord = word
     }
 
-    fun getSuggestions(prefix: String, limit: Int): List<Pair<String, Int>> = lock.read {
+    fun getSuggestions(prefix: String, limit: Int): List<Pair<String, Int>> {
         var node = root
         for (char in prefix.lowercase()) {
             node = node.children[char] ?: return emptyList()
@@ -34,16 +31,16 @@ class Trie {
         collectWords(node, results)
         // Sekundär alphabetisch: bei Frequenz-Gleichstand sonst HashMap-abhängig und
         // damit nicht reproduzierbar (passt nicht zum Determinismus-Anspruch).
-        results.sortedWith(compareByDescending<Pair<String, Int>> { it.second }.thenBy { it.first })
+        return results.sortedWith(compareByDescending<Pair<String, Int>> { it.second }.thenBy { it.first })
             .take(limit)
     }
 
-    fun contains(word: String): Boolean = lock.read {
+    fun contains(word: String): Boolean {
         var node = root
         for (char in word.lowercase()) {
             node = node.children[char] ?: return false
         }
-        node.isWord
+        return node.isWord
     }
 
     private fun collectWords(node: TrieNode, results: MutableList<Pair<String, Int>>) {

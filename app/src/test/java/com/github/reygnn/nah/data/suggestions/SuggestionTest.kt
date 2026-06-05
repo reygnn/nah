@@ -47,11 +47,21 @@ class TrieTest {
 
 class SuggestionRepositoryTest {
 
-    private val repo = SuggestionRepository()
+    // Im Test synchron vorgebaut (kein Hintergrund-Dispatcher nötig).
+    private val repo = SuggestionRepository().apply { warmUpBuiltIn() }
 
     @Test
     fun `kurzes Praefix liefert keine Vorschlaege`() {
         assertTrue(repo.suggest("h", includeBuiltIn = true, includeUser = false).isEmpty())
+    }
+
+    @Test
+    fun `eingebaute Vorschlaege erscheinen erst nach warmUp`() {
+        val cold = SuggestionRepository()
+        // Vor dem Warmup ist der eingebaute Trie noch nicht da → nicht-eingreifend leer.
+        assertTrue(cold.suggest("ha", includeBuiltIn = true, includeUser = false).isEmpty())
+        cold.warmUpBuiltIn()
+        assertTrue(cold.suggest("ha", includeBuiltIn = true, includeUser = false).isNotEmpty())
     }
 
     @Test
@@ -64,7 +74,7 @@ class SuggestionRepositoryTest {
 
     @Test
     fun `user-woerter erscheinen nur wenn einbezogen und ranken vor der Liste`() {
-        val r = SuggestionRepository()
+        val r = SuggestionRepository().apply { warmUpBuiltIn() }
         r.setUserWords(setOf("haxyz"))
         // Ohne User-Quelle: das eigene Wort taucht nicht auf.
         assertTrue(r.suggest("ha", includeBuiltIn = true, includeUser = false).none { it == "haxyz" })

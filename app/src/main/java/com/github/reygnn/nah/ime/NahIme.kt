@@ -25,6 +25,7 @@ import com.github.reygnn.nah.settings.SettingsRepository
 import com.github.reygnn.nah.ui.KeyboardScreen
 import com.github.reygnn.nah.viewmodel.FieldContext
 import com.github.reygnn.nah.viewmodel.KeyboardViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /**
@@ -68,7 +69,15 @@ class NahIme :
         )
 
         lifecycleScope.launch {
-            settingsRepository.settings.collect { viewModel.applySettings(it) }
+            settingsRepository.settings.collect { settings ->
+                viewModel.applySettings(settings)
+                // Eingebauten Trie im Hintergrund vorbauen, sobald die Liste je gebraucht
+                // wird — nie synchron auf dem UI-Thread beim ersten Tastendruck. Idempotent,
+                // also unkritisch, dass es bei jeder Settings-Änderung erneut angestossen wird.
+                if (settings.suggestionsEnabled) {
+                    lifecycleScope.launch(Dispatchers.Default) { suggester.warmUpBuiltIn() }
+                }
+            }
         }
         lifecycleScope.launch {
             userWordRepository.words.collect { suggester.setUserWords(it) }

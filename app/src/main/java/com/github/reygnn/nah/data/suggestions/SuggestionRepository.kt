@@ -2,21 +2,33 @@ package com.github.reygnn.nah.data.suggestions
 
 /**
  * Vorschlagsquelle aus zwei unabhängig schaltbaren Tries: die eingebaute
- * [GermanWordList] (lazy gebaut — da Vorschläge standardmässig aus sind, kostet
- * sie im Normalfall nichts) und die benutzerdefinierten Wörter aus
- * [UserWordRepository] (per [setUserWords] gesetzt). Kein Hilt. Liefert nur
+ * [GermanWordList] (im Hintergrund vorgebaut, siehe [warmUpBuiltIn] — da Vorschläge
+ * standardmässig aus sind, kostet sie im Normalfall nichts) und die benutzerdefinierten
+ * Wörter aus [UserWordRepository] (per [setUserWords] gesetzt). Kein Hilt. Liefert nur
  * Vorschläge — fertiger Text wird nie angefasst.
  */
 class SuggestionRepository : Suggester {
 
-    private val builtInTrie by lazy {
-        Trie().apply {
-            GermanWordList.words.forEach { (word, frequency) -> insert(word, frequency) }
-        }
-    }
+    @Volatile
+    private var builtInTrie: Trie? = null
 
     @Volatile
     private var userTrie: Trie? = null
+
+    /**
+     * Baut den eingebauten de-CH-Trie — einmalig und idempotent. **Bewusst von einem
+     * Hintergrund-Dispatcher aufzurufen** (siehe `NahIme`), damit der Aufbau (hunderte
+     * Wörter) nie den UI-Thread beim ersten Tastendruck blockiert. Bis er fertig ist,
+     * liefert [suggest] einfach keine eingebauten Vorschläge — nicht-eingreifend, der
+     * Nutzer merkt die Verzögerung von wenigen Millisekunden nicht.
+     */
+    @Synchronized
+    fun warmUpBuiltIn() {
+        if (builtInTrie != null) return
+        builtInTrie = Trie().apply {
+            GermanWordList.words.forEach { (word, frequency) -> insert(word, frequency) }
+        }
+    }
 
     /**
      * Aktualisiert die benutzerdefinierten Wörter (vom IME beim Beobachten von
@@ -46,7 +58,7 @@ class SuggestionRepository : Suggester {
         }
 
         if (includeUser) userTrie?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
-        if (includeBuiltIn) collect(builtInTrie.getSuggestions(prefix, MAX_SUGGESTIONS))
+        if (includeBuiltIn) builtInTrie?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
 
         // Sekundär alphabetisch → deterministische Reihenfolge bei gleicher Frequenz.
         return merged.values
