@@ -20,7 +20,7 @@ x qu k o p j y ä
 v  c  h u a l f ö      ← vowels o/u/i · a/e centre, ä/ö/ü right
 z  m  s i e r b ü
 ⇧  w  t n d g ⌫
-?123  ,  ␣  .  ⏎
+⎀ ?123 , ␣ . ⏎        ← ⎀ paste (always visible, left of ?123)
 ```
 
 The consonants are placed by simulated annealing over de-CH bigram frequencies
@@ -73,7 +73,8 @@ Concretely:
   lone `q`, `c` → ch/ck, `s` → sch, vowels → accents. Freely extendable via a
   small table. (vuot's data idea, but visible — not its invisible swipes.)
 - **Training-wheel colours** (optional, off by default) — tint vowels and the
-  highest-frequency consonants in fixed colours while muscle memory settles.
+  highest-frequency consonants in fixed colours, and dim the rarely-used `x`/`y`,
+  while muscle memory settles.
 - **Symbols / numbers layer** of equal height (no resize jump when switching),
   with `,` `.` space and return in the same positions as the letter layer.
 - **Optional suggestion bar** — Trie-backed, fed by a baked-in de-CH word list
@@ -82,6 +83,10 @@ Concretely:
   prefix, never finished text. Its reserved strip hosts a settings button.
 - **Custom words & phrases** — add your own (letters, digits, spaces — e.g. a
   postal code or `Hauptstrasse 115`), matched strncmp-style from the start.
+- **Paste key** — always visible at the bottom-left, inserts the clipboard
+  verbatim (no autocorrect, no shift-casing). Dims when the clipboard holds no
+  text and updates live when you copy while typing. Reads only metadata for the
+  enabled state — no "pasted from clipboard" toast until you actually paste.
 - **Return key** performs the field's editor action (search / send / next /
   done) when one is requested, instead of always inserting a newline.
 - **Dead zones** around keys, a bottom inset clearing the system gesture area,
