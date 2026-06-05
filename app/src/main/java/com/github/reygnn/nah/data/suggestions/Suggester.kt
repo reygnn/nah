@@ -20,7 +20,10 @@ fun interface Suggester {
      * Stammt [word] aus den benutzerdefinierten Wörtern? Solche Einträge (Vor-/Nachnamen,
      * Adressen, E-Mails) werden **wörtlich** committet — ihre Gross-/Kleinschreibung ist
      * massgeblich und darf NICHT an Shift/Caps-Lock angepasst werden, anders als
-     * Wörterbuch-Vorschläge. Default `false` (Fakes/Tests verhalten sich wie Wörterbuch).
+     * Wörterbuch-Vorschläge. Das betrifft ausschliesslich den **angetippten Vorschlag**
+     * (siehe `KeyboardViewModel.onSuggestionTap`); von Hand ausbuchstabierte Zeichen folgen
+     * weiterhin Shift/Caps-Lock (normales Tippen über `commitWithShift`). Default `false`
+     * (Fakes/Tests verhalten sich wie Wörterbuch).
      */
     fun isUserWord(word: String): Boolean = false
 }
