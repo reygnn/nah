@@ -22,6 +22,7 @@ import com.github.reygnn.nah.data.suggestions.UserWordRepository
 import com.github.reygnn.nah.layout.OptimizedLayout
 import com.github.reygnn.nah.settings.SettingsRepository
 import com.github.reygnn.nah.ui.KeyboardScreen
+import com.github.reygnn.nah.viewmodel.FieldContext
 import com.github.reygnn.nah.viewmodel.KeyboardViewModel
 import kotlinx.coroutines.launch
 
@@ -102,7 +103,20 @@ class NahIme :
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        viewModel.onStartInput()
+        viewModel.onStartInput(FieldContext(imeAction = info?.imeActionOrNull()))
+    }
+
+    /**
+     * Die von der Return-Taste auszulösende Editor-Action, oder `null`, wenn das Feld
+     * keine verlangt (oder explizit `IME_FLAG_NO_ENTER_ACTION` setzt) — dann bleibt
+     * Return ein echtes Enter.
+     */
+    private fun EditorInfo.imeActionOrNull(): Int? {
+        if ((imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION) != 0) return null
+        return when (val action = imeOptions and EditorInfo.IME_MASK_ACTION) {
+            EditorInfo.IME_ACTION_NONE, EditorInfo.IME_ACTION_UNSPECIFIED -> null
+            else -> action
+        }
     }
 
     /**

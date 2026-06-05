@@ -53,13 +53,21 @@ class KeyboardViewModel(
     private var selEnd = 0
     private val hasSelection get() = selStart != selEnd
 
+    // Eigenschaften des aktuellen Eingabefelds (z. B. die gewünschte Return-Action),
+    // vom Service in onStartInput gesetzt.
+    private var field = FieldContext()
+
     fun applySettings(newSettings: Settings) {
         settings = newSettings
         refreshSuggestions() // gated intern — kümmert sich selbst ums Leeren
     }
 
-    /** Neues Eingabefeld beginnt: zurück zur Buchstabenebene, Auto-Cap neu bestimmen. */
-    fun onStartInput() {
+    /**
+     * Neues Eingabefeld beginnt: Feld-Eigenschaften übernehmen, zurück zur
+     * Buchstabenebene, Auto-Cap neu bestimmen.
+     */
+    fun onStartInput(field: FieldContext = FieldContext()) {
+        this.field = field
         selStart = 0
         selEnd = 0
         _state.value = _state.value.copy(layout = alphaLayout)
@@ -113,9 +121,18 @@ class KeyboardViewModel(
             KeyAction.PERIOD -> { commit("."); afterTextChanged() }
             KeyAction.COMMA -> { commit(","); afterTextChanged() }
             KeyAction.RETURN -> {
-                safeIc {
-                    it.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
-                    it.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+                // Verlangt das Feld eine Editor-Action (Suchen/Senden/Los/Weiter),
+                // diese auslösen statt blind ein Enter zu schicken — sonst landet in
+                // einem Such-/Sendefeld ein Zeilenumbruch statt des Absendens. Ohne
+                // angeforderte Action bleibt es ein echtes Enter (mehrzeilige Felder).
+                val action = field.imeAction
+                if (action != null) {
+                    safeIc { it.performEditorAction(action) }
+                } else {
+                    safeIc {
+                        it.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                        it.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+                    }
                 }
                 afterTextChanged()
             }

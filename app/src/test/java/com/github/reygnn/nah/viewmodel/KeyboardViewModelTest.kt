@@ -10,6 +10,7 @@ import com.github.reygnn.nah.layout.OptimizedLayout
 import com.github.reygnn.nah.settings.Settings
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
@@ -144,6 +145,26 @@ class KeyboardViewModelTest {
         assertEquals(ShiftState.SHIFTED, vm.state.value.shift)
         vm.type("h")
         assertEquals("H", fake.buffer.toString())
+    }
+
+    @Test
+    fun `return fuehrt die Editor-Action aus, wenn das Feld eine verlangt`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.onStartInput(FieldContext(imeAction = 3)) // z. B. IME_ACTION_SEARCH
+        vm.onKey(FunctionKey(KeyAction.RETURN))
+        verify { fake.ic.performEditorAction(3) }
+        verify(exactly = 0) { fake.ic.sendKeyEvent(any()) }
+    }
+
+    @Test
+    fun `return ohne angeforderte Action schickt ein echtes Enter`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.onStartInput(FieldContext()) // keine Action → Enter
+        vm.onKey(FunctionKey(KeyAction.RETURN))
+        verify(exactly = 0) { fake.ic.performEditorAction(any()) }
+        verify { fake.ic.sendKeyEvent(any()) }
     }
 
     @Test
