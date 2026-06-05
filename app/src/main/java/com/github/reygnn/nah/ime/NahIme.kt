@@ -143,9 +143,12 @@ class NahIme :
 
     private val clipboard by lazy { getSystemService(ClipboardManager::class.java) }
 
-    // Hält die Einfügen-Taste live aktuell, wenn der Nutzer bei offener Tastatur etwas
-    // kopiert (sonst aktualisierte sich der Zustand erst beim nächsten Feldwechsel). Liest
-    // nur Metadaten (kein Toast). Registriert in onCreate, abgemeldet in onDestroy.
+    // Hält die Einfügen-Taste aktuell, wenn der Nutzer bei offener Tastatur etwas kopiert.
+    // Best-Effort: Android liefert Clipboard-Änderungen nur der fokussierten App und schränkt
+    // sie für nicht-fokussierte Apps ein — der Callback feuert also nicht in jedem Fall. Der
+    // verlässliche Stand kommt ohnehin aus clipboardHasText() beim onStartInputView
+    // (Feldwechsel); dieser Listener ist nur die Kür obendrauf. Liest nur Metadaten (kein
+    // Toast). Registriert in onCreate, abgemeldet in onDestroy.
     private val primaryClipChangedListener = ClipboardManager.OnPrimaryClipChangedListener {
         viewModel.onPasteAvailabilityChanged(clipboardHasText())
     }

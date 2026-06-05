@@ -11,6 +11,10 @@ import org.junit.Test
  * Finger liegt deutlich unter QWERTZ-CH. Schützt davor, die Anordnung versehentlich
  * zu verschlechtern. Verwendet eine kompakte Tabelle häufiger deutscher Bigramme
  * (Rankings sind sprachstabil); die volle Optimierung liegt in tools/optimize_layout.py.
+ *
+ * Die Metrik ist ein **relatives** Mass in Grid-Einheiten (1 Spalte == 1 Reihe), keine
+ * physische Strecke — siehe das Einheiten-Caveat an [KeyboardLayout.letterPositions].
+ * Darum prüfen die Tests Verhältnisse (optimiert < x · QWERTZ), keine Absolutwerte.
  */
 class OptimizedLayoutTravelTest {
 

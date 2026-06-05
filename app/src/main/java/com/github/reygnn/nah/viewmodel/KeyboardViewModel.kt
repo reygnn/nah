@@ -264,8 +264,10 @@ class KeyboardViewModel(
 
     /**
      * Die Zwischenablage hat sich geändert (Service-Listener `OnPrimaryClipChangedListener`).
-     * Schaltet die Einfügen-Taste live aktiv/inaktiv — auch während die Tastatur offen ist,
-     * nicht erst beim nächsten Feldwechsel. Liest NUR die Metadaten (kein Inhalt → kein
+     * Schaltet die Einfügen-Taste aktiv/inaktiv, ohne auf den nächsten Feldwechsel zu warten.
+     * **Best-Effort:** der Service-Listener feuert nur, solange die Tastatur fokussiert ist
+     * (Android schränkt Clipboard-Callbacks für nicht-fokussierte Apps ein) — der verlässliche
+     * Stand kommt aus `onStartInput`. Liest NUR die Metadaten (kein Inhalt → kein
      * „Zwischenablage gelesen"-Toast); der Service reicht das Ergebnis herein.
      */
     fun onPasteAvailabilityChanged(available: Boolean) {
@@ -457,12 +459,17 @@ class KeyboardViewModel(
         // nicht ein fehlendes Ergebnis als leeren Satzanfang werten und fälschlich
         // kapitalisieren. Ein wirklich leeres Feld liefert "" (nicht null) und armiert korrekt.
         if (before == null) return null
-        // Schliessende „transparente" Satzzeichen (öffnende Klammern/Anführung) und Whitespace
+        // „Transparente" Satzzeichen (öffnende/schliessende Klammern/Anführung) und Whitespace
         // vom Ende her überspringen, dann auf ein Satzende prüfen: so bleibt nach „Satz. («"
         // grossgeschrieben, aber eine Dezimalzahl wie „3.14" armiert NICHT (Ziffern sind nicht
         // transparent → letztes bedeutungstragendes Zeichen ist „4", kein Satzende).
-        val meaningful = before.trimEnd { it.isWhitespace() || it in TRANSPARENT_PUNCT }
-        val shouldCap = meaningful.isEmpty() || meaningful.last() in SENTENCE_ENDERS
+        // Zeilenumbrüche werden dabei bewusst NICHT übersprungen: ein „\n" beginnt eine neue
+        // Zeile, die wie ein Satzanfang grossgeschrieben werden soll (mehrzeilige Notiz/Mail).
+        // Es taucht ohnehin nur in mehrzeiligen Feldern auf — wo Return ein echtes Enter ist,
+        // nicht eine Editor-Action.
+        val meaningful = before.trimEnd { (it.isWhitespace() && it != '\n') || it in TRANSPARENT_PUNCT }
+        val last = meaningful.lastOrNull()
+        val shouldCap = last == null || last == '\n' || last in SENTENCE_ENDERS
         return if (shouldCap) ShiftState.SHIFTED else ShiftState.OFF
     }
 

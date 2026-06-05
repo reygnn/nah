@@ -13,6 +13,15 @@ data class KeyboardLayout(
      * um 0 zentriert; y = Reihenindex). Einzige Quelle der Wahrheit für die
      * Reise-Metrik (Test) — abgeleitet aus derselben Reihen-Definition, nicht
      * doppelt gepflegt.
+     *
+     * **Einheiten-Caveat:** Die Metrik rechnet in Grid-Einheiten — ein Spaltenschritt
+     * (Tastenbreite) zählt gleich viel wie ein Reihenschritt (Reihenhöhe). Physisch sind
+     * die Tasten nicht quadratisch (am Pixel 9a ~51 dp breit vs. 58 dp hoch, plus Totzonen),
+     * und ein realer Finger reist nicht Mitte-zu-Mitte. Die „~36 % weniger Reise" ist also
+     * ein **relativer** Vergleich gegen QWERTZ-CH in derselben Konvention, keine gemessene
+     * Strecke in mm. Für den Zweck (Anordnung optimieren/gegen Regression schützen) genügt
+     * das; der Optimizer (`tools/optimize_layout.py`) nutzt dasselbe Modell, ist also in sich
+     * konsistent.
      */
     fun letterPositions(): Map<Char, Pair<Float, Float>> {
         val out = mutableMapOf<Char, Pair<Float, Float>>()

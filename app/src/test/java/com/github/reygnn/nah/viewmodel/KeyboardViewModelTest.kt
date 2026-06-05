@@ -321,6 +321,20 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `auto-cap aktiviert shift am Anfang einer neuen Zeile`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }
+        // Cursor steht am Anfang einer neuen (leeren) Zeile — wie nach einem echten Enter in
+        // einem mehrzeiligen Feld. Der Zeilenumbruch wird wie ein Satzanfang behandelt.
+        fake.buffer.append("hallo\n")
+        fake.select(6, 6)
+        vm.onSelectionChanged(6, 6)
+        assertEquals(ShiftState.SHIFTED, vm.state.value.shift)
+        vm.type("w")
+        assertEquals("hallo\nW", fake.buffer.toString())
+    }
+
+    @Test
     fun `auto-cap kapitalisiert nicht, wenn die InputConnection fehlt`() {
         // Ohne IC darf recomputeAutoCap das fehlende Ergebnis nicht als leeren Satzanfang
         // werten und faelschlich SHIFTED armieren (Punkt 4 der Code-Analyse).
