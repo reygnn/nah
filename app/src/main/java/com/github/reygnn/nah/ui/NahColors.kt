@@ -19,7 +19,12 @@ object NahColors {
     val ConsonantKey = Color(0xFF12414F)
     val ConsonantOn = Color(0xFFAFE5F5)
 
-    enum class Hint { Vowel, Consonant }
+    /** Sehr seltene Buchstaben — kalt und zurückgenommen, damit das Auge nicht über
+     *  sie stolpert: dunkler, desaturierter Container mit dimmem (kontrastarmem) Label. */
+    val RareKey = Color(0xFF23272D)
+    val RareOn = Color(0xFF59626C)
+
+    enum class Hint { Vowel, Consonant, Rare }
 
     private val vowels = "aeiouäöü".toSet()
 
@@ -28,11 +33,16 @@ object NahColors {
      *  wären kein Anker mehr. */
     private val keyConsonants = "srntdh".toSet()
 
+    /** Praktisch nie gebraucht (Korpus: x = 0 %, y = 0.23 %). Bewusst nur diese zwei —
+     *  w/z sind häufiger als sie wirken und bleiben darum normal. */
+    private val rareLetters = "xy".toSet()
+
     /** Welche Hinweisfarbe gilt für diesen Buchstaben (oder `null` = neutral)? Rein,
      *  case-insensitiv — JVM-testbar. */
     fun hintFor(char: Char): Hint? = when (char.lowercaseChar()) {
         in vowels -> Hint.Vowel
         in keyConsonants -> Hint.Consonant
+        in rareLetters -> Hint.Rare
         else -> null
     }
 }

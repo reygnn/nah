@@ -107,11 +107,13 @@ fun TapKey(
     val bg = when (hint) {
         NahColors.Hint.Vowel -> NahColors.VowelKey
         NahColors.Hint.Consonant -> NahColors.ConsonantKey
+        NahColors.Hint.Rare -> NahColors.RareKey
         null -> if (key is CharKey) colors.surfaceContainerHigh else colors.surfaceContainerLow
     }
     val fg = when (hint) {
         NahColors.Hint.Vowel -> NahColors.VowelOn
         NahColors.Hint.Consonant -> NahColors.ConsonantOn
+        NahColors.Hint.Rare -> NahColors.RareOn
         null -> if (key is CharKey) colors.onSurface else colors.onSurfaceVariant
     }
 

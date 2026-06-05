@@ -22,8 +22,14 @@ class NahColorsTest {
     }
 
     @Test
+    fun `seltene Buchstaben x und y sind Rare`() {
+        assertEquals(NahColors.Hint.Rare, NahColors.hintFor('x'))
+        assertEquals(NahColors.Hint.Rare, NahColors.hintFor('y'))
+    }
+
+    @Test
     fun `uebrige Buchstaben sind neutral`() {
-        for (c in "bcfgjklmpqvwxyz") {
+        for (c in "bcfgjklmpqvwz") {
             assertNull("'$c' sollte neutral sein", NahColors.hintFor(c))
         }
     }
