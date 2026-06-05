@@ -3,7 +3,6 @@ package com.github.reygnn.nah.viewmodel
 import android.util.Log
 import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
-import androidx.lifecycle.ViewModel
 import com.github.reygnn.nah.data.suggestions.Suggester
 import com.github.reygnn.nah.layout.CharKey
 import com.github.reygnn.nah.layout.FunctionKey
@@ -65,7 +64,7 @@ class KeyboardViewModel(
     /** Liefert den aktuellen Zwischenablage-Text (oder `null`/leer). Wird NUR beim
      *  tatsächlichen Einfügen gelesen (Inhalt-Zugriff → System-Toast), nicht laufend. */
     private val clipboardTextProvider: () -> String? = { null },
-) : ViewModel() {
+) {
 
     private val _state = MutableStateFlow(KeyboardUiState(layout = alphaLayout))
     val state: StateFlow<KeyboardUiState> = _state.asStateFlow()
