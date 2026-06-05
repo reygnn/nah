@@ -24,13 +24,14 @@ private val BOTTOM_INSET: Dp = 48.dp
 
 /** Einstiegspunkt, der den IME-Service mit dem ViewModel verbindet. */
 @Composable
-fun KeyboardScreen(viewModel: KeyboardViewModel) {
+fun KeyboardScreen(viewModel: KeyboardViewModel, onOpenSettings: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     NahTheme {
         KeyboardContent(
             state = state,
             onKey = viewModel::onKey,
             onSuggestion = viewModel::onSuggestionTap,
+            onOpenSettings = onOpenSettings,
         )
     }
 }
@@ -41,6 +42,7 @@ fun KeyboardContent(
     state: KeyboardUiState,
     onKey: (com.github.reygnn.nah.layout.KeyboardKey) -> Unit,
     onSuggestion: (String) -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -59,7 +61,11 @@ fun KeyboardContent(
         // aktuelle Vorschläge. So springen die Tasten beim Tippen nicht in der Höhe;
         // ist die Funktion aus, fehlt die Leiste ganz (kein verschwendeter Platz).
         if (state.suggestionBarVisible) {
-            SuggestionBar(suggestions = state.suggestions, onSuggestion = onSuggestion)
+            SuggestionBar(
+                suggestions = state.suggestions,
+                onSuggestion = onSuggestion,
+                onOpenSettings = onOpenSettings,
+            )
         }
         state.layout.rows.forEach { row ->
             Row(

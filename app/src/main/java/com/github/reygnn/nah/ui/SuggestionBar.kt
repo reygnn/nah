@@ -4,10 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,22 +20,44 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * Nicht-eingreifende Vorschlagsleiste. Antippen ersetzt nur das aktuelle unfertige
- * Präfix (siehe [com.github.reygnn.nah.viewmodel.KeyboardViewModel.onSuggestionTap]) —
- * nie ein fertiges Wort. Standardmässig ausgeschaltet.
+ * Nicht-eingreifende Vorschlagsleiste mit einem Hamburger-Button links, der die
+ * Einstellungen öffnet. Der Button füllt den linken Rand, sodass die Leiste nie
+ * komplett leer wirkt, wenn gerade keine Vorschläge da sind (sie reserviert feste
+ * Höhe, damit die Tasten beim Tippen nicht springen). Antippen eines Vorschlags
+ * ersetzt nur das aktuelle unfertige Präfix (siehe
+ * [com.github.reygnn.nah.viewmodel.KeyboardViewModel.onSuggestionTap]) — nie ein
+ * fertiges Wort. Die Leiste ist insgesamt nur sichtbar, wenn die Vorschlagsfunktion
+ * aktiviert ist (standardmässig aus).
  */
 @Composable
 fun SuggestionBar(
     suggestions: List<String>,
     modifier: Modifier = Modifier,
     onSuggestion: (String) -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .height(44.dp)
             .background(MaterialTheme.colorScheme.surfaceContainerLowest),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Hamburger → Einstellungen. Quadratischer Tap-Bereich am linken Rand.
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .aspectRatio(1f)
+                .clickable { onOpenSettings() }
+                .padding(11.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = NahIcons.Menu,
+                contentDescription = "Einstellungen",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         suggestions.take(3).forEach { word ->
             Box(
                 modifier = Modifier

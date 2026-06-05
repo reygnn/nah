@@ -1,5 +1,6 @@
 package com.github.reygnn.nah.ime
 
+import android.content.Intent
 import android.inputmethodservice.InputMethodService
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -17,6 +18,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.github.reygnn.nah.data.suggestions.SuggestionRepository
 import com.github.reygnn.nah.data.suggestions.UserWordRepository
 import com.github.reygnn.nah.layout.OptimizedLayout
+import com.github.reygnn.nah.settings.SettingsActivity
 import com.github.reygnn.nah.settings.SettingsRepository
 import com.github.reygnn.nah.ui.KeyboardScreen
 import com.github.reygnn.nah.viewmodel.FieldContext
@@ -77,7 +79,7 @@ class NahIme :
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
 
         val composeView = ComposeView(this).apply {
-            setContent { KeyboardScreen(viewModel = viewModel) }
+            setContent { KeyboardScreen(viewModel = viewModel, onOpenSettings = ::openSettings) }
         }
 
         // Bei einer IME ist die rootView des Fensters NICHT unsere ComposeView,
@@ -121,6 +123,15 @@ class NahIme :
      * Eingabe soll im echten Zielfeld sichtbar bleiben.
      */
     override fun onEvaluateFullscreenMode(): Boolean = false
+
+    /** Öffnet die App-Einstellungen (vom Hamburger in der Vorschlagsleiste) und
+     *  blendet dabei die Tastatur aus. */
+    private fun openSettings() {
+        startActivity(
+            Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+        requestHideSelf(0)
+    }
 
     /**
      * Die von der Return-Taste auszulösende Editor-Action, oder `null`, wenn das Feld

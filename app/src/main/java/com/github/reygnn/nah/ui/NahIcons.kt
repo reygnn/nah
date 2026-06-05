@@ -33,6 +33,12 @@ object NahIcons {
         "M19 7v4H5.83l3.58-3.59L8 6l-6 6 6 6 1.41-1.41L5.83 13H21V7h-2z",
     )
 
+    /** ☰ — Hamburger / Menü (Material `menu`, gefüllt). Öffnet die Einstellungen. */
+    val Menu: ImageVector = materialIcon(
+        "Menu",
+        "M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z",
+    )
+
     /**
      * Pfad des Shift-Pfeils — der klassische „fette" ⇧-Glyph (breite Pfeilspitze
      * über schmalerem Stamm), wie ihn Gboard rendert. Bewusst NICHT Material
