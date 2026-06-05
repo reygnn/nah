@@ -76,6 +76,7 @@ class KeyboardViewModelTest {
 
     private val alpha: KeyboardLayout = OptimizedLayout.deCh()
     private val symbols: KeyboardLayout = OptimizedLayout.symbols()
+    private val number: KeyboardLayout = OptimizedLayout.number()
     private val phone: KeyboardLayout = OptimizedLayout.phone()
 
     private fun vm(
@@ -85,6 +86,7 @@ class KeyboardViewModelTest {
     ) = KeyboardViewModel(
         alphaLayout = alpha,
         symbolsLayout = symbols,
+        numberLayout = number,
         phoneLayout = phone,
         inputConnectionProvider = { fake.ic },
         suggester = suggester,
@@ -318,6 +320,7 @@ class KeyboardViewModelTest {
         val vm = KeyboardViewModel(
             alphaLayout = alpha,
             symbolsLayout = symbols,
+            numberLayout = number,
             phoneLayout = phone,
             inputConnectionProvider = { null },
         ).apply { applySettings(Settings(autoCapEnabled = true)) }
@@ -663,11 +666,11 @@ class KeyboardViewModelTest {
     }
 
     @Test
-    fun `ein numerisches Feld startet auf der Symbol-Ebene`() {
+    fun `ein numerisches Feld startet auf dem Ziffern-Pad`() {
         val fake = FakeIc()
         val vm = vm(fake).apply { applySettings(Settings()) }
         vm.onStartInput(FieldContext(numeric = true))
-        assertSame(symbols, vm.state.value.layout)
+        assertSame(number, vm.state.value.layout)
     }
 
     @Test
@@ -688,11 +691,11 @@ class KeyboardViewModelTest {
     }
 
     @Test
-    fun `ein reines Zahlenfeld bleibt auf der Symbol-Ebene (kein Waehlfeld)`() {
+    fun `ein reines Zahlenfeld bekommt das Ziffern-Pad, nicht das Waehlfeld`() {
         val fake = FakeIc()
         val vm = vm(fake).apply { applySettings(Settings()) }
         vm.onStartInput(FieldContext(numeric = true, phone = false))
-        assertSame(symbols, vm.state.value.layout)
+        assertSame(number, vm.state.value.layout)
     }
 
     @Test

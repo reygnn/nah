@@ -63,6 +63,7 @@ class NahIme :
         viewModel = KeyboardViewModel(
             alphaLayout = OptimizedLayout.deCh(),
             symbolsLayout = OptimizedLayout.symbols(),
+            numberLayout = OptimizedLayout.number(),
             phoneLayout = OptimizedLayout.phone(),
             inputConnectionProvider = { currentInputConnection },
             suggester = suggester,

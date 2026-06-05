@@ -58,6 +58,7 @@ data class KeyboardUiState(
 class KeyboardViewModel(
     private val alphaLayout: KeyboardLayout,
     private val symbolsLayout: KeyboardLayout,
+    private val numberLayout: KeyboardLayout,
     private val phoneLayout: KeyboardLayout,
     private val inputConnectionProvider: () -> InputConnection?,
     private val suggester: Suggester? = null,
@@ -113,8 +114,8 @@ class KeyboardViewModel(
         selStart = field.initialSelStart
         selEnd = field.initialSelEnd
         val layout = when {
-            field.phone -> phoneLayout // eigenes Wählfeld
-            field.numeric -> symbolsLayout // Zahl/Datum → allgemeine Ziffern-/Symbolebene
+            field.phone -> phoneLayout // eigenes Wählfeld (Telefon: * # +)
+            field.numeric -> numberLayout // Zahl/PIN/Datum → Grosstasten-Ziffern-Pad (, . -)
             else -> alphaLayout
         }
         if (restarting) {

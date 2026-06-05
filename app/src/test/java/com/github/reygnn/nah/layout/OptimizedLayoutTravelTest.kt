@@ -87,6 +87,22 @@ class OptimizedLayoutTravelTest {
     }
 
     @Test
+    fun `das Ziffern-Pad bietet Ziffern und die Zahl-Separatoren, kein Telefonzeichen`() {
+        val keys = OptimizedLayout.number().rows.flatten()
+        val chars = keys.filterIsInstance<CharKey>().map { it.output }.toSet()
+        assertTrue(chars.containsAll("0123456789".map { it.toString() }))
+        assertTrue(chars.containsAll(listOf(",", ".", "-"))) // Beträge/Dezimal/Datum/Vorzeichen
+        // Keine Telefonzeichen — die bleiben dem Wählfeld vorbehalten.
+        assertTrue(chars.none { it in setOf("*", "#", "+") })
+        // Kein verstecktes Long-Press (alles sichtbar beschriftet, wie das Wählfeld).
+        assertTrue(keys.filterIsInstance<CharKey>().all { it.alternatives.isEmpty() })
+        val actions = keys.filterIsInstance<FunctionKey>().map { it.action }
+        assertTrue(actions.contains(KeyAction.ALPHA)) // zurück zum Alphabet
+        assertTrue(actions.contains(KeyAction.BACKSPACE))
+        assertTrue(actions.contains(KeyAction.RETURN))
+    }
+
+    @Test
     fun `Konsonanten-Cluster auf den Long-Press-Tasten`() {
         val keys = OptimizedLayout.deCh().rows.flatten().filterIsInstance<CharKey>()
         assertEquals(listOf("ch", "ck"), keys.first { it.char == 'c' }.alternatives)

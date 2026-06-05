@@ -90,6 +90,38 @@ object OptimizedLayout {
         ),
     )
 
+    /**
+     * Allgemeines Ziffern-Pad: dasselbe 3-spaltige Grosstasten-Raster wie das Telefon-
+     * Wählfeld (Fat-Finger), nur mit den Separatoren für Zahlen/Beträge/Datum (`, . -`)
+     * statt der Telefonzeichen (`* # +`). Startview für reine Zahl-/Zahl-Passwort-/
+     * Datumsfelder (`numeric`, aber NICHT `phone`) — eine PIN oder ein Betrag wird so auf
+     * den grossen Tasten getippt, nicht auf der zehn-Tasten-breiten Symbolreihe (die ein
+     * Number-Feld bisher bekam und die der Fat-Finger-Anforderung widerspricht). de-CH-
+     * Datum „31.12." nutzt den Punkt; `:` / `/` (Zeit, Bruch) liegen einen `ABC`→`?123`-Hop
+     * entfernt. Alle Tasten sichtbar beschriftet (kein verstecktes Long-Press, wie das
+     * Wählfeld). Fünf Reihen wie überall → keine Höhensprünge.
+     *
+     *   1 2 3
+     *   4 5 6
+     *   7 8 9
+     *   , 0 .
+     *   ABC - ⌫ ⏎
+     */
+    fun number(): KeyboardLayout = KeyboardLayout(
+        rows = listOf(
+            charRow("123"),
+            charRow("456"),
+            charRow("789"),
+            charRow(",0."),
+            listOf(
+                FunctionKey(KeyAction.ALPHA, weight = 1.5f),
+                CharKey('-'),
+                FunctionKey(KeyAction.BACKSPACE, weight = 1.5f),
+                FunctionKey(KeyAction.RETURN, weight = 1.5f),
+            ),
+        ),
+    )
+
     /** Untere Funktionsreihe, auf beiden Ebenen identisch (nur der Toggle links
      *  unterscheidet sich: ?123 vs ABC). Einfügen-Taste ganz links — immer sichtbar. */
     private fun functionRow(toggle: KeyAction): List<KeyboardKey> = listOf(
