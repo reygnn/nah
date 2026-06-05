@@ -37,10 +37,13 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import com.github.reygnn.nah.R
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
@@ -97,6 +100,15 @@ fun TapKey(
         // Taste garantiert exakt das an, was sie tippt.
         is CharKey -> shift.applyTo(key.output)
         is FunctionKey -> key.label
+    }
+
+    // Die Space-Taste rendert nur " " — ohne contentDescription läse TalkBack ein leeres
+    // Label vor („Schaltfläche"). Alle anderen Tasten haben sichtbaren Text bzw. ein Icon
+    // mit contentDescription und brauchen das nicht.
+    val spaceCd = if (key is FunctionKey && key.action == KeyAction.SPACE) {
+        stringResource(R.string.key_space_cd)
+    } else {
+        null
     }
 
     // Backspace, Shift und Return zeigen ein Material-Vektor-Icon statt der
@@ -203,26 +215,30 @@ fun TapKey(
                 // geclampt) — Popup und Chip-Auswahl teilen sich genau diesen Wert.
                 view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                 val keyLeft = keyLeftInWindow
+                val keyHeight = size.height.toFloat()
                 val bandLeft = bandLeftInWindow(keyLeft, size.width.toFloat(), bandPx, view.width.toFloat())
                 bandLeftPx = bandLeft
                 popupOpen = true
-                highlight = chipIndexFor(longPress.position, keyLeft, bandLeft, chipPx, alternatives.size)
+                highlight = chipIndexFor(longPress.position, keyLeft, bandLeft, chipPx, alternatives.size, keyHeight)
                 while (true) {
                     val event = awaitPointerEvent()
                     val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                    highlight = chipIndexFor(change.position, keyLeft, bandLeft, chipPx, alternatives.size)
+                    highlight = chipIndexFor(change.position, keyLeft, bandLeft, chipPx, alternatives.size, keyHeight)
                     change.consume()
                     if (!change.pressed) break
                 }
-                // Losgelassen: gewählten Chip committen, sonst (auf der Taste) den Basis-Output.
+                // Losgelassen: gewählten Chip committen; auf der Taste → Basis-Output; unter
+                // die Taste gezogen ([CHIP_CANCEL]) → nichts committen (Geste abgebrochen).
                 val selected = highlight
                 popupOpen = false
-                highlight = -1
-                if (selected in alternatives.indices) {
-                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    onAlternative(alternatives[selected])
-                } else {
-                    onKey(key)
+                highlight = CHIP_BASE
+                when {
+                    selected in alternatives.indices -> {
+                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                        onAlternative(alternatives[selected])
+                    }
+                    selected == CHIP_CANCEL -> Unit // bewusst abgebrochen → kein Commit
+                    else -> onKey(key) // CHIP_BASE
                 }
                 scope.launch { interactionSource.emit(PressInteraction.Release(press)) } // Ripple aus
             }
@@ -237,7 +253,14 @@ fun TapKey(
             .onGloballyPositioned { keyLeftInWindow = it.positionInWindow().x }
             .clip(RoundedCornerShape(8.dp))
             .background(bg)
-            .then(if (enabled) tapModifier else Modifier),
+            .then(if (enabled) tapModifier else Modifier)
+            .then(
+                if (spaceCd != null) {
+                    Modifier.semantics(mergeDescendants = true) { contentDescription = spaceCd }
+                } else {
+                    Modifier
+                },
+            ),
         contentAlignment = Alignment.Center,
     ) {
         if (icon != null) {
@@ -278,9 +301,18 @@ internal fun bandLeftInWindow(
     return (keyCenter - bandWidthPx / 2f).coerceIn(0f, maxLeft)
 }
 
+/** Loslassen auf der Taste selbst → Basis-Output (kein Chip gewählt). */
+internal const val CHIP_BASE = -1
+
+/** Unter die Tastenunterkante gezogen → Geste abgebrochen, Loslassen committet nichts. */
+internal const val CHIP_CANCEL = -2
+
 /**
- * Welcher Chip ist unter dem Finger? Nur wenn der Finger über die Tastenoberkante
- * ([pos].y < 0) ins Popup-Band zieht; sonst -1 (Loslassen committet den Basis-Output).
+ * Welcher Chip ist unter dem Finger?
+ *  - über die Tastenoberkante ([pos].y < 0) ins Popup-Band gezogen → der getroffene Chip,
+ *  - noch auf der Taste (0 ≤ y ≤ [keyHeightPx]) → [CHIP_BASE] (Loslassen committet den Basis-Output),
+ *  - unter die Tastenunterkante (y > [keyHeightPx]) → [CHIP_CANCEL] (Abbruch, kein Commit).
+ *
  * Gerechnet in Fensterkoordinaten gegen [bandLeftInWindow] ([keyLeftInWindow] verschiebt
  * die tastenlokale Finger-X dorthin), damit ein randnah geclamptes Popup den richtigen
  * Chip liefert.
@@ -291,8 +323,11 @@ internal fun chipIndexFor(
     bandLeftInWindow: Float,
     chipPx: Float,
     count: Int,
+    keyHeightPx: Float,
 ): Int {
-    if (count == 0 || pos.y >= 0f) return -1
+    if (count == 0) return CHIP_BASE
+    if (pos.y > keyHeightPx) return CHIP_CANCEL
+    if (pos.y >= 0f) return CHIP_BASE
     val pointerXInWindow = keyLeftInWindow + pos.x
     return floor((pointerXInWindow - bandLeftInWindow) / chipPx).toInt().coerceIn(0, count - 1)
 }

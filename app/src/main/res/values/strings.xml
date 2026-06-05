@@ -14,6 +14,9 @@
     <string name="settings_color_hints">Learning colours (vowels &amp; frequent consonants)</string>
     <string name="settings_open_cd">Settings</string>
 
+    <!-- Keyboard keys (accessibility) -->
+    <string name="key_space_cd">Space</string>
+
     <!-- User words -->
     <string name="user_words_title">Your own words</string>
     <string name="user_words_description">Appear in the suggestion bar once “Suggest your own words” is enabled. They never replace finished text — only on tap. Whole phrases with spaces too (e.g. “Hauptstrasse 115”) — suggested as soon as you type the start of the first word.</string>

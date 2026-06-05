@@ -7,8 +7,9 @@ import org.junit.Test
 /**
  * Pinnt die Long-Press-Popup-Geometrie: die Chip-Auswahl ([chipIndexFor]) muss exakt
  * dem treffen, was das Popup an seiner ([bandLeftInWindow]) Position anzeigt — auch wenn
- * die Taste so nah am Rand sitzt, dass das Band geclampt wird. Beide Funktionen sind rein
- * und damit ohne Compose/Android JVM-testbar.
+ * die Taste so nah am Rand sitzt, dass das Band geclampt wird. Ebenso die beiden
+ * Sonderzonen: auf der Taste ([CHIP_BASE]) und unter der Taste ([CHIP_CANCEL], Abbruch).
+ * Beide Funktionen sind rein und damit ohne Compose/Android JVM-testbar.
  */
 class TapKeyGeometryTest {
 
@@ -16,6 +17,7 @@ class TapKeyGeometryTest {
     private val count = 3
     private val bandPx = count * chipPx // 138
     private val windowPx = 400f
+    private val keyHeightPx = 58f
 
     /** Finger-Offset (tastenlokal) für die Mitte von Chip [index], gegeben die Band-Kante. */
     private fun pointerForChipCenter(keyLeft: Float, bandLeft: Float, index: Int): Offset {
@@ -29,15 +31,23 @@ class TapKeyGeometryTest {
         val bandLeft = bandLeftInWindow(keyLeft, 46f, bandPx, windowPx)
         assertEquals(131f, bandLeft, 0.01f) // 200 - 69, nicht geclampt
         for (i in 0 until count) {
-            assertEquals(i, chipIndexFor(pointerForChipCenter(keyLeft, bandLeft, i), keyLeft, bandLeft, chipPx, count))
+            assertEquals(i, chipIndexFor(pointerForChipCenter(keyLeft, bandLeft, i), keyLeft, bandLeft, chipPx, count, keyHeightPx))
         }
     }
 
     @Test
-    fun `Finger auf der Taste (y nicht negativ) waehlt keinen Chip`() {
+    fun `Finger auf der Taste (y im Tastenbereich) waehlt keinen Chip`() {
         val keyLeft = 177f
         val bandLeft = bandLeftInWindow(keyLeft, 46f, bandPx, windowPx)
-        assertEquals(-1, chipIndexFor(Offset(x = 20f, y = 5f), keyLeft, bandLeft, chipPx, count))
+        assertEquals(CHIP_BASE, chipIndexFor(Offset(x = 20f, y = 5f), keyLeft, bandLeft, chipPx, count, keyHeightPx))
+    }
+
+    @Test
+    fun `Finger unter die Taste gezogen bricht ab`() {
+        val keyLeft = 177f
+        val bandLeft = bandLeftInWindow(keyLeft, 46f, bandPx, windowPx)
+        // y oberhalb der Tastenunterkante → Abbruch (Loslassen committet nichts).
+        assertEquals(CHIP_CANCEL, chipIndexFor(Offset(x = 20f, y = keyHeightPx + 1f), keyLeft, bandLeft, chipPx, count, keyHeightPx))
     }
 
     @Test
@@ -47,8 +57,8 @@ class TapKeyGeometryTest {
         assertEquals(0f, bandLeft, 0.01f)
         // Chip 0 sitzt jetzt linksbündig; der Finger darüber trifft auch Chip 0
         // (die alte, tastenzentrierte Rechnung hätte hier Chip 1 geliefert → Fehl-Commit).
-        assertEquals(0, chipIndexFor(pointerForChipCenter(keyLeft, bandLeft, 0), keyLeft, bandLeft, chipPx, count))
-        assertEquals(2, chipIndexFor(pointerForChipCenter(keyLeft, bandLeft, 2), keyLeft, bandLeft, chipPx, count))
+        assertEquals(0, chipIndexFor(pointerForChipCenter(keyLeft, bandLeft, 0), keyLeft, bandLeft, chipPx, count, keyHeightPx))
+        assertEquals(2, chipIndexFor(pointerForChipCenter(keyLeft, bandLeft, 2), keyLeft, bandLeft, chipPx, count, keyHeightPx))
     }
 
     @Test
@@ -56,7 +66,7 @@ class TapKeyGeometryTest {
         val keyLeft = 350f // Center 373 → gewünscht 304 → geclampt auf maxLeft = 400-138 = 262
         val bandLeft = bandLeftInWindow(keyLeft, 46f, bandPx, windowPx)
         assertEquals(262f, bandLeft, 0.01f)
-        assertEquals(2, chipIndexFor(pointerForChipCenter(keyLeft, bandLeft, 2), keyLeft, bandLeft, chipPx, count))
+        assertEquals(2, chipIndexFor(pointerForChipCenter(keyLeft, bandLeft, 2), keyLeft, bandLeft, chipPx, count, keyHeightPx))
     }
 
     @Test
@@ -64,7 +74,7 @@ class TapKeyGeometryTest {
         val keyLeft = 177f
         val bandLeft = bandLeftInWindow(keyLeft, 46f, bandPx, windowPx)
         // Weit links vom Band → Chip 0; weit rechts → letzter Chip.
-        assertEquals(0, chipIndexFor(Offset(x = (bandLeft - 100f) - keyLeft, y = -10f), keyLeft, bandLeft, chipPx, count))
-        assertEquals(count - 1, chipIndexFor(Offset(x = (bandLeft + bandPx + 100f) - keyLeft, y = -10f), keyLeft, bandLeft, chipPx, count))
+        assertEquals(0, chipIndexFor(Offset(x = (bandLeft - 100f) - keyLeft, y = -10f), keyLeft, bandLeft, chipPx, count, keyHeightPx))
+        assertEquals(count - 1, chipIndexFor(Offset(x = (bandLeft + bandPx + 100f) - keyLeft, y = -10f), keyLeft, bandLeft, chipPx, count, keyHeightPx))
     }
 }

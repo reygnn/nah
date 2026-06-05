@@ -12,6 +12,9 @@
     <string name="settings_color_hints">Lern-Farben (Vokale &amp; häufige Konsonanten)</string>
     <string name="settings_open_cd">Einstellungen</string>
 
+    <!-- Tastatur-Tasten (Barrierefreiheit) -->
+    <string name="key_space_cd">Leertaste</string>
+
     <!-- Eigene Wörter -->
     <string name="user_words_title">Eigene Wörter</string>
     <string name="user_words_description">Erscheinen in der Vorschlagsleiste, sobald „Eigene Wörter vorschlagen“ aktiviert ist. Sie ersetzen nie fertigen Text — nur auf Antippen. Auch ganze Phrasen mit Leerzeichen (z. B. „Hauptstrasse 115“) — vorgeschlagen, sobald du den Anfang des ersten Wortes tippst.</string>
