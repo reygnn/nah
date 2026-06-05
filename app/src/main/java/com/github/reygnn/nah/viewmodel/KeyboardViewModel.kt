@@ -341,8 +341,12 @@ class KeyboardViewModel(
             return
         }
         // Ab hier ist die Leiste reserviert (feste Höhe), auch ohne aktuelle Vorschläge.
+        // Bei einer aktiven Auswahl keine Vorschläge: onSuggestionTap löscht nur das Präfix
+        // vor dem Cursor und committet darüber — bei bestehender Selektion würde derselbe Tap
+        // zusätzlich die markierte Stelle ersetzen (commitText überschreibt die Auswahl) und so
+        // fertigen Text ungewollt anfassen. Die Leiste bleibt reserviert, nur leer.
         val prefix = currentWord()
-        val list = if (prefix.length >= 2 && atWordEnd()) {
+        val list = if (prefix.length >= 2 && !hasSelection && atWordEnd()) {
             s.suggest(prefix.lowercase(), settings.suggestionsEnabled, settings.userWordsEnabled)
         } else {
             emptyList()

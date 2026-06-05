@@ -279,7 +279,12 @@ fun TapKey(
             )
         }
         if (popupOpen) {
-            AlternativesPopup(alternatives = alternatives, highlight = highlight, bandLeftPx = bandLeftPx)
+            AlternativesPopup(
+                alternatives = alternatives,
+                shift = shift,
+                highlight = highlight,
+                bandLeftPx = bandLeftPx,
+            )
         }
     }
 }
@@ -333,9 +338,17 @@ internal fun chipIndexFor(
 }
 
 /** Sichtbares Alternativen-Popup, mittig über der Taste. Der hervorgehobene Chip
- *  (unter dem Finger) wird beim Loslassen committet. */
+ *  (unter dem Finger) wird beim Loslassen committet. Die Chips zeigen die Alternative
+ *  durch dieselbe Casing-Quelle ([ShiftState.applyTo]) wie der Commit (onAlternative →
+ *  commitWithShift) — sonst zeigte das Popup unter Shift/Caps „sch", committete aber
+ *  „Sch"/„SCH" und bräche die „Angezeigtes == Getipptes"-Garantie der Basistasten. */
 @Composable
-private fun AlternativesPopup(alternatives: List<String>, highlight: Int, bandLeftPx: Float) {
+private fun AlternativesPopup(
+    alternatives: List<String>,
+    shift: ShiftState,
+    highlight: Int,
+    bandLeftPx: Float,
+) {
     val colors = MaterialTheme.colorScheme
     // x kommt aus der bereits geclampten Band-Kante (siehe bandLeftInWindow) — dieselbe
     // Quelle wie die Chip-Auswahl, damit Anzeige und Commit deckungsgleich sind.
@@ -369,7 +382,7 @@ private fun AlternativesPopup(alternatives: List<String>, highlight: Int, bandLe
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = alt,
+                        text = shift.applyTo(alt),
                         color = if (i == highlight) colors.onPrimary else colors.inverseOnSurface,
                         fontSize = 20.sp,
                     )

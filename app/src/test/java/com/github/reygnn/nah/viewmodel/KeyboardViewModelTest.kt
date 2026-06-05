@@ -421,6 +421,21 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `bei aktiver Auswahl gibt es keine Vorschläge`() {
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo") })
+            .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
+        vm.type("ha")
+        assertEquals(listOf("hallo"), vm.state.value.suggestions) // Präfix am Wortende → Vorschlag
+        fake.select(0, 2) // „ha" markiert
+        vm.onSelectionChanged(0, 2)
+        // Ein Tap würde sonst das Präfix löschen UND die Selektion überschreiben (fertiger
+        // Text). Also keine Vorschläge bei aktiver Auswahl — Leiste bleibt nur reserviert.
+        assertTrue(vm.state.value.suggestions.isEmpty())
+        assertTrue(vm.state.value.suggestionBarVisible)
+    }
+
+    @Test
     fun `ziffern-praefix loest vorschlaege aus, auch auf der Symbolebene`() {
         val fake = FakeIc()
         val vm = vm(fake, suggester = Suggester { prefix, _, _ ->
