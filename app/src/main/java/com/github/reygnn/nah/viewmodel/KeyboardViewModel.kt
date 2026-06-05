@@ -239,13 +239,34 @@ class KeyboardViewModel(
     /** Vorschlag angetippt: ersetzt NUR das aktuelle unfertige Präfix, nie fertigen Text. */
     fun onSuggestionTap(word: String) {
         val prefix = currentWord()
+        // Die Schreibweise des getippten Präfix auf den Vorschlag übertragen, damit ein
+        // am Satzanfang gross begonnenes „De" nicht durch ein klein vorgeschlagenes „der"
+        // ersetzt wird. Kein Autocorrect: weiterhin wird nur das unfertige Präfix ersetzt.
+        val cased = casedLikePrefix(word, prefix)
         safeIc { ic ->
             if (prefix.isNotEmpty()) ic.deleteSurroundingText(prefix.length, 0)
-            ic.commitText("$word ", 1)
+            ic.commitText("$cased ", 1)
         }
+        selEnd = selStart // nach dem Eigen-Edit gibt es keine aktive Auswahl mehr
         setShift(ShiftState.OFF)
         clearSuggestions()
         recomputeAutoCap()
+    }
+
+    /**
+     * Überträgt die Gross-/Kleinschreibung des ersetzten [prefix] auf [word], ohne dessen
+     * Eigen-Schreibweise zu zerstören: ein gross begonnenes Präfix (Satzanfang/Auto-Cap)
+     * macht den ersten Buchstaben gross, ein komplett gross getipptes (Caps-Lock) den ganzen
+     * Vorschlag. Ein klein getipptes Präfix lässt das Wort, wie es in der Liste steht (z. B.
+     * das Nomen „Zeit"). Locale-unabhängig (ROOT), konsistent zu [ShiftState.applyTo].
+     */
+    private fun casedLikePrefix(word: String, prefix: String): String {
+        val letters = prefix.filter { it.isLetter() }
+        return when {
+            letters.length >= 2 && letters.all { it.isUpperCase() } -> word.uppercase(Locale.ROOT)
+            letters.firstOrNull()?.isUpperCase() == true -> word.replaceFirstChar { it.uppercaseChar() }
+            else -> word
+        }
     }
 
     // --- intern ---
@@ -271,6 +292,12 @@ class KeyboardViewModel(
     }
 
     private fun afterTextChanged() {
+        // Ein Eigen-Edit kollabiert eine evtl. aktive Auswahl (Commit ersetzt sie,
+        // Backspace löscht sie). Bis das `onUpdateSelection`-Echo die exakte Position
+        // nachreicht, lokal als „keine Auswahl" markieren — sonst liefe ein sofort
+        // folgendes Backspace fälschlich in den Auswahl-Lösch-Pfad und liesse das gerade
+        // getippte Zeichen stehen. Die genaue Cursorzahl korrigiert gleich das Echo.
+        selEnd = selStart
         // Synchron direkt nach dem eigenen Edit, damit Shift/Vorschläge ohne sichtbare
         // Verzögerung stehen. Das vom Commit ausgelöste `onUpdateSelection`-Echo ruft
         // dieselbe Logik gleich nochmal auf — das ist gewollt (es deckt auch externe
@@ -278,7 +305,11 @@ class KeyboardViewModel(
         // Bewusst NICHT per Cursor-Vorhersage entdoppelt — eine falsche Vorhersage würde ein
         // nötiges Recompute überspringen und falsch grossschreiben (schlechter Tausch).
         refreshSuggestions()
-        if (_state.value.shift == ShiftState.OFF) recomputeAutoCap()
+        // Recompute bei OFF (für den nächsten Satzanfang) ODER wenn das aktuelle SHIFTED
+        // automatisch armiert war: dann hat es gerade eine nicht-verbrauchende Taste (Ziffer/
+        // Symbol) überlebt und der Satzkontext kann es entkräften (z. B. „3.14"). Ein MANUELL
+        // gesetztes SHIFTED bleibt unangetastet, damit es den späteren Buchstaben grossschreibt.
+        if (_state.value.shift == ShiftState.OFF || autoCapArmed) recomputeAutoCap()
     }
 
     private fun clearSuggestions() {
@@ -321,12 +352,19 @@ class KeyboardViewModel(
         if (field.isPassword) return // case-sensitive: nie automatisch grossschreiben
         if (field.numeric) return // Zahl-/Telefonfeld kennt keinen „Satzanfang"
         if (_state.value.shift == ShiftState.CAPS) return
+        // Ein manuell gesetztes SHIFTED (nicht von Auto-Cap) nicht durch einen Cursor-/
+        // Selektions-Callback überschreiben — der Nutzer will den nächsten Buchstaben gross.
+        if (_state.value.shift == ShiftState.SHIFTED && !autoCapArmed) return
         // Fehlt die InputConnection (null), den Shift-Zustand UNVERÄNDERT lassen — nicht
         // ein fehlendes Ergebnis als leeren Satzanfang werten und fälschlich kapitalisieren.
         // Ein wirklich leeres Feld liefert "" (nicht null) und armiert weiterhin korrekt.
         val before = safeIc { it.getTextBeforeCursor(64, 0)?.toString() } ?: return
-        val trimmed = before.trimEnd()
-        val shouldCap = trimmed.isEmpty() || trimmed.last() in SENTENCE_ENDERS
+        // Schliessende „transparente" Satzzeichen (öffnende Klammern/Anführung) und Whitespace
+        // vom Ende her überspringen, dann auf ein Satzende prüfen: so bleibt nach „Satz. («"
+        // grossgeschrieben, aber eine Dezimalzahl wie „3.14" armiert NICHT (Ziffern sind nicht
+        // transparent → letztes bedeutungstragendes Zeichen ist „4", kein Satzende).
+        val meaningful = before.trimEnd { it.isWhitespace() || it in TRANSPARENT_PUNCT }
+        val shouldCap = meaningful.isEmpty() || meaningful.last() in SENTENCE_ENDERS
         // Merken, dass DIESER SHIFTED-Zustand automatisch kam (siehe cycleShift).
         autoCapArmed = shouldCap
         setShift(if (shouldCap) ShiftState.SHIFTED else ShiftState.OFF)
@@ -352,5 +390,9 @@ class KeyboardViewModel(
     private companion object {
         const val TAG = "NahIme"
         val SENTENCE_ENDERS = setOf('.', '!', '?')
+        /** Beim Suchen nach dem Satzende vom Cursor rückwärts überspringbar: öffnende
+         *  Klammern/Anführungszeichen (inkl. de-CH-Guillemets) — sie unterbrechen einen
+         *  Satzanfang nicht. Bewusst KEINE Ziffern/Buchstaben (sonst armierte „3.14"). */
+        val TRANSPARENT_PUNCT = setOf('(', '[', '{', '"', '\'', '«', '„', '‚', '‘', '“')
     }
 }

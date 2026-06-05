@@ -433,6 +433,96 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `vorschlag-tap am Satzanfang uebernimmt die Grossschreibung des Praefix`() {
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("der") })
+            .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = true)) }
+        vm.onStartInput()      // leeres Feld → Auto-Cap armiert SHIFTED
+        vm.type("de")          // „De" (erstes Zeichen gross)
+        vm.onSuggestionTap("der")
+        // Klein vorgeschlagenes „der" wird auf das gross begonnene Präfix gecast → „Der".
+        assertEquals("Der ", fake.buffer.toString())
+    }
+
+    @Test
+    fun `vorschlag-tap unter Caps-Lock schreibt den ganzen Vorschlag gross`() {
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("der") })
+            .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
+        vm.onKey(FunctionKey(KeyAction.SHIFT))
+        vm.onKey(FunctionKey(KeyAction.SHIFT)) // CAPS
+        vm.type("der")         // „DER"
+        vm.onSuggestionTap("der")
+        assertEquals("DER ", fake.buffer.toString())
+    }
+
+    @Test
+    fun `vorschlag-tap behaelt die Eigen-Schreibweise eines klein getippten Nomens`() {
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("Zeit") })
+            .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
+        vm.type("ze")          // klein getippt
+        vm.onSuggestionTap("Zeit")
+        // Klein getipptes Präfix → das Nomen behält sein eigenes Gross-Z (kein Klein-Cast).
+        assertEquals("Zeit ", fake.buffer.toString())
+    }
+
+    @Test
+    fun `backspace nach einem auswahl-ersetzenden Tipp loescht das neue Zeichen, nicht davor`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        fake.buffer.append("hallo")
+        fake.select(1, 4)          // „all" markiert
+        vm.onSelectionChanged(1, 4)
+        vm.type("x")               // ersetzt die Auswahl → „hxo" (Echo kommt noch nicht)
+        // Ohne lokalen Auswahl-Kollaps liefe Backspace fälschlich in den Auswahl-Pfad und
+        // liesse das „x" stehen. Mit Kollaps wird das gerade getippte „x" gelöscht.
+        vm.onKey(FunctionKey(KeyAction.BACKSPACE))
+        assertEquals("ho", fake.buffer.toString())
+    }
+
+    @Test
+    fun `eine Dezimalzahl nach Punkt armiert keine Auto-Grossschreibung`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }
+        vm.onStartInput()                       // leeres Textfeld
+        vm.type("3")
+        vm.onKey(FunctionKey(KeyAction.PERIOD)) // „3." — Punkt darf hier kein Satzende sein …
+        vm.type("14")                           // … weil danach Ziffern folgen
+        assertEquals(ShiftState.OFF, vm.state.value.shift)
+        vm.type("x")
+        assertEquals("3.14x", fake.buffer.toString()) // nicht „3.14X"
+    }
+
+    @Test
+    fun `Auto-Cap ueberspringt eine oeffnende Klammer nach dem Satzende`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }
+        vm.onStartInput()
+        vm.type("hallo")
+        vm.onKey(FunctionKey(KeyAction.PERIOD))
+        vm.onKey(FunctionKey(KeyAction.SPACE))
+        vm.type("(")
+        // Die öffnende Klammer ist „transparent" → der vorherige Punkt zählt weiter als
+        // Satzende, die Armierung bleibt für den nächsten Buchstaben bestehen.
+        assertEquals(ShiftState.SHIFTED, vm.state.value.shift)
+    }
+
+    @Test
+    fun `ein manuelles SHIFTED ueberlebt einen Selektions-Callback`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }
+        fake.buffer.append("hallo welt")
+        fake.select(6, 6)
+        vm.onSelectionChanged(6, 6)             // Cursor mitten im Text → Auto-Cap rechnet
+        vm.onKey(FunctionKey(KeyAction.SHIFT))  // Nutzer armiert manuell ein Nomen
+        assertEquals(ShiftState.SHIFTED, vm.state.value.shift)
+        vm.onSelectionChanged(7, 7)             // ein weiterer (spuriöser) Cursor-Callback
+        // Das manuell gesetzte SHIFTED darf nicht von Auto-Cap entwaffnet werden.
+        assertEquals(ShiftState.SHIFTED, vm.state.value.shift)
+    }
+
+    @Test
     fun `vorschlag-tap ersetzt nur das aktuelle Wort, nie fertigen Text`() {
         val fake = FakeIc()
         val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("welt") })
