@@ -199,6 +199,19 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `alternative unter Caps-Lock schreibt die ganze Alternative gross`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.onKey(FunctionKey(KeyAction.SHIFT))
+        vm.onKey(FunctionKey(KeyAction.SHIFT)) // CAPS
+        vm.onAlternative("sch")
+        // Eine Mehrzeichen-Alternative wird unter Caps komplett grossgeschrieben — und Caps
+        // bleibt stehen (nur ein SHIFTED würde verbraucht).
+        assertEquals("SCH", fake.buffer.toString())
+        assertEquals(ShiftState.CAPS, vm.state.value.shift)
+    }
+
+    @Test
     fun `backspace loescht ein Zeichen`() {
         val fake = FakeIc()
         val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
@@ -530,6 +543,21 @@ class KeyboardViewModelTest {
         vm.type("der")         // „DER"
         vm.onSuggestionTap("der")
         assertEquals("DER ", fake.buffer.toString())
+    }
+
+    @Test
+    fun `vorschlag-tap mit nur einem Caps-Buchstaben als Praefix schreibt nur den ersten gross`() {
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("der") })
+            .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
+        vm.onKey(FunctionKey(KeyAction.SHIFT))
+        vm.onKey(FunctionKey(KeyAction.SHIFT)) // CAPS
+        vm.type("d")           // ein einzelner Caps-Buchstabe → „D"
+        vm.onSuggestionTap("der")
+        // Dokumentierter Tradeoff: casedLikePrefix erkennt Caps-Lock erst ab zwei Buchstaben
+        // (sonst nicht von einem Satzanfang-Gross unterscheidbar). Ein einzelnes „D" wird daher
+        // wie ein Satzanfang behandelt → „Der", nicht „DER". Test friert diese Entscheidung ein.
+        assertEquals("Der ", fake.buffer.toString())
     }
 
     @Test

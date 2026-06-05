@@ -341,10 +341,14 @@ class KeyboardViewModel(
     }
 
     /**
-     * Liest den Editor-Kontext vor dem Cursor **einmal** und frischt daraus Vorschläge UND
+     * Liest den Editor-Kontext **vor** dem Cursor **einmal** und frischt daraus Vorschläge UND
      * (bei [reconsiderAutoCap]) die Auto-Cap-Shift-Lage in **einer** [_state]-Emission auf. So
      * kostet ein Cursor-/Tipp-Schritt nur einen `getTextBeforeCursor`-Roundtrip (statt je einen
      * für Vorschläge und Auto-Cap) und löst nur eine Recomposition aus.
+     *
+     * Der eine Read deckt nur den Kontext **vor** dem Cursor ab. Liegt ein Vorschlags-Präfix an,
+     * liest [computeSuggestions] über [atWordEnd] zusätzlich **einmal hinter** den Cursor — ein
+     * eigener, nötiger Read (anderer Bereich), kein doppelter Vor-Cursor-Read.
      *
      * [reconsiderAutoCap] = `false` lässt den Shift unangetastet — für Schritte, die den Cursor
      * NICHT bewegen (Settings-/Ebenenwechsel, Field-Restart): dort soll ein manuell gesetztes
@@ -355,6 +359,9 @@ class KeyboardViewModel(
         val (suggestions, barVisible) = computeSuggestions(before)
         // null = unverändert lassen (Feature aus, Spezialfeld, manuelles Shift, fehlende IC).
         val autoCapShift = if (reconsiderAutoCap) computeAutoCapShift(before) else null
+        // Ein nicht-null Ergebnis armiert genau dann, wenn es SHIFTED ist (siehe
+        // computeAutoCapShift); null lässt die Armierung unangetastet.
+        if (autoCapShift != null) autoCapArmed = autoCapShift == ShiftState.SHIFTED
         _state.value = _state.value.copy(
             suggestions = suggestions,
             suggestionBarVisible = barVisible,
@@ -395,10 +402,13 @@ class KeyboardViewModel(
 
     /**
      * Neuer Shift-Zustand aus dem Satzkontext [before], oder `null` = unverändert lassen.
-     * Setzt als Seiteneffekt [autoCapArmed] (markiert ein resultierendes SHIFTED als
-     * automatisch gekommen, siehe [cycleShift]). Die Guards subsumieren bewusst die alte
-     * `shift == OFF || autoCapArmed`-Vorprüfung aus [afterTextChanged]: ein manuelles SHIFTED
-     * und ein CAPS-Lock liefern hier ohnehin `null`, ein unverbrauchtes Auto-SHIFTED rechnet weiter.
+     * **Reine Funktion** (liest nur Settings/Feld/aktuellen Shift, mutiert nichts): das
+     * Armieren von [autoCapArmed] machen die Aufrufer aus dem Rückgabewert — ein nicht-`null`
+     * Ergebnis ist armiert genau dann, wenn es [ShiftState.SHIFTED] ist (siehe [refreshForCursor]
+     * /[recomputeAutoCap]). Die Guards subsumieren bewusst die alte `shift == OFF || autoCapArmed`-
+     * Vorprüfung aus [afterTextChanged]: ein manuelles SHIFTED und ein CAPS-Lock liefern hier
+     * ohnehin `null` (Aufrufer lassen [autoCapArmed] dann unangetastet), ein unverbrauchtes
+     * Auto-SHIFTED rechnet weiter.
      */
     private fun computeAutoCapShift(before: String?): ShiftState? {
         if (!settings.autoCapEnabled) return null
@@ -419,7 +429,6 @@ class KeyboardViewModel(
         // transparent → letztes bedeutungstragendes Zeichen ist „4", kein Satzende).
         val meaningful = before.trimEnd { it.isWhitespace() || it in TRANSPARENT_PUNCT }
         val shouldCap = meaningful.isEmpty() || meaningful.last() in SENTENCE_ENDERS
-        autoCapArmed = shouldCap
         return if (shouldCap) ShiftState.SHIFTED else ShiftState.OFF
     }
 
@@ -427,7 +436,9 @@ class KeyboardViewModel(
      *  Liest den Kontext selbst — kein gemeinsamer Read mit Vorschlägen nötig, da [onSuggestionTap]
      *  die Vorschläge ohnehin separat leert. */
     private fun recomputeAutoCap() {
-        setShift(computeAutoCapShift(readContextBeforeCursor()) ?: return)
+        val shift = computeAutoCapShift(readContextBeforeCursor()) ?: return
+        autoCapArmed = shift == ShiftState.SHIFTED
+        setShift(shift)
     }
 
     private fun readContextBeforeCursor(): String? =
