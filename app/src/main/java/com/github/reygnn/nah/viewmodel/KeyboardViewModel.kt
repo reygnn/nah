@@ -11,11 +11,30 @@ import com.github.reygnn.nah.layout.KeyAction
 import com.github.reygnn.nah.layout.KeyboardKey
 import com.github.reygnn.nah.layout.KeyboardLayout
 import com.github.reygnn.nah.settings.Settings
+import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-enum class ShiftState { OFF, SHIFTED, CAPS }
+enum class ShiftState {
+    OFF,
+    SHIFTED,
+    CAPS;
+
+    /**
+     * Wendet die Schreibweise dieses Shift-Zustands auf [text] an: [SHIFTED] schreibt nur
+     * den ersten Buchstaben gross („qu"→„Qu", „sch"→„Sch"), [CAPS] alles, [OFF] nichts.
+     * **Einzige Quelle** für das Commit ([KeyboardViewModel]) UND die Tastenbeschriftung
+     * (`ui/TapKey`), damit Angezeigtes und Getipptes nie auseinanderdriften — genau das
+     * wäre ein stiller Bruch der „kein Autocorrect"-Garantie. Locale-unabhängig (ROOT),
+     * damit derselbe Tap auf jedem Gerät dasselbe Zeichen liefert (kein türkisches i/İ).
+     */
+    fun applyTo(text: String): String = when (this) {
+        OFF -> text
+        SHIFTED -> text.replaceFirstChar { it.uppercaseChar() }
+        CAPS -> text.uppercase(Locale.ROOT)
+    }
+}
 
 data class KeyboardUiState(
     val layout: KeyboardLayout,
@@ -123,11 +142,7 @@ class KeyboardViewModel(
      *  Buchstaben („qu"→„Qu", „sch"→„Sch"), CAPS alles. */
     private fun commitWithShift(text: String) {
         val shift = _state.value.shift
-        val out = when (shift) {
-            ShiftState.OFF -> text
-            ShiftState.SHIFTED -> text.replaceFirstChar { it.uppercaseChar() }
-            ShiftState.CAPS -> text.uppercase()
-        }
+        val out = shift.applyTo(text)
         safeIc { it.commitText(out, 1) }
         if (shift == ShiftState.SHIFTED) setShift(ShiftState.OFF)
         afterTextChanged()

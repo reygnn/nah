@@ -104,7 +104,7 @@ class NahIme :
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         viewModel.onStartInput(
-            FieldContext(imeAction = info?.imeActionOrNull()),
+            field = info?.let { FieldContext.fromImeOptions(it.imeOptions) } ?: FieldContext(),
             pasteAvailable = clipboardHasText(),
         )
     }
@@ -155,19 +155,6 @@ class NahIme :
             Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         )
         requestHideSelf(0)
-    }
-
-    /**
-     * Die von der Return-Taste auszulösende Editor-Action, oder `null`, wenn das Feld
-     * keine verlangt (oder explizit `IME_FLAG_NO_ENTER_ACTION` setzt) — dann bleibt
-     * Return ein echtes Enter.
-     */
-    private fun EditorInfo.imeActionOrNull(): Int? {
-        if ((imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION) != 0) return null
-        return when (val action = imeOptions and EditorInfo.IME_MASK_ACTION) {
-            EditorInfo.IME_ACTION_NONE, EditorInfo.IME_ACTION_UNSPECIFIED -> null
-            else -> action
-        }
     }
 
     /**

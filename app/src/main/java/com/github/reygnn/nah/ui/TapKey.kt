@@ -17,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,6 +29,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -44,6 +47,7 @@ import com.github.reygnn.nah.layout.KeyAction
 import com.github.reygnn.nah.layout.KeyboardKey
 import com.github.reygnn.nah.viewmodel.ShiftState
 import kotlin.math.floor
+import kotlin.math.roundToInt
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** Nicht klickbarer Rand ringsum jede Taste (Totzone gegen Fehltipper). */
@@ -79,11 +83,9 @@ fun TapKey(
     onAlternative: (String) -> Unit = {},
 ) {
     val label = when (key) {
-        is CharKey -> when (shift) {
-            ShiftState.OFF -> key.output
-            ShiftState.SHIFTED -> key.output.replaceFirstChar { it.uppercaseChar() }
-            ShiftState.CAPS -> key.output.uppercase()
-        }
+        // Dieselbe Casing-Quelle wie das Commit (siehe ShiftState.applyTo) — so zeigt die
+        // Taste garantiert exakt das an, was sie tippt.
+        is CharKey -> shift.applyTo(key.output)
         is FunctionKey -> key.label
     }
 
@@ -133,6 +135,12 @@ fun TapKey(
     // Long-Press-Popup-Zustand (nur für Tasten mit Alternativen).
     var popupOpen by remember { mutableStateOf(false) }
     var highlight by remember { mutableIntStateOf(-1) }
+    // Linke Tastenkante in Fensterkoordinaten (via onGloballyPositioned gepflegt) und die
+    // daraus berechnete, ggf. an den Fensterrand geclampte linke Kante des Popup-Bands.
+    // BEIDE — Popup-Position UND Chip-Auswahl — rechnen gegen denselben Wert, damit ein
+    // randnah geclamptes Popup nicht einen anderen Chip anzeigt, als es committet.
+    var keyLeftInWindow by remember { mutableFloatStateOf(0f) }
+    var bandLeftPx by remember { mutableFloatStateOf(0f) }
 
     val tapModifier = when {
         isBackspace -> Modifier.pointerInput(key) {
@@ -152,6 +160,7 @@ fun TapKey(
         }
         alternatives.isNotEmpty() -> Modifier.pointerInput(key) {
             val chipPx = CHIP_WIDTH.toPx()
+            val bandPx = alternatives.size * chipPx
             awaitEachGesture {
                 val down = awaitFirstDown(requireUnconsumed = false)
                 val longPress = awaitLongPressOrCancellation(down.id)
@@ -159,14 +168,19 @@ fun TapKey(
                     tap() // schneller Tap → Basis-Output
                     return@awaitEachGesture
                 }
-                // Gehalten → Popup öffnen, Auswahl per Schieben verfolgen.
+                // Gehalten → Popup öffnen, Auswahl per Schieben verfolgen. Band-Kante
+                // einmal pro Geste festlegen (mittig über der Taste, an den Fensterrand
+                // geclampt) — Popup und Chip-Auswahl teilen sich genau diesen Wert.
                 view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                val keyLeft = keyLeftInWindow
+                val bandLeft = bandLeftInWindow(keyLeft, size.width.toFloat(), bandPx, view.width.toFloat())
+                bandLeftPx = bandLeft
                 popupOpen = true
-                highlight = highlightFor(longPress.position, size.width.toFloat(), chipPx, alternatives.size)
+                highlight = chipIndexFor(longPress.position, keyLeft, bandLeft, chipPx, alternatives.size)
                 while (true) {
                     val event = awaitPointerEvent()
                     val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                    highlight = highlightFor(change.position, size.width.toFloat(), chipPx, alternatives.size)
+                    highlight = chipIndexFor(change.position, keyLeft, bandLeft, chipPx, alternatives.size)
                     change.consume()
                     if (!change.pressed) break
                 }
@@ -189,6 +203,7 @@ fun TapKey(
         // Gleichmässige Totzone ringsum (Padding VOR der Tap-Erkennung = nicht klickbar).
         modifier = modifier
             .padding(KEY_GAP)
+            .onGloballyPositioned { keyLeftInWindow = it.positionInWindow().x }
             .clip(RoundedCornerShape(8.dp))
             .background(bg)
             .then(if (enabled) tapModifier else Modifier),
@@ -210,28 +225,55 @@ fun TapKey(
             )
         }
         if (popupOpen) {
-            AlternativesPopup(alternatives = alternatives, highlight = highlight)
+            AlternativesPopup(alternatives = alternatives, highlight = highlight, bandLeftPx = bandLeftPx)
         }
     }
 }
 
 /**
- * Welcher Chip ist unter dem Finger? Erst wenn der Finger über die Tastenoberkante
- * (y < 0) ins Popup-Band zieht; sonst -1 (Loslassen committet den Basis-Output).
+ * Linke Kante des Alternativen-Bands in **Fensterkoordinaten**: mittig über der Taste,
+ * aber an den Fensterrand geclampt — exakt so, wie das Popup selbst platziert wird.
+ * Indem Popup-Position und [chipIndexFor] denselben Wert nutzen, kann ein an den Rand
+ * geschobenes Popup nie einen anderen Chip anzeigen, als beim Loslassen committet wird.
  */
-private fun highlightFor(pos: Offset, keyWidthPx: Float, chipPx: Float, count: Int): Int {
+internal fun bandLeftInWindow(
+    keyLeftInWindow: Float,
+    keyWidthPx: Float,
+    bandWidthPx: Float,
+    windowWidthPx: Float,
+): Float {
+    val keyCenter = keyLeftInWindow + keyWidthPx / 2f
+    val maxLeft = (windowWidthPx - bandWidthPx).coerceAtLeast(0f)
+    return (keyCenter - bandWidthPx / 2f).coerceIn(0f, maxLeft)
+}
+
+/**
+ * Welcher Chip ist unter dem Finger? Nur wenn der Finger über die Tastenoberkante
+ * ([pos].y < 0) ins Popup-Band zieht; sonst -1 (Loslassen committet den Basis-Output).
+ * Gerechnet in Fensterkoordinaten gegen [bandLeftInWindow] ([keyLeftInWindow] verschiebt
+ * die tastenlokale Finger-X dorthin), damit ein randnah geclamptes Popup den richtigen
+ * Chip liefert.
+ */
+internal fun chipIndexFor(
+    pos: Offset,
+    keyLeftInWindow: Float,
+    bandLeftInWindow: Float,
+    chipPx: Float,
+    count: Int,
+): Int {
     if (count == 0 || pos.y >= 0f) return -1
-    val band = count * chipPx
-    val startX = keyWidthPx / 2f - band / 2f
-    return floor((pos.x - startX) / chipPx).toInt().coerceIn(0, count - 1)
+    val pointerXInWindow = keyLeftInWindow + pos.x
+    return floor((pointerXInWindow - bandLeftInWindow) / chipPx).toInt().coerceIn(0, count - 1)
 }
 
 /** Sichtbares Alternativen-Popup, mittig über der Taste. Der hervorgehobene Chip
  *  (unter dem Finger) wird beim Loslassen committet. */
 @Composable
-private fun AlternativesPopup(alternatives: List<String>, highlight: Int) {
+private fun AlternativesPopup(alternatives: List<String>, highlight: Int, bandLeftPx: Float) {
     val colors = MaterialTheme.colorScheme
-    val positionProvider = remember {
+    // x kommt aus der bereits geclampten Band-Kante (siehe bandLeftInWindow) — dieselbe
+    // Quelle wie die Chip-Auswahl, damit Anzeige und Commit deckungsgleich sind.
+    val positionProvider = remember(bandLeftPx) {
         object : PopupPositionProvider {
             override fun calculatePosition(
                 anchorBounds: IntRect,
@@ -239,7 +281,7 @@ private fun AlternativesPopup(alternatives: List<String>, highlight: Int) {
                 layoutDirection: LayoutDirection,
                 popupContentSize: IntSize,
             ): IntOffset = IntOffset(
-                x = anchorBounds.left + (anchorBounds.width - popupContentSize.width) / 2,
+                x = bandLeftPx.roundToInt(),
                 y = anchorBounds.top - popupContentSize.height,
             )
         }

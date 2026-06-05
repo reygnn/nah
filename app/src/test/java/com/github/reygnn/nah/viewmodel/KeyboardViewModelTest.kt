@@ -257,6 +257,20 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `auto-cap aktiviert shift nach einem Satzzeichen`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }
+        vm.onStartInput()       // leerer Puffer → erstes Zeichen gross (Satzanfang)
+        vm.type("hallo")        // → "Hallo", danach mitten im Wort: Shift fällt auf OFF
+        assertEquals(ShiftState.OFF, vm.state.value.shift)
+        vm.onKey(FunctionKey(KeyAction.PERIOD))
+        // Nach dem Punkt armiert Auto-Cap den nächsten Buchstaben gross.
+        assertEquals(ShiftState.SHIFTED, vm.state.value.shift)
+        vm.type("d")
+        assertEquals("Hallo.D", fake.buffer.toString())
+    }
+
+    @Test
     fun `return fuehrt die Editor-Action aus, wenn das Feld eine verlangt`() {
         val fake = FakeIc()
         val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
