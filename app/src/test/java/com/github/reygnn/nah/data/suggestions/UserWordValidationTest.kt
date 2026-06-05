@@ -53,4 +53,19 @@ class UserWordValidationTest {
     fun `wird vor der Pruefung getrimmt`() {
         assertNull(UserWordValidation.validate("  hallo  ", emptySet()))
     }
+
+    @Test
+    fun `Edit auf sich selbst ist kein Duplikat (ignore)`() {
+        // Tippfehler/Gross-Klein-Korrektur des bearbeiteten Eintrags: das alte Wort wird
+        // bei der Duplikat-Pruefung uebersprungen.
+        assertNull(UserWordValidation.validate("Hallo", setOf("hallo", "welt"), ignore = "hallo"))
+    }
+
+    @Test
+    fun `Edit auf einen ANDEREN bestehenden Eintrag bleibt ein Duplikat`() {
+        assertEquals(
+            UserWordError.AlreadyExists,
+            UserWordValidation.validate("welt", setOf("hallo", "welt"), ignore = "hallo"),
+        )
+    }
 }

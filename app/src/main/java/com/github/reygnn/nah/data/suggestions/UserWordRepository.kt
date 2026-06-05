@@ -53,13 +53,13 @@ class UserWordRepository(private val context: Context) {
         var error: UserWordError? = null
         context.userWordsDataStore.edit { prefs ->
             val current = prefs[KEY] ?: emptySet()
-            val others = current.filterNot { it.equals(old, ignoreCase = true) }.toSet()
-            val reason = UserWordValidation.validate(word, others)
+            // Den bearbeiteten Eintrag von der Duplikat-Prüfung ausnehmen (siehe validate).
+            val reason = UserWordValidation.validate(word, current, ignore = old)
             if (reason != null) {
                 error = reason
                 return@edit
             }
-            prefs[KEY] = others + word
+            prefs[KEY] = current.filterNot { it.equals(old, ignoreCase = true) }.toSet() + word
         }
         return error
     }

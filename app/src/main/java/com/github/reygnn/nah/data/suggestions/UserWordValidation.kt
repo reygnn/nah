@@ -20,14 +20,20 @@ object UserWordValidation {
     const val MIN_LENGTH = 2
     const val MAX_LENGTH = 50
 
-    /** `null` = in Ordnung. Sonst der Grund der Ablehnung. */
-    fun validate(raw: String, existing: Set<String>): UserWordError? {
+    /**
+     * `null` = in Ordnung, sonst der Grund der Ablehnung. [ignore] (der gerade bearbeitete
+     * Eintrag) wird bei der Duplikat-Prüfung case-insensitiv übersprungen — so gehen reine
+     * Gross-/Kleinschreibungs- oder Tippfehler-Korrekturen durch, ohne sich selbst als
+     * Duplikat zu blockieren. Beim Hinzufügen bleibt [ignore] `null`.
+     */
+    fun validate(raw: String, existing: Set<String>, ignore: String? = null): UserWordError? {
         val word = raw.trim()
+        val relevant = if (ignore == null) existing else existing.filterNot { it.equals(ignore, ignoreCase = true) }
         return when {
             word.length < MIN_LENGTH -> UserWordError.TooShort
             word.length > MAX_LENGTH -> UserWordError.TooLong
             word.any { it.isISOControl() } -> UserWordError.InvalidCharacters
-            existing.any { it.equals(word, ignoreCase = true) } -> UserWordError.AlreadyExists
+            relevant.any { it.equals(word, ignoreCase = true) } -> UserWordError.AlreadyExists
             else -> null
         }
     }
