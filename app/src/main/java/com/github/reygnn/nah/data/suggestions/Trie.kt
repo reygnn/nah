@@ -43,6 +43,15 @@ class Trie {
         return node.isWord
     }
 
+    /**
+     * Sammelt ALLE Wörter im Teilbaum unter [node], bevor [getSuggestions] nach Frequenz
+     * sortiert und auf das Limit kürzt. Bewusst ohne vorzeitigen Abbruch: das häufigste Wort
+     * kann beliebig tief im Teilbaum liegen, für eine korrekte Top-K-Auswahl muss der ganze
+     * Teilbaum besucht werden. Beim aktuellen Korpus (einige hundert Wörter) ist das
+     * vernachlässigbar — selbst der kürzeste erlaubte Präfix (2 Zeichen) spannt nur einen
+     * kleinen Teilbaum auf. Erst ein um Grössenordnungen grösseres Wörterbuch würde Branch-and-
+     * Bound lohnen (max. Teilbaum-Frequenz je Knoten cachen und nicht-konkurrenzfähige Äste kappen).
+     */
     private fun collectWords(node: TrieNode, results: MutableList<Pair<String, Int>>) {
         if (node.isWord) {
             node.originalWord?.let { results.add(it to node.frequency) }
