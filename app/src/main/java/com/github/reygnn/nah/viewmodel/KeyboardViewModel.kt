@@ -93,7 +93,9 @@ class KeyboardViewModel(
         if (_state.value.colorHints != newSettings.letterColorHintsEnabled) {
             _state.value = _state.value.copy(colorHints = newSettings.letterColorHintsEnabled)
         }
-        refreshSuggestions() // gated intern — kümmert sich selbst ums Leeren
+        // Nur Vorschläge neu bewerten — eine Settings-Änderung bewegt den Cursor nicht, also
+        // KEIN Auto-Cap (sonst armierte ein blosser Toggle den Satzanfang neu). Gated intern.
+        refreshForCursor(reconsiderAutoCap = false)
     }
 
     /**
@@ -115,18 +117,25 @@ class KeyboardViewModel(
             field.numeric -> symbolsLayout // Zahl/Datum → allgemeine Ziffern-/Symbolebene
             else -> alphaLayout
         }
-        _state.value = _state.value.copy(layout = layout, pasteAvailable = pasteAvailable)
-        // Beim ECHTEN Feldwechsel mit definiertem Shift beginnen: ein vom letzten Feld übrig
-        // gebliebenes CAPS-Lock soll nicht in ein neues, fremdes Feld lecken. Auto-Cap (falls
-        // aktiv und kein Passwortfeld) armiert danach ggf. wieder SHIFTED. Bei einem reinen
-        // RESTART desselben Feldes (z. B. Config-Change, View neu aufgebaut) den vom Nutzer
-        // gesetzten Shift-Zustand dagegen NICHT wegwerfen.
-        if (!restarting) {
-            setShift(ShiftState.OFF)
+        if (restarting) {
+            // Reiner RESTART desselben Feldes (z. B. Config-Change, View neu aufgebaut): nur
+            // Ebene/Einfügen-Zustand übernehmen, den vom Nutzer gesetzten Shift NICHT wegwerfen
+            // und KEIN Auto-Cap neu rechnen (sonst entwaffnete ein Restart ein manuelles SHIFTED).
+            _state.value = _state.value.copy(layout = layout, pasteAvailable = pasteAvailable)
+            refreshForCursor(reconsiderAutoCap = false)
+        } else {
+            // ECHTER Feldwechsel: mit definiertem Shift (OFF) beginnen — ein vom letzten Feld
+            // übrig gebliebenes CAPS-Lock soll nicht in ein neues, fremdes Feld lecken — und
+            // Ebene/Einfügen/Shift in derselben Emission setzen. refreshForCursor armiert danach
+            // ggf. wieder SHIFTED; computeAutoCapShift lässt Passwort-/Zahlenfelder selbst aus.
             autoCapArmed = false
-            if (!field.isPassword) recomputeAutoCap()
+            _state.value = _state.value.copy(
+                layout = layout,
+                pasteAvailable = pasteAvailable,
+                shift = ShiftState.OFF,
+            )
+            refreshForCursor(reconsiderAutoCap = true)
         }
-        refreshSuggestions()
     }
 
     /**
@@ -141,8 +150,8 @@ class KeyboardViewModel(
         if (newSelStart == selStart && newSelEnd == selEnd) return
         selStart = newSelStart
         selEnd = newSelEnd
-        refreshSuggestions()
-        recomputeAutoCap()
+        // Ein Cursor-/Auswahl-Sprung: Vorschläge und Auto-Cap aus einem Read, eine Emission.
+        refreshForCursor(reconsiderAutoCap = true)
     }
 
     fun onKey(key: KeyboardKey) {
@@ -227,11 +236,11 @@ class KeyboardViewModel(
                 // so wird z. B. eine eigene PLZ vorgeschlagen). Die reservierte Leiste
                 // bleibt auf beiden Ebenen, damit die Höhe beim Wechsel nicht springt.
                 _state.value = _state.value.copy(layout = symbolsLayout)
-                refreshSuggestions()
+                refreshForCursor(reconsiderAutoCap = false) // Ebenenwechsel bewegt den Cursor nicht
             }
             KeyAction.ALPHA -> {
                 _state.value = _state.value.copy(layout = alphaLayout)
-                refreshSuggestions()
+                refreshForCursor(reconsiderAutoCap = false)
             }
         }
     }
@@ -314,15 +323,10 @@ class KeyboardViewModel(
         // Synchron direkt nach dem eigenen Edit, damit Shift/Vorschläge ohne sichtbare
         // Verzögerung stehen. Das vom Commit ausgelöste `onUpdateSelection`-Echo ruft
         // dieselbe Logik gleich nochmal auf — das ist gewollt (es deckt auch externe
-        // Cursor-Sprünge ab) und idempotent: `setShift`/`copy` sind No-ops bei Gleichstand.
+        // Cursor-Sprünge ab) und idempotent: `copy` ist ein No-op bei Gleichstand.
         // Bewusst NICHT per Cursor-Vorhersage entdoppelt — eine falsche Vorhersage würde ein
         // nötiges Recompute überspringen und falsch grossschreiben (schlechter Tausch).
-        refreshSuggestions()
-        // Recompute bei OFF (für den nächsten Satzanfang) ODER wenn das aktuelle SHIFTED
-        // automatisch armiert war: dann hat es gerade eine nicht-verbrauchende Taste (Ziffer/
-        // Symbol) überlebt und der Satzkontext kann es entkräften (z. B. „3.14"). Ein MANUELL
-        // gesetztes SHIFTED bleibt unangetastet, damit es den späteren Buchstaben grossschreibt.
-        if (_state.value.shift == ShiftState.OFF || autoCapArmed) recomputeAutoCap()
+        refreshForCursor(reconsiderAutoCap = true)
     }
 
     private fun clearSuggestions() {
@@ -331,27 +335,47 @@ class KeyboardViewModel(
         }
     }
 
-    private fun refreshSuggestions() {
+    /**
+     * Liest den Editor-Kontext vor dem Cursor **einmal** und frischt daraus Vorschläge UND
+     * (bei [reconsiderAutoCap]) die Auto-Cap-Shift-Lage in **einer** [_state]-Emission auf. So
+     * kostet ein Cursor-/Tipp-Schritt nur einen `getTextBeforeCursor`-Roundtrip (statt je einen
+     * für Vorschläge und Auto-Cap) und löst nur eine Recomposition aus.
+     *
+     * [reconsiderAutoCap] = `false` lässt den Shift unangetastet — für Schritte, die den Cursor
+     * NICHT bewegen (Settings-/Ebenenwechsel, Field-Restart): dort soll ein manuell gesetztes
+     * SHIFTED/CAPS nicht durch einen Satzanfang-Check umgeworfen werden.
+     */
+    private fun refreshForCursor(reconsiderAutoCap: Boolean) {
+        val before = readContextBeforeCursor()
+        val (suggestions, barVisible) = computeSuggestions(before)
+        // null = unverändert lassen (Feature aus, Spezialfeld, manuelles Shift, fehlende IC).
+        val autoCapShift = if (reconsiderAutoCap) computeAutoCapShift(before) else null
+        _state.value = _state.value.copy(
+            suggestions = suggestions,
+            suggestionBarVisible = barVisible,
+            shift = autoCapShift ?: _state.value.shift,
+        )
+    }
+
+    /** Vorschläge + ob die Leiste Platz reserviert, aus dem bereits gelesenen [before]. */
+    private fun computeSuggestions(before: String?): Pair<List<String>, Boolean> {
         val s = suggester
         val anySource = settings.suggestionsEnabled || settings.userWordsEnabled
-        // Im Passwortfeld nie Vorschläge zeigen — auch nicht die reservierte Leiste.
-        if (s == null || !anySource || field.isPassword) {
-            // Funktion ganz aus → gar keine Leiste (kein verschwendeter Platz).
-            _state.value = _state.value.copy(suggestions = emptyList(), suggestionBarVisible = false)
-            return
-        }
+        // Funktion ganz aus oder Passwortfeld → gar keine Leiste (kein verschwendeter Platz,
+        // kein Schulter-Surfen über der Passworteingabe).
+        if (s == null || !anySource || field.isPassword) return emptyList<String>() to false
         // Ab hier ist die Leiste reserviert (feste Höhe), auch ohne aktuelle Vorschläge.
         // Bei einer aktiven Auswahl keine Vorschläge: onSuggestionTap löscht nur das Präfix
         // vor dem Cursor und committet darüber — bei bestehender Selektion würde derselbe Tap
         // zusätzlich die markierte Stelle ersetzen (commitText überschreibt die Auswahl) und so
         // fertigen Text ungewollt anfassen. Die Leiste bleibt reserviert, nur leer.
-        val prefix = currentWord()
+        val prefix = wordBeforeCursor(before)
         val list = if (prefix.length >= 2 && !hasSelection && atWordEnd()) {
             s.suggest(prefix.lowercase(), settings.suggestionsEnabled, settings.userWordsEnabled)
         } else {
             emptyList()
         }
-        _state.value = _state.value.copy(suggestions = list, suggestionBarVisible = true)
+        return list to true
     }
 
     /**
@@ -364,35 +388,52 @@ class KeyboardViewModel(
         return after.isEmpty() || !after[0].isLetterOrDigit()
     }
 
-    private fun recomputeAutoCap() {
-        if (!settings.autoCapEnabled) return
-        if (field.isPassword) return // case-sensitive: nie automatisch grossschreiben
-        if (field.numeric) return // Zahl-/Telefonfeld kennt keinen „Satzanfang"
-        if (_state.value.shift == ShiftState.CAPS) return
+    /**
+     * Neuer Shift-Zustand aus dem Satzkontext [before], oder `null` = unverändert lassen.
+     * Setzt als Seiteneffekt [autoCapArmed] (markiert ein resultierendes SHIFTED als
+     * automatisch gekommen, siehe [cycleShift]). Die Guards subsumieren bewusst die alte
+     * `shift == OFF || autoCapArmed`-Vorprüfung aus [afterTextChanged]: ein manuelles SHIFTED
+     * und ein CAPS-Lock liefern hier ohnehin `null`, ein unverbrauchtes Auto-SHIFTED rechnet weiter.
+     */
+    private fun computeAutoCapShift(before: String?): ShiftState? {
+        if (!settings.autoCapEnabled) return null
+        if (field.isPassword) return null // case-sensitive: nie automatisch grossschreiben
+        if (field.numeric) return null // Zahl-/Telefonfeld kennt keinen „Satzanfang"
+        val shift = _state.value.shift
+        if (shift == ShiftState.CAPS) return null
         // Ein manuell gesetztes SHIFTED (nicht von Auto-Cap) nicht durch einen Cursor-/
         // Selektions-Callback überschreiben — der Nutzer will den nächsten Buchstaben gross.
-        if (_state.value.shift == ShiftState.SHIFTED && !autoCapArmed) return
-        // Fehlt die InputConnection (null), den Shift-Zustand UNVERÄNDERT lassen — nicht
-        // ein fehlendes Ergebnis als leeren Satzanfang werten und fälschlich kapitalisieren.
-        // Ein wirklich leeres Feld liefert "" (nicht null) und armiert weiterhin korrekt.
-        val before = safeIc { it.getTextBeforeCursor(64, 0)?.toString() } ?: return
+        if (shift == ShiftState.SHIFTED && !autoCapArmed) return null
+        // Fehlt die InputConnection (before == null), den Shift-Zustand UNVERÄNDERT lassen —
+        // nicht ein fehlendes Ergebnis als leeren Satzanfang werten und fälschlich
+        // kapitalisieren. Ein wirklich leeres Feld liefert "" (nicht null) und armiert korrekt.
+        if (before == null) return null
         // Schliessende „transparente" Satzzeichen (öffnende Klammern/Anführung) und Whitespace
         // vom Ende her überspringen, dann auf ein Satzende prüfen: so bleibt nach „Satz. («"
         // grossgeschrieben, aber eine Dezimalzahl wie „3.14" armiert NICHT (Ziffern sind nicht
         // transparent → letztes bedeutungstragendes Zeichen ist „4", kein Satzende).
         val meaningful = before.trimEnd { it.isWhitespace() || it in TRANSPARENT_PUNCT }
         val shouldCap = meaningful.isEmpty() || meaningful.last() in SENTENCE_ENDERS
-        // Merken, dass DIESER SHIFTED-Zustand automatisch kam (siehe cycleShift).
         autoCapArmed = shouldCap
-        setShift(if (shouldCap) ShiftState.SHIFTED else ShiftState.OFF)
+        return if (shouldCap) ShiftState.SHIFTED else ShiftState.OFF
     }
 
-    private fun currentWord(): String {
-        val before = safeIc { it.getTextBeforeCursor(48, 0)?.toString() } ?: return ""
-        // Buchstaben UND Ziffern: so wird auch ein numerisches Token (z. B. eine
-        // eigene PLZ) als Präfix erkannt und kann vorgeschlagen werden.
-        return before.takeLastWhile { it.isLetterOrDigit() }
+    /** Auto-Cap einzeln neu rechnen (nach einem Vorschlag-Commit, der den Cursor bewegt hat).
+     *  Liest den Kontext selbst — kein gemeinsamer Read mit Vorschlägen nötig, da [onSuggestionTap]
+     *  die Vorschläge ohnehin separat leert. */
+    private fun recomputeAutoCap() {
+        setShift(computeAutoCapShift(readContextBeforeCursor()) ?: return)
     }
+
+    private fun readContextBeforeCursor(): String? =
+        safeIc { it.getTextBeforeCursor(CONTEXT_LOOKBEHIND, 0)?.toString() }
+
+    private fun currentWord(): String = wordBeforeCursor(readContextBeforeCursor())
+
+    /** Das Token direkt vor dem Cursor aus [before]: Buchstaben UND Ziffern, damit auch ein
+     *  numerisches Token (z. B. eine eigene PLZ) als Präfix erkannt und vorgeschlagen wird. */
+    private fun wordBeforeCursor(before: String?): String =
+        (before ?: "").takeLastWhile { it.isLetterOrDigit() }
 
     private inline fun <T> safeIc(block: (InputConnection) -> T): T? {
         val ic = inputConnectionProvider() ?: return null
@@ -406,6 +447,9 @@ class KeyboardViewModel(
 
     private companion object {
         const val TAG = "NahIme"
+        /** Wie viele Zeichen vor dem Cursor pro Schritt gelesen werden — deckt sowohl den
+         *  Satzanfang-Scan (Auto-Cap) als auch das Vorschlags-Präfix mit einem Read ab. */
+        const val CONTEXT_LOOKBEHIND = 64
         val SENTENCE_ENDERS = setOf('.', '!', '?')
         /**
          * Beim Suchen nach dem Satzende vom Cursor rückwärts überspringbar — sie

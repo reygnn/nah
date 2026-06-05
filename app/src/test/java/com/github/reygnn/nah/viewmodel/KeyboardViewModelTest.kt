@@ -8,6 +8,7 @@ import com.github.reygnn.nah.layout.KeyAction
 import com.github.reygnn.nah.layout.KeyboardLayout
 import com.github.reygnn.nah.layout.OptimizedLayout
 import com.github.reygnn.nah.settings.Settings
+import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -706,6 +707,17 @@ class KeyboardViewModelTest {
         assertEquals(1, calls)
         vm.onSelectionChanged(1, 1) // echte Bewegung → wieder rechnen
         assertEquals(2, calls)
+    }
+
+    @Test
+    fun `ein Tastendruck liest den Kontext vor dem Cursor nur einmal`() {
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo") })
+            .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = true)) }
+        clearMocks(fake.ic, answers = false) // Zähler zurücksetzen, gestubbte Antworten behalten
+        vm.onKey(CharKey('h'))
+        // Vorschläge UND Auto-Cap teilen sich denselben getTextBeforeCursor-Read (vorher zwei).
+        verify(exactly = 1) { fake.ic.getTextBeforeCursor(any(), any()) }
     }
 
     @Test
