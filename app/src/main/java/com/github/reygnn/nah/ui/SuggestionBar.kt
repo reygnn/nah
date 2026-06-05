@@ -15,9 +15,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.github.reygnn.nah.R
 
 /**
  * Nicht-eingreifende Vorschlagsleiste mit einem Hamburger-Button links, der die
@@ -54,7 +56,7 @@ fun SuggestionBar(
         ) {
             Icon(
                 imageVector = NahIcons.Menu,
-                contentDescription = "Einstellungen",
+                contentDescription = stringResource(R.string.settings_open_cd),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

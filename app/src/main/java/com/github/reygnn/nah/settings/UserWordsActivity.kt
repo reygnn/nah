@@ -1,5 +1,6 @@
 package com.github.reygnn.nah.settings
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -29,10 +30,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.github.reygnn.nah.R
 import com.github.reygnn.nah.data.suggestions.UserWordError
 import com.github.reygnn.nah.data.suggestions.UserWordRepository
+import com.github.reygnn.nah.data.suggestions.UserWordValidation
 import com.github.reygnn.nah.ui.NahTheme
 import kotlinx.coroutines.launch
 
@@ -53,6 +58,7 @@ class UserWordsActivity : ComponentActivity() {
 @Composable
 fun UserWordsScreen(repository: UserWordRepository) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val words by repository.words.collectAsStateWithLifecycle(initialValue = emptySet())
     var input by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
@@ -66,12 +72,9 @@ fun UserWordsScreen(repository: UserWordRepository) {
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Eigene Wörter", style = MaterialTheme.typography.headlineMedium)
+            Text(stringResource(R.string.user_words_title), style = MaterialTheme.typography.headlineMedium)
             Text(
-                "Erscheinen in der Vorschlagsleiste, sobald „Eigene Wörter vorschlagen“ " +
-                    "aktiviert ist. Sie ersetzen nie fertigen Text — nur auf Antippen. Auch " +
-                    "ganze Phrasen mit Leerzeichen (z. B. „Hauptstrasse 115“) — vorgeschlagen, " +
-                    "sobald du den Anfang des ersten Wortes tippst.",
+                stringResource(R.string.user_words_description),
                 style = MaterialTheme.typography.bodyMedium,
             )
 
@@ -85,7 +88,7 @@ fun UserWordsScreen(repository: UserWordRepository) {
                     onValueChange = { input = it; error = null },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
-                    label = { Text("Wort hinzufügen") },
+                    label = { Text(stringResource(R.string.user_words_add_label)) },
                     isError = error != null,
                     supportingText = error?.let { msg -> { Text(msg) } },
                 )
@@ -98,20 +101,20 @@ fun UserWordsScreen(repository: UserWordRepository) {
                                 input = ""
                                 error = null
                             } else {
-                                error = reason.message()
+                                error = reason.message(context)
                             }
                         }
                     },
                     enabled = input.isNotBlank(),
                 ) {
-                    Text("Hinzufügen")
+                    Text(stringResource(R.string.user_words_add_button))
                 }
             }
 
             HorizontalDivider()
 
             if (words.isEmpty()) {
-                Text("Noch keine eigenen Wörter.", style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.user_words_empty), style = MaterialTheme.typography.bodyMedium)
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth(),
@@ -133,7 +136,7 @@ fun UserWordsScreen(repository: UserWordRepository) {
                                     .padding(vertical = 12.dp),
                             )
                             TextButton(onClick = { scope.launch { repository.remove(word) } }) {
-                                Text("Entfernen")
+                                Text(stringResource(R.string.user_words_remove))
                             }
                         }
                     }
@@ -148,7 +151,7 @@ fun UserWordsScreen(repository: UserWordRepository) {
         var dialogError by remember(target) { mutableStateOf<String?>(null) }
         AlertDialog(
             onDismissRequest = { editing = null },
-            title = { Text("Wort bearbeiten") },
+            title = { Text(stringResource(R.string.user_words_edit_title)) },
             text = {
                 OutlinedTextField(
                     value = draft,
@@ -163,22 +166,24 @@ fun UserWordsScreen(repository: UserWordRepository) {
                     onClick = {
                         scope.launch {
                             val reason = repository.update(target, draft)
-                            if (reason == null) editing = null else dialogError = reason.message()
+                            if (reason == null) editing = null else dialogError = reason.message(context)
                         }
                     },
                     enabled = draft.isNotBlank(),
-                ) { Text("Speichern") }
+                ) { Text(stringResource(R.string.user_words_save)) }
             },
             dismissButton = {
-                TextButton(onClick = { editing = null }) { Text("Abbrechen") }
+                TextButton(onClick = { editing = null }) { Text(stringResource(R.string.user_words_cancel)) }
             },
         )
     }
 }
 
-private fun UserWordError.message(): String = when (this) {
-    UserWordError.TooShort -> "Mindestens 2 Zeichen"
-    UserWordError.TooLong -> "Höchstens 50 Zeichen"
-    UserWordError.InvalidCharacters -> "Keine Zeilenumbrüche oder Steuerzeichen"
-    UserWordError.AlreadyExists -> "Schon in der Liste"
+private fun UserWordError.message(context: Context): String = when (this) {
+    UserWordError.TooShort ->
+        context.getString(R.string.user_word_error_too_short, UserWordValidation.MIN_LENGTH)
+    UserWordError.TooLong ->
+        context.getString(R.string.user_word_error_too_long, UserWordValidation.MAX_LENGTH)
+    UserWordError.InvalidCharacters -> context.getString(R.string.user_word_error_invalid)
+    UserWordError.AlreadyExists -> context.getString(R.string.user_word_error_exists)
 }

@@ -1,4 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Nah</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Nah v%1$s</string>
+    <string name="settings_tagline">One-finger-optimised Swiss keyboard. Deterministic, no autocorrect.</string>
+    <string name="settings_enable_in_system">Enable keyboard in system settings</string>
+    <string name="settings_pick_keyboard">Choose keyboard</string>
+    <string name="settings_suggestion_bar">Suggestion bar</string>
+    <string name="settings_suggest_user_words">Suggest your own words</string>
+    <string name="settings_manage_user_words">Manage your own words</string>
+    <string name="settings_auto_cap">Auto-capitalise at sentence start</string>
+    <string name="settings_color_hints">Learning colours (vowels &amp; frequent consonants)</string>
+    <string name="settings_open_cd">Settings</string>
+
+    <!-- User words -->
+    <string name="user_words_title">Your own words</string>
+    <string name="user_words_description">Appear in the suggestion bar once “Suggest your own words” is enabled. They never replace finished text — only on tap. Whole phrases with spaces too (e.g. “Hauptstrasse 115”) — suggested as soon as you type the start of the first word.</string>
+    <string name="user_words_add_label">Add word</string>
+    <string name="user_words_add_button">Add</string>
+    <string name="user_words_empty">No words yet.</string>
+    <string name="user_words_remove">Remove</string>
+    <string name="user_words_edit_title">Edit word</string>
+    <string name="user_words_save">Save</string>
+    <string name="user_words_cancel">Cancel</string>
+    <string name="user_word_error_too_short">At least %1$d characters</string>
+    <string name="user_word_error_too_long">At most %1$d characters</string>
+    <string name="user_word_error_invalid">No line breaks or control characters</string>
+    <string name="user_word_error_exists">Already in the list</string>
 </resources>

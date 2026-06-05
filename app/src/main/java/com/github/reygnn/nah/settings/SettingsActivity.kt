@@ -21,12 +21,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import com.github.reygnn.nah.BuildConfig
+import com.github.reygnn.nah.R
 import com.github.reygnn.nah.ui.NahTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import android.provider.Settings as AndroidSettings
 import androidx.core.content.getSystemService
@@ -76,42 +78,45 @@ fun SettingsScreen(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Nah v${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.headlineMedium)
             Text(
-                "Einfinger-optimierte Schweizer Tastatur. Deterministisch, kein Autocorrect.",
+                stringResource(R.string.settings_title, BuildConfig.VERSION_NAME),
+                style = MaterialTheme.typography.headlineMedium,
+            )
+            Text(
+                stringResource(R.string.settings_tagline),
                 style = MaterialTheme.typography.bodyMedium,
             )
 
             HorizontalDivider()
 
             Button(onClick = onOpenSystemKeyboardSettings, modifier = Modifier.fillMaxWidth()) {
-                Text("Tastatur in den Systemeinstellungen aktivieren")
+                Text(stringResource(R.string.settings_enable_in_system))
             }
             Button(onClick = onOpenImePicker, modifier = Modifier.fillMaxWidth()) {
-                Text("Tastatur auswählen")
+                Text(stringResource(R.string.settings_pick_keyboard))
             }
 
             HorizontalDivider()
 
             SwitchRow(
-                label = "Vorschlagsleiste",
+                label = stringResource(R.string.settings_suggestion_bar),
                 checked = settings.suggestionsEnabled,
                 onChange = { value ->
                     scope.launch { repository.update { it.copy(suggestionsEnabled = value) } }
                 },
             )
             SwitchRow(
-                label = "Eigene Wörter vorschlagen",
+                label = stringResource(R.string.settings_suggest_user_words),
                 checked = settings.userWordsEnabled,
                 onChange = { value ->
                     scope.launch { repository.update { it.copy(userWordsEnabled = value) } }
                 },
             )
             Button(onClick = onManageUserWords, modifier = Modifier.fillMaxWidth()) {
-                Text("Eigene Wörter verwalten")
+                Text(stringResource(R.string.settings_manage_user_words))
             }
             SwitchRow(
-                label = "Auto-Grossschreibung am Satzanfang",
+                label = stringResource(R.string.settings_auto_cap),
                 checked = settings.autoCapEnabled,
                 onChange = { value ->
                     scope.launch { repository.update { it.copy(autoCapEnabled = value) } }
@@ -121,7 +126,7 @@ fun SettingsScreen(
             HorizontalDivider()
 
             SwitchRow(
-                label = "Lern-Farben (Vokale & häufige Konsonanten)",
+                label = stringResource(R.string.settings_color_hints),
                 checked = settings.letterColorHintsEnabled,
                 onChange = { value ->
                     scope.launch { repository.update { it.copy(letterColorHintsEnabled = value) } }
