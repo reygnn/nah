@@ -18,9 +18,13 @@ sealed interface KeyboardKey {
 
 data class CharKey(
     val char: Char,
+    /** Was beim Tippen committet wird. Default = der Buchstabe selbst; abweichend nur
+     *  bei Digraph-Tasten wie „qu" (committet zwei Zeichen — ehrlich so beschriftet,
+     *  kein Autocorrect). [char] bleibt der Buchstabe für Reise-Metrik und Farb-Hinweis. */
+    val output: String = char.toString(),
     override val weight: Float = 1f,
 ) : KeyboardKey {
-    override val label: String get() = char.toString()
+    override val label: String get() = output
 }
 
 data class FunctionKey(

@@ -16,14 +16,14 @@ class NahColorsTest {
 
     @Test
     fun `haeufige Konsonanten werden erkannt`() {
-        for (c in "nrstd") {
+        for (c in "srntdh") {
             assertEquals("'$c' sollte Konsonant sein", NahColors.Hint.Consonant, NahColors.hintFor(c))
         }
     }
 
     @Test
     fun `uebrige Buchstaben sind neutral`() {
-        for (c in "qcbfykpvhglxzwjm") {
+        for (c in "bcfgjklmpqvwxyz") {
             assertNull("'$c' sollte neutral sein", NahColors.hintFor(c))
         }
     }

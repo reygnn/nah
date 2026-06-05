@@ -1,5 +1,6 @@
 package com.github.reygnn.nah.layout
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import kotlin.math.hypot
 import org.junit.Test
@@ -61,5 +62,12 @@ class OptimizedLayoutTravelTest {
     fun `alle 29 Buchstaben sind im Layout vorhanden`() {
         val chars = OptimizedLayout.deCh().letterPositions().keys
         assertTrue(chars.containsAll("abcdefghijklmnopqrstuvwxyzäöü".toList()))
+    }
+
+    @Test
+    fun `die q-Taste ist die qu-Digraph-Taste`() {
+        val q = OptimizedLayout.deCh().rows.flatten()
+            .filterIsInstance<CharKey>().first { it.char == 'q' }
+        assertEquals("qu", q.output)
     }
 }

@@ -100,15 +100,21 @@ class KeyboardViewModel(
 
     fun onKey(key: KeyboardKey) {
         when (key) {
-            is CharKey -> onChar(key.char)
+            is CharKey -> onChar(key)
             is FunctionKey -> onFunction(key.action)
         }
     }
 
-    private fun onChar(char: Char) {
+    private fun onChar(key: CharKey) {
         val shift = _state.value.shift
-        val out = if (shift != ShiftState.OFF) char.uppercaseChar() else char
-        safeIc { it.commitText(out.toString(), 1) }
+        // Committet [CharKey.output] (meist ein Buchstabe, bei der qu-Taste zwei). Shift
+        // grossschreibt nur den ersten Buchstaben, Caps-Lock alles — gilt für „qu" → „Qu"/„QU".
+        val out = when (shift) {
+            ShiftState.OFF -> key.output
+            ShiftState.SHIFTED -> key.output.replaceFirstChar { it.uppercaseChar() }
+            ShiftState.CAPS -> key.output.uppercase()
+        }
+        safeIc { it.commitText(out, 1) }
         if (shift == ShiftState.SHIFTED) setShift(ShiftState.OFF)
         afterTextChanged()
     }

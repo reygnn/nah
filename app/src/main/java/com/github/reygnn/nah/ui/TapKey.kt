@@ -49,7 +49,11 @@ fun TapKey(
     onKey: (KeyboardKey) -> Unit,
 ) {
     val label = when (key) {
-        is CharKey -> if (shift != ShiftState.OFF) key.char.uppercaseChar().toString() else key.char.toString()
+        is CharKey -> when (shift) {
+            ShiftState.OFF -> key.output
+            ShiftState.SHIFTED -> key.output.replaceFirstChar { it.uppercaseChar() }
+            ShiftState.CAPS -> key.output.uppercase()
+        }
         is FunctionKey -> key.label
     }
 

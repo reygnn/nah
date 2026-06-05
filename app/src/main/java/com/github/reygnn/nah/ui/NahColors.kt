@@ -23,10 +23,10 @@ object NahColors {
 
     private val vowels = "aeiouäöü".toSet()
 
-    /** Die häufigsten Konsonanten (Hochfrequenz-Cluster aus dem Optimizer-Korpus,
-     *  „a r e i n s t d" ohne die Vokale). Bewusst klein gehalten — zu viele Farben
+    /** Die häufigsten Konsonanten — im Vokal-Cluster-Layout grenzen s/r/h direkt an die
+     *  Vokale, n/t/d liegen in der unteren Reihe. Bewusst klein gehalten — zu viele Farben
      *  wären kein Anker mehr. */
-    private val keyConsonants = "nrstd".toSet()
+    private val keyConsonants = "srntdh".toSet()
 
     /** Welche Hinweisfarbe gilt für diesen Buchstaben (oder `null` = neutral)? Rein,
      *  case-insensitiv — JVM-testbar. */

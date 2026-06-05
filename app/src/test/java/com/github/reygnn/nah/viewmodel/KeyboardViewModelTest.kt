@@ -83,6 +83,34 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `qu-taste committet beide Zeichen`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.onKey(CharKey('q', output = "qu"))
+        assertEquals("qu", fake.buffer.toString())
+    }
+
+    @Test
+    fun `qu-taste mit shift schreibt nur den ersten Buchstaben gross`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.onKey(FunctionKey(KeyAction.SHIFT))
+        vm.onKey(CharKey('q', output = "qu"))
+        assertEquals("Qu", fake.buffer.toString())
+        assertEquals(ShiftState.OFF, vm.state.value.shift) // SHIFTED verbraucht
+    }
+
+    @Test
+    fun `qu-taste mit caps schreibt alles gross`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.onKey(FunctionKey(KeyAction.SHIFT))
+        vm.onKey(FunctionKey(KeyAction.SHIFT)) // CAPS
+        vm.onKey(CharKey('q', output = "qu"))
+        assertEquals("QU", fake.buffer.toString())
+    }
+
+    @Test
     fun `backspace loescht ein Zeichen`() {
         val fake = FakeIc()
         val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }

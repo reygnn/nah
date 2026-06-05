@@ -3,36 +3,35 @@ package com.github.reygnn.nah.layout
 /**
  * Das travel-optimierte de-CH-Layout.
  *
- * Die Buchstaben-Anordnung wurde mit `tools/optimize_layout.py` per Simulated
- * Annealing über die bigramm-Häufigkeiten eines de-CH-Korpus (inkl. Space-
- * Übergänge an Wortgrenzen) bestimmt. Ziel: minimale Fingerreise für **einen**
- * Finger. Ergebnis dieser 4-Reihen-Form: ~38 % weniger Reisestrecke als
- * QWERTZ-CH. Vier Buchstabenreihen (statt drei) → weniger Tasten pro Reihe, also
- * breitere Tasten — schafft Platz für Totzonen ringsum (gegen Fehltipper), ohne
- * die Tasten zu verkleinern.
+ * Die **Vokale sind bewusst zentral gebündelt** (o/u/i in der Mitte-links-Spalte,
+ * a/e daneben; ä/ö/ü rechts gestapelt) — eine Lernbarkeits-Entscheidung: ein
+ * zusammenhängender Vokal-Block ist leichter zu merken und lässt sich als Lern-Farbe
+ * sauber einfärben. Die **Konsonanten** hat dann der Optimizer (`tools/optimize_layout.py`,
+ * Simulated Annealing über de-CH-Bigramme inkl. Space-/Shift-Übergänge) rund um diesen
+ * fixen Vokal-Block optimal gesetzt. Ergebnis: **~36 % weniger Fingerreise als QWERTZ-CH**
+ * — praktisch gleich wie das frei optimierte Optimum, der Vokal-Cluster kostet also so
+ * gut wie nichts. Vier Buchstabenreihen → breite Tasten mit Totzonen ringsum.
  *
- *   q j c o b f y ä
- *   p v h u r a k ö
- *   x z s i e g l ü
- *   w t n d m            (Shift davor, Backspace danach)
+ *   x  qu k  o  p  j  y  ä
+ *   v  c  h  u  a  l  f  ö
+ *   z  m  s  i  e  r  b  ü
+ *      w  t  n  d  g          (Shift davor, Backspace danach)
  *
- * Hochfrequente Buchstaben (a r e i n s t d) clustern zentral und unten (nah am
- * Space-Roundtrip). ä/ö/ü sind bewusst als Gruppe in der rechten Aussenspalte
- * gestapelt — eine Lernbarkeits-Entscheidung (vorhersagbar auffindbar), die nur
- * ~0,8 % Reise kostet (die Umlaute sind selten). Kein scharfes S (de-CH, "ss").
- * Die Anordnung ist mit einem grösseren Korpus regenerierbar — siehe das Tool —
- * kostet dann aber Umlernen.
+ * Die „q"-Taste **committet `qu`**: q steht im Deutschen praktisch immer vor u, also
+ * ist die Taste ehrlich als Digraph beschriftet — kein Autocorrect, sie tut genau, was
+ * draufsteht. Einzelnes q: qu tippen, u mit Backspace weg. Kein scharfes S (de-CH, "ss").
+ * Eine Layout-Änderung kostet Umlernen — mit grösserem Korpus regenerierbar, siehe Tool.
  */
 object OptimizedLayout {
 
-    private const val ROW0 = "qjcobfyä"
-    private const val ROW1 = "pvhurakö"
-    private const val ROW2 = "xzsieglü"
-    private const val ROW3 = "wtndm"
+    private const val ROW0 = "xqkopjyä"
+    private const val ROW1 = "vchualfö"
+    private const val ROW2 = "zmsierbü"
+    private const val ROW3 = "wtndg"
 
     fun deCh(): KeyboardLayout = KeyboardLayout(
         rows = listOf(
-            charRow(ROW0),
+            charRow(ROW0).withQu(),
             charRow(ROW1),
             charRow(ROW2),
             buildList {
@@ -76,4 +75,8 @@ object OptimizedLayout {
 
     private fun charRow(chars: String): List<KeyboardKey> =
         chars.map { CharKey(it) }
+
+    /** Ersetzt die q-Taste durch die Digraph-Taste „qu" (committet zwei Zeichen). */
+    private fun List<KeyboardKey>.withQu(): List<KeyboardKey> =
+        map { if (it is CharKey && it.char == 'q') CharKey('q', output = "qu") else it }
 }

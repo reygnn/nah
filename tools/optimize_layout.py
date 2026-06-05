@@ -33,8 +33,10 @@ SHAPE = [8, 8, 8, 5]
 # Group ä/ö/ü on the right outer column (col 7 of the 8-wide rows = x 3.5).
 PIN_UMLAUTS = {"ä": (3.5, 0.0), "ö": (3.5, 1.0), "ü": (3.5, 2.0)}
 
-# Current committed nah layout, row-major over SHAPE.
-CURRENT_ROWS = "qäcobfüj" + "pvhurakö" + "xzsiegly" + "wtndm"
+# Current committed nah layout, row-major over SHAPE. Vowels pinned to a central
+# cluster (learnability), consonants optimised around them. The q cell is the "qu"
+# digraph key in the app, but stays 'q' here for the travel model.
+CURRENT_ROWS = "xqkopjyä" + "vchualfö" + "zmsierbü" + "wtndg"
 
 
 def load_words():
