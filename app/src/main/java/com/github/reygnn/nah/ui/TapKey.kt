@@ -3,6 +3,9 @@ package com.github.reygnn.nah.ui
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
@@ -15,12 +18,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,6 +37,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
@@ -48,6 +57,7 @@ import com.github.reygnn.nah.layout.KeyboardKey
 import com.github.reygnn.nah.viewmodel.ShiftState
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** Nicht klickbarer Rand ringsum jede Taste (Totzone gegen Fehltipper). */
@@ -141,31 +151,51 @@ fun TapKey(
     // randnah geclamptes Popup nicht einen anderen Chip anzeigt, als es committet.
     var keyLeftInWindow by remember { mutableFloatStateOf(0f) }
     var bandLeftPx by remember { mutableFloatStateOf(0f) }
+    // Geteilte Interaction-Source für den Ripple der Gesten-Tasten (Backspace + Long-Press-
+    // Tasten). Die nutzen rohes pointerInput statt clickable und bekämen sonst weder Ripple
+    // noch (s. die semantics-Modifier unten) eine TalkBack-aktivierbare Klick-Semantik —
+    // anders als die normalen Tasten, die clickable beides liefert.
+    val interactionSource = remember { MutableInteractionSource() }
+    // awaitEachGesture läuft in einem restricted Scope (kein suspend-emit möglich); der
+    // Ripple der Long-Press-Tasten wird daher über diesen Scope getrieben.
+    val scope = rememberCoroutineScope()
 
     val tapModifier = when {
-        isBackspace -> Modifier.pointerInput(key) {
-            // Backspace: erst sofort löschen, dann — falls gehalten — im Repeat-Takt.
-            // Haptik nur beim ersten Druck, nicht bei jeder Wiederholung.
-            detectTapGestures(
-                onPress = {
-                    tap()
-                    if (withTimeoutOrNull(BACKSPACE_INITIAL_DELAY_MS) { tryAwaitRelease() } == null) {
-                        while (true) {
-                            onKey(key)
-                            if (withTimeoutOrNull(BACKSPACE_REPEAT_MS) { tryAwaitRelease() } != null) break
+        isBackspace -> Modifier
+            .semantics(mergeDescendants = true) { role = Role.Button; onClick { onKey(key); true } }
+            .indication(interactionSource, ripple())
+            .pointerInput(key) {
+                // Backspace: erst sofort löschen, dann — falls gehalten — im Repeat-Takt.
+                // Haptik nur beim ersten Druck, nicht bei jeder Wiederholung.
+                detectTapGestures(
+                    onPress = {
+                        val press = PressInteraction.Press(it)
+                        interactionSource.emit(press) // Ripple an
+                        tap()
+                        if (withTimeoutOrNull(BACKSPACE_INITIAL_DELAY_MS) { tryAwaitRelease() } == null) {
+                            while (true) {
+                                onKey(key)
+                                if (withTimeoutOrNull(BACKSPACE_REPEAT_MS) { tryAwaitRelease() } != null) break
+                            }
                         }
-                    }
-                },
-            )
-        }
-        alternatives.isNotEmpty() -> Modifier.pointerInput(key) {
+                        interactionSource.emit(PressInteraction.Release(press)) // Ripple aus
+                    },
+                )
+            }
+        alternatives.isNotEmpty() -> Modifier
+            .semantics(mergeDescendants = true) { role = Role.Button; onClick { onKey(key); true } }
+            .indication(interactionSource, ripple())
+            .pointerInput(key) {
             val chipPx = CHIP_WIDTH.toPx()
             val bandPx = alternatives.size * chipPx
             awaitEachGesture {
                 val down = awaitFirstDown(requireUnconsumed = false)
+                val press = PressInteraction.Press(down.position)
+                scope.launch { interactionSource.emit(press) } // Ripple an
                 val longPress = awaitLongPressOrCancellation(down.id)
                 if (longPress == null) {
                     tap() // schneller Tap → Basis-Output
+                    scope.launch { interactionSource.emit(PressInteraction.Release(press)) }
                     return@awaitEachGesture
                 }
                 // Gehalten → Popup öffnen, Auswahl per Schieben verfolgen. Band-Kante
@@ -194,6 +224,7 @@ fun TapKey(
                 } else {
                     onKey(key)
                 }
+                scope.launch { interactionSource.emit(PressInteraction.Release(press)) } // Ripple aus
             }
         }
         else -> Modifier.clickable { tap() }
