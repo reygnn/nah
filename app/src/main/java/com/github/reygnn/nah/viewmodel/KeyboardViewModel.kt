@@ -102,7 +102,11 @@ class KeyboardViewModel(
      * neu bestimmen. Die Anfangs-Auswahl kommt aus dem Feld, damit der selektionsbewusste
      * Backspace nicht erst aufs erste `onUpdateSelection` warten muss.
      */
-    fun onStartInput(field: FieldContext = FieldContext(), pasteAvailable: Boolean = false) {
+    fun onStartInput(
+        field: FieldContext = FieldContext(),
+        pasteAvailable: Boolean = false,
+        restarting: Boolean = false,
+    ) {
         this.field = field
         selStart = field.initialSelStart
         selEnd = field.initialSelEnd
@@ -112,12 +116,16 @@ class KeyboardViewModel(
             else -> alphaLayout
         }
         _state.value = _state.value.copy(layout = layout, pasteAvailable = pasteAvailable)
-        // Jeder Feldstart beginnt mit definiertem Shift: ein vom letzten Feld übrig
-        // gebliebenes CAPS-Lock soll nicht in ein neues, fremdes Feld lecken. Auto-Cap
-        // (falls aktiv und kein Passwortfeld) armiert danach ggf. wieder SHIFTED.
-        setShift(ShiftState.OFF)
-        autoCapArmed = false
-        if (!field.isPassword) recomputeAutoCap()
+        // Beim ECHTEN Feldwechsel mit definiertem Shift beginnen: ein vom letzten Feld übrig
+        // gebliebenes CAPS-Lock soll nicht in ein neues, fremdes Feld lecken. Auto-Cap (falls
+        // aktiv und kein Passwortfeld) armiert danach ggf. wieder SHIFTED. Bei einem reinen
+        // RESTART desselben Feldes (z. B. Config-Change, View neu aufgebaut) den vom Nutzer
+        // gesetzten Shift-Zustand dagegen NICHT wegwerfen.
+        if (!restarting) {
+            setShift(ShiftState.OFF)
+            autoCapArmed = false
+            if (!field.isPassword) recomputeAutoCap()
+        }
         refreshSuggestions()
     }
 

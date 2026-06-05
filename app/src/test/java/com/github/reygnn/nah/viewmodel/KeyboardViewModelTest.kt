@@ -536,6 +536,29 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `ein Field-Restart erhaelt den Shift-Zustand (z B Caps-Lock)`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.onStartInput()
+        vm.onKey(FunctionKey(KeyAction.SHIFT))
+        vm.onKey(FunctionKey(KeyAction.SHIFT)) // CAPS
+        assertEquals(ShiftState.CAPS, vm.state.value.shift)
+        // Reiner Restart desselben Feldes (Config-Change/View-Neuaufbau): Shift bleibt.
+        vm.onStartInput(restarting = true)
+        assertEquals(ShiftState.CAPS, vm.state.value.shift)
+    }
+
+    @Test
+    fun `ein echter Feldwechsel setzt das Caps-Lock zurueck`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.onKey(FunctionKey(KeyAction.SHIFT))
+        vm.onKey(FunctionKey(KeyAction.SHIFT)) // CAPS
+        vm.onStartInput() // neues Feld (restarting = false) → definierter Start
+        assertEquals(ShiftState.OFF, vm.state.value.shift)
+    }
+
+    @Test
     fun `ein numerisches Feld startet auf der Symbol-Ebene`() {
         val fake = FakeIc()
         val vm = vm(fake).apply { applySettings(Settings()) }

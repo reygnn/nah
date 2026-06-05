@@ -69,13 +69,16 @@ class NahIme :
             clipboardTextProvider = ::clipboardText,
         )
 
+        var builtInWarmStarted = false
         lifecycleScope.launch {
             settingsRepository.settings.collect { settings ->
                 viewModel.applySettings(settings)
-                // Eingebauten Trie im Hintergrund vorbauen, sobald die Liste je gebraucht
-                // wird — nie synchron auf dem UI-Thread beim ersten Tastendruck. Idempotent,
-                // also unkritisch, dass es bei jeder Settings-Änderung erneut angestossen wird.
-                if (settings.suggestionsEnabled) {
+                // Eingebauten Trie im Hintergrund vorbauen, sobald die Liste das erste Mal
+                // gebraucht wird — nie synchron auf dem UI-Thread beim ersten Tastendruck.
+                // Genau einmal anstossen (warmUpBuiltIn ist zwar idempotent, aber ein neuer
+                // Coroutine-Start pro Settings-Emission wäre unnötig).
+                if (settings.suggestionsEnabled && !builtInWarmStarted) {
+                    builtInWarmStarted = true
                     lifecycleScope.launch(Dispatchers.Default) { suggester.warmUpBuiltIn() }
                 }
             }
@@ -128,6 +131,7 @@ class NahIme :
                 )
             } ?: FieldContext(),
             pasteAvailable = clipboardHasText(),
+            restarting = restarting,
         )
     }
 
@@ -151,9 +155,13 @@ class NahIme :
     /** Der Zwischenablage-Text fürs Einfügen. Liest den Inhalt (bewusst nur hier, bei
      *  einer expliziten Nutzeraktion) und coerced auch URIs/Intents zu Text. */
     private fun clipboardText(): String? {
-        val clip = clipboard?.primaryClip ?: return null
-        if (clip.itemCount == 0) return null
-        return clip.getItemAt(0).coerceToText(this)?.toString()?.takeIf { it.isNotEmpty() }
+        val item = clipboard?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0) ?: return null
+        // Schnellpfad: liegt der Text bereits als CharSequence vor (der Normalfall), ihn direkt
+        // nehmen — kein ContentResolver-Zugriff. coerceToText (das für Content-URIs synchron den
+        // Resolver abfragen und so den UI-Thread blockieren könnte) bleibt nur der Rückfall für
+        // Nicht-Text-Clips. clipboardHasText() lässt die Taste ohnehin nur bei Text-MIME zu.
+        val text = item.text ?: item.coerceToText(this)
+        return text?.toString()?.takeIf { it.isNotEmpty() }
     }
 
     /** Tastatur wird sichtbar → RESUMED (no-op, falls bereits resumed). */
