@@ -1,5 +1,7 @@
 package com.github.reygnn.nah.ime
 
+import android.content.ClipDescription
+import android.content.ClipboardManager
 import android.content.Intent
 import android.inputmethodservice.InputMethodService
 import android.view.View
@@ -62,6 +64,7 @@ class NahIme :
             symbolsLayout = OptimizedLayout.symbols(),
             inputConnectionProvider = { currentInputConnection },
             suggester = suggester,
+            clipboardTextProvider = ::clipboardText,
         )
 
         lifecycleScope.launch {
@@ -100,7 +103,28 @@ class NahIme :
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        viewModel.onStartInput(FieldContext(imeAction = info?.imeActionOrNull()))
+        viewModel.onStartInput(
+            FieldContext(imeAction = info?.imeActionOrNull()),
+            pasteAvailable = clipboardHasText(),
+        )
+    }
+
+    private val clipboard by lazy { getSystemService(ClipboardManager::class.java) }
+
+    /** Hat die Zwischenablage Text? Prüft nur die Metadaten (ClipDescription) —
+     *  liest NICHT den Inhalt, löst also keinen „Zwischenablage gelesen"-Toast aus. */
+    private fun clipboardHasText(): Boolean =
+        clipboard?.primaryClipDescription?.let {
+            it.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN) ||
+                it.hasMimeType(ClipDescription.MIMETYPE_TEXT_HTML)
+        } ?: false
+
+    /** Der Zwischenablage-Text fürs Einfügen. Liest den Inhalt (bewusst nur hier, bei
+     *  einer expliziten Nutzeraktion) und coerced auch URIs/Intents zu Text. */
+    private fun clipboardText(): String? {
+        val clip = clipboard?.primaryClip ?: return null
+        if (clip.itemCount == 0) return null
+        return clip.getItemAt(0).coerceToText(this)?.toString()?.takeIf { it.isNotEmpty() }
     }
 
     /** Tastatur wird sichtbar → RESUMED (no-op, falls bereits resumed). */

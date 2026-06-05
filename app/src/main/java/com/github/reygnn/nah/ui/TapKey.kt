@@ -74,6 +74,7 @@ fun TapKey(
     shift: ShiftState,
     modifier: Modifier = Modifier,
     colorHints: Boolean = false,
+    enabled: Boolean = true,
     onKey: (KeyboardKey) -> Unit,
     onAlternative: (String) -> Unit = {},
 ) {
@@ -91,6 +92,7 @@ fun TapKey(
     val icon: ImageVector? = when {
         key !is FunctionKey -> null
         key.action == KeyAction.BACKSPACE -> NahIcons.Backspace
+        key.action == KeyAction.PASTE -> NahIcons.Paste
         key.action == KeyAction.RETURN -> NahIcons.Return
         key.action == KeyAction.SHIFT -> when (shift) {
             ShiftState.CAPS -> NahIcons.ShiftCaps
@@ -110,12 +112,14 @@ fun TapKey(
         NahColors.Hint.Rare -> NahColors.RareKey
         null -> if (key is CharKey) colors.surfaceContainerHigh else colors.surfaceContainerLow
     }
-    val fg = when (hint) {
+    val fgBase = when (hint) {
         NahColors.Hint.Vowel -> NahColors.VowelOn
         NahColors.Hint.Consonant -> NahColors.ConsonantOn
         NahColors.Hint.Rare -> NahColors.RareOn
         null -> if (key is CharKey) colors.onSurface else colors.onSurfaceVariant
     }
+    // Inaktiv (z. B. Einfügen-Taste bei leerer Zwischenablage): stark gedimmt, keine Geste.
+    val fg = if (enabled) fgBase else fgBase.copy(alpha = 0.3f)
 
     val view = LocalView.current
     fun tap() {
@@ -187,7 +191,7 @@ fun TapKey(
             .padding(KEY_GAP)
             .clip(RoundedCornerShape(8.dp))
             .background(bg)
-            .then(tapModifier),
+            .then(if (enabled) tapModifier else Modifier),
         contentAlignment = Alignment.Center,
     ) {
         if (icon != null) {

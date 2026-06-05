@@ -27,6 +27,8 @@ data class KeyboardUiState(
     val suggestionBarVisible: Boolean = false,
     /** „Stützräder": Vokale/häufige Konsonanten farbig einfärben (Lernhilfe). */
     val colorHints: Boolean = false,
+    /** Hat die Zwischenablage Text? Steuert, ob die Einfügen-Taste aktiv ist. */
+    val pasteAvailable: Boolean = false,
 )
 
 /**
@@ -40,6 +42,9 @@ class KeyboardViewModel(
     private val symbolsLayout: KeyboardLayout,
     private val inputConnectionProvider: () -> InputConnection?,
     private val suggester: Suggester? = null,
+    /** Liefert den aktuellen Zwischenablage-Text (oder `null`/leer). Wird NUR beim
+     *  tatsächlichen Einfügen gelesen (Inhalt-Zugriff → System-Toast), nicht laufend. */
+    private val clipboardTextProvider: () -> String? = { null },
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(KeyboardUiState(layout = alphaLayout))
@@ -76,11 +81,11 @@ class KeyboardViewModel(
      * Neues Eingabefeld beginnt: Feld-Eigenschaften übernehmen, zurück zur
      * Buchstabenebene, Auto-Cap neu bestimmen.
      */
-    fun onStartInput(field: FieldContext = FieldContext()) {
+    fun onStartInput(field: FieldContext = FieldContext(), pasteAvailable: Boolean = false) {
         this.field = field
         selStart = 0
         selEnd = 0
-        _state.value = _state.value.copy(layout = alphaLayout)
+        _state.value = _state.value.copy(layout = alphaLayout, pasteAvailable = pasteAvailable)
         recomputeAutoCap()
         refreshSuggestions()
     }
@@ -145,6 +150,14 @@ class KeyboardViewModel(
             KeyAction.SPACE -> { commit(" "); afterTextChanged() }
             KeyAction.PERIOD -> { commit("."); afterTextChanged() }
             KeyAction.COMMA -> { commit(","); afterTextChanged() }
+            KeyAction.PASTE -> {
+                // Zwischenablage-Text wörtlich einfügen — kein Shift-Casing, kein Autocorrect.
+                val text = clipboardTextProvider()
+                if (!text.isNullOrEmpty()) {
+                    safeIc { it.commitText(text, 1) }
+                    afterTextChanged()
+                }
+            }
             KeyAction.RETURN -> {
                 // Verlangt das Feld eine Editor-Action (Suchen/Senden/Los/Weiter),
                 // diese auslösen statt blind ein Enter zu schicken — sonst landet in

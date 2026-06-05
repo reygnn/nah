@@ -39,13 +39,7 @@ object OptimizedLayout {
                 addAll(charRow(ROW3))
                 add(FunctionKey(KeyAction.BACKSPACE, weight = 1.5f))
             },
-            listOf(
-                FunctionKey(KeyAction.SYMBOLS, weight = 1.5f),
-                FunctionKey(KeyAction.COMMA, weight = 1f),
-                FunctionKey(KeyAction.SPACE, weight = 5f),
-                FunctionKey(KeyAction.PERIOD, weight = 1f),
-                FunctionKey(KeyAction.RETURN, weight = 1.5f),
-            ),
+            functionRow(KeyAction.SYMBOLS),
         ),
     )
 
@@ -63,14 +57,19 @@ object OptimizedLayout {
                 addAll(charRow("!?:;'\"_~|"))
                 add(FunctionKey(KeyAction.BACKSPACE, weight = 1.5f))
             },
-            listOf(
-                FunctionKey(KeyAction.ALPHA, weight = 1.5f),
-                FunctionKey(KeyAction.COMMA, weight = 1f),
-                FunctionKey(KeyAction.SPACE, weight = 5f),
-                FunctionKey(KeyAction.PERIOD, weight = 1f),
-                FunctionKey(KeyAction.RETURN, weight = 1.5f),
-            ),
+            functionRow(KeyAction.ALPHA),
         ),
+    )
+
+    /** Untere Funktionsreihe, auf beiden Ebenen identisch (nur der Toggle links
+     *  unterscheidet sich: ?123 vs ABC). Einfügen-Taste ganz links — immer sichtbar. */
+    private fun functionRow(toggle: KeyAction): List<KeyboardKey> = listOf(
+        FunctionKey(KeyAction.PASTE, weight = 1f),
+        FunctionKey(toggle, weight = 1.5f),
+        FunctionKey(KeyAction.COMMA, weight = 1f),
+        FunctionKey(KeyAction.SPACE, weight = 4f),
+        FunctionKey(KeyAction.PERIOD, weight = 1f),
+        FunctionKey(KeyAction.RETURN, weight = 1.5f),
     )
 
     private fun charRow(chars: String): List<KeyboardKey> =

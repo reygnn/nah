@@ -63,11 +63,16 @@ class KeyboardViewModelTest {
     private val alpha: KeyboardLayout = OptimizedLayout.deCh()
     private val symbols: KeyboardLayout = OptimizedLayout.symbols()
 
-    private fun vm(fake: FakeIc, suggester: Suggester? = null) = KeyboardViewModel(
+    private fun vm(
+        fake: FakeIc,
+        suggester: Suggester? = null,
+        clipboardTextProvider: () -> String? = { null },
+    ) = KeyboardViewModel(
         alphaLayout = alpha,
         symbolsLayout = symbols,
         inputConnectionProvider = { fake.ic },
         suggester = suggester,
+        clipboardTextProvider = clipboardTextProvider,
     )
 
     private fun KeyboardViewModel.type(text: String) {
@@ -108,6 +113,43 @@ class KeyboardViewModelTest {
         vm.onKey(FunctionKey(KeyAction.SHIFT)) // CAPS
         vm.onKey(CharKey('q', output = "qu"))
         assertEquals("QU", fake.buffer.toString())
+    }
+
+    @Test
+    fun `paste committet den Zwischenablage-Text`() {
+        val fake = FakeIc()
+        val vm = vm(fake, clipboardTextProvider = { "kopiert" })
+            .apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.onKey(FunctionKey(KeyAction.PASTE))
+        assertEquals("kopiert", fake.buffer.toString())
+    }
+
+    @Test
+    fun `paste bei leerer Zwischenablage tut nichts`() {
+        val fake = FakeIc()
+        val vm = vm(fake, clipboardTextProvider = { null })
+            .apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.onKey(FunctionKey(KeyAction.PASTE))
+        assertEquals("", fake.buffer.toString())
+    }
+
+    @Test
+    fun `paste ist woertlich, ignoriert Caps-Lock`() {
+        val fake = FakeIc()
+        val vm = vm(fake, clipboardTextProvider = { "hallo" })
+            .apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.onKey(FunctionKey(KeyAction.SHIFT))
+        vm.onKey(FunctionKey(KeyAction.SHIFT)) // CAPS
+        vm.onKey(FunctionKey(KeyAction.PASTE))
+        assertEquals("hallo", fake.buffer.toString()) // nicht HALLO
+    }
+
+    @Test
+    fun `pasteAvailable kommt aus onStartInput`() {
+        val fake = FakeIc()
+        val vm = vm(fake)
+        vm.onStartInput(pasteAvailable = true)
+        assertTrue(vm.state.value.pasteAvailable)
     }
 
     @Test

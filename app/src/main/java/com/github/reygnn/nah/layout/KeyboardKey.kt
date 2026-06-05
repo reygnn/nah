@@ -46,4 +46,5 @@ enum class KeyAction(val label: String) {
     ALPHA("ABC"),
     PERIOD("."),
     COMMA(","),
+    PASTE("Einfügen"), // Zwischenablage einfügen (Icon-Taste)
 }

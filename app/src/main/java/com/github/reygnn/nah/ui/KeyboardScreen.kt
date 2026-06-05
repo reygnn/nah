@@ -76,10 +76,17 @@ fun KeyboardContent(
                     .height(58.dp),
             ) {
                 row.forEach { key ->
+                    // Einfügen-Taste ist inaktiv, wenn die Zwischenablage keinen Text hat.
+                    val enabled = !(
+                        key is com.github.reygnn.nah.layout.FunctionKey &&
+                            key.action == com.github.reygnn.nah.layout.KeyAction.PASTE &&
+                            !state.pasteAvailable
+                        )
                     TapKey(
                         key = key,
                         shift = state.shift,
                         colorHints = state.colorHints,
+                        enabled = enabled,
                         modifier = Modifier
                             .weight(key.weight)
                             .fillMaxHeight(),
