@@ -55,10 +55,13 @@ Installieren über die Family-Konvention: aus `~/apk` heraus
 app/src/main/java/com/github/reygnn/nah/
   ime/         NahIme : InputMethodService — dünner Glue, ComposeView-Hosting
                (ViewTree-Owner via FrameLayout-Wrapper), safeIc-Disziplin.
-  viewmodel/   KeyboardViewModel — StateFlow, ganze Tipp-State-Machine.
-  layout/      KeyboardKey/CharKey/FunctionKey/KeyAction, KeyboardLayout
-               (reihenbasiert, weight-basiert), OptimizedLayout (deCh + symbols).
-  ui/          KeyboardScreen/KeyboardContent, TapKey, SuggestionBar, NahColors.
+  viewmodel/   KeyboardViewModel — StateFlow, ganze Tipp-State-Machine;
+               FieldContext (destilliertes EditorInfo).
+  layout/      KeyboardKey/CharKey (output + alternatives)/FunctionKey/KeyAction,
+               KeyboardLayout (reihenbasiert, weight-basiert), OptimizedLayout
+               (deCh + symbols, qu-Digraph), KeyAlternatives (Long-Press-Tabelle).
+  ui/          KeyboardScreen/KeyboardContent, TapKey (inkl. Long-Press-Popup),
+               SuggestionBar, NahColors (Lern-Farben), NahIcons.
   settings/    Settings, SettingsRepository (DataStore), SettingsActivity,
                UserWordsActivity (eigene Wörter verwalten).
   data/suggestions/  Trie, GermanWordList, SuggestionRepository (Suggester:
@@ -81,20 +84,20 @@ tools/         optimize_layout.py — der Layout-Optimierer (Wegwerf, reproduzie
    `applySettings()` verdrahten.
 5. **Die Buchstaben-Anordnung ist optimizer-generiert.** Sie änderst du über
    `tools/optimize_layout.py` und encodest das Ergebnis in `OptimizedLayout`.
-   `KeyboardLayout.letterPositions()` ist die einzige Koordinatenquelle (Reise-
-   Test + späteres MissMap). **Eine Layout-Änderung kostet Umlernen** — nicht
-   leichtfertig.
+   `KeyboardLayout.letterPositions()` ist die einzige Koordinatenquelle (für den
+   Reise-Test). **Eine Layout-Änderung kostet Umlernen** — nicht leichtfertig.
 
 ## Fast-Follow (bewusst nicht in v1)
 
-- **MissMap-Offset-Lernen** (nächster grosser Fat-Finger-Mehrwert): aus dem toten
-  `thumbprint` transplantieren — `MissMap`/`MissLearner` (reines Kotlin),
-  `TapResolver` **ohne** LM (nur Distanz²-Geometrie). Roh-Pointer → Resolver statt
-  Compose-clickable; MissMap per Referenz Resolver↔Learner teilen; CSV-Persistenz
-  mit Debounce. **Reine Geometrie + persönlicher Versatz, niemals Wortwahl.**
-- Clipboard-Verlauf (Room), Theming-Auswahl, Long-Press-Akzente (à/é), echte
-  Verdrahtung der `keyboardHeightFraction` an die Tastaturhöhe, grösseres
-  Optimizer-Korpus.
+- Clipboard-Verlauf (Room), Theming-Auswahl, grösseres Optimizer-Korpus.
+
+**Erledigt / verworfen** (nicht mehr offen — nicht erneut vorschlagen):
+
+- **Long-Press-Akzente/Digraphen**: umgesetzt — `KeyAlternatives`-Tabelle +
+  sichtbares Popup in `TapKey` (schieben/loslassen, kein Swipe).
+- **MissMap-Offset-Lernen**: **verworfen**. Grosse Tasten + Totzonen verhindern
+  Fehltipper in der Praxis bereits; der Mehraufwand lohnt nicht.
+- **`keyboardHeightFraction`**: entfernt (war ein nie verdrahtetes Tunable).
 
 ## Git
 
