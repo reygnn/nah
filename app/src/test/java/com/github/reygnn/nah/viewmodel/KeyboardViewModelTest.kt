@@ -49,6 +49,19 @@ private class FakeIc {
             selEnd = from
             true
         }
+        // Code-Point-basiert: läuft pro Schritt über ein volles Surrogat-Paar (ein Emoji
+        // = zwei UTF-16-Units) hinweg, statt es zu zerlegen — wie die echte InputConnection.
+        every { deleteSurroundingTextInCodePoints(any(), any()) } answers {
+            var from = selStart
+            repeat(firstArg<Int>()) {
+                if (from <= 0) return@repeat
+                from -= if (from >= 2 && Character.isSurrogatePair(buffer[from - 2], buffer[from - 1])) 2 else 1
+            }
+            buffer.delete(from, selStart)
+            selStart = from
+            selEnd = from
+            true
+        }
         every { getTextBeforeCursor(any(), any()) } answers {
             buffer.substring((selStart - firstArg<Int>()).coerceAtLeast(0), selStart)
         }
@@ -678,6 +691,45 @@ class KeyboardViewModelTest {
         assertEquals(1, calls)
         vm.onSelectionChanged(1, 1) // echte Bewegung → wieder rechnen
         assertEquals(2, calls)
+    }
+
+    @Test
+    fun `backspace loescht ein eingefuegtes Emoji als Ganzes, nicht eine halbe Surrogat`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        // Ein astrales Zeichen (😀 = U+1F600 = zwei UTF-16-Units), wie es per Einfügen
+        // ins Feld gelangt. Ein code-unit-basierter Backspace liesse eine kaputte Hälfte stehen.
+        fake.buffer.append("a😀")
+        fake.select(3, 3)
+        vm.onSelectionChanged(3, 3)
+        vm.onKey(FunctionKey(KeyAction.BACKSPACE))
+        // Das ganze Emoji ist weg, nur das „a" bleibt — keine verwaiste Surrogat-Hälfte.
+        assertEquals("a", fake.buffer.toString())
+    }
+
+    @Test
+    fun `Auto-Cap ueberspringt eine schliessende Klammer nach dem Satzende`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }
+        vm.onStartInput()
+        vm.type("hallo")
+        vm.onKey(FunctionKey(KeyAction.PERIOD))
+        vm.type(")")            // „hallo.)" — die schliessende Klammer steht NACH dem Punkt
+        vm.onKey(FunctionKey(KeyAction.SPACE))
+        // Die schliessende Klammer ist „transparent" → der Punkt zählt weiter als Satzende.
+        assertEquals(ShiftState.SHIFTED, vm.state.value.shift)
+    }
+
+    @Test
+    fun `Auto-Cap ueberspringt ein schliessendes Guillemet nach dem Satzende`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }
+        vm.onStartInput()
+        vm.type("hallo")
+        vm.onKey(FunctionKey(KeyAction.PERIOD))
+        vm.type("»")            // de-CH-Schlusszeichen nach dem Satzende
+        vm.onKey(FunctionKey(KeyAction.SPACE))
+        assertEquals(ShiftState.SHIFTED, vm.state.value.shift)
     }
 
     @Test

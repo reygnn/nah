@@ -182,12 +182,16 @@ class KeyboardViewModel(
             KeyAction.SHIFT -> cycleShift()
             KeyAction.BACKSPACE -> {
                 // Bei aktiver Auswahl diese löschen — commitText("") ersetzt die
-                // Selektion durch nichts. deleteSurroundingText würde eine Auswahl
+                // Selektion durch nichts. Ein Lösch-vor-Cursor würde eine Auswahl
                 // NICHT anfassen, sondern stattdessen das Zeichen davor löschen.
                 if (hasSelection) {
                     safeIc { it.commitText("", 1) }
                 } else {
-                    safeIc { it.deleteSurroundingText(1, 0) }
+                    // Code-Point-basiert (nicht deleteSurroundingText, das UTF-16-Code-Units
+                    // löscht): so wird ein eingefügtes/vorhandenes astrales Zeichen (Emoji,
+                    // seltene Schrift) als Ganzes entfernt statt in eine kaputte Surrogat-
+                    // Hälfte zerlegt. Tippen kann nah selbst keine Emoji, Einfügen aber schon.
+                    safeIc { it.deleteSurroundingTextInCodePoints(1, 0) }
                 }
                 afterTextChanged()
             }
@@ -399,9 +403,20 @@ class KeyboardViewModel(
     private companion object {
         const val TAG = "NahIme"
         val SENTENCE_ENDERS = setOf('.', '!', '?')
-        /** Beim Suchen nach dem Satzende vom Cursor rückwärts überspringbar: öffnende
-         *  Klammern/Anführungszeichen (inkl. de-CH-Guillemets) — sie unterbrechen einen
-         *  Satzanfang nicht. Bewusst KEINE Ziffern/Buchstaben (sonst armierte „3.14"). */
-        val TRANSPARENT_PUNCT = setOf('(', '[', '{', '"', '\'', '«', '„', '‚', '‘', '“')
+        /**
+         * Beim Suchen nach dem Satzende vom Cursor rückwärts überspringbar — sie
+         * unterbrechen einen Satzanfang nicht. Zwei Sorten:
+         *  - **öffnende** Klammern/Anführung (inkl. de-CH-Guillemets): beginnen einen
+         *    (zitierten) Satz, „. «Geh" soll gross weitergehen;
+         *  - **schliessende** Klammern/Anführung: stehen NACH dem Satzende-Zeichen
+         *    („Satz.» “, „(Hallo.)"), dürfen den vorausgehenden Punkt also nicht verdecken.
+         * Die geraden `"`/`'` sind ambig (öffnend wie schliessend) und ohnehin transparent.
+         * Bewusst KEINE Ziffern/Buchstaben (sonst armierte „3.14").
+         */
+        val TRANSPARENT_PUNCT = setOf(
+            '(', '[', '{', '«', '„', '‚', '‘', '“', // öffnend
+            ')', ']', '}', '»', '’', '”', // schliessend
+            '"', '\'', // gerade (ambig)
+        )
     }
 }
