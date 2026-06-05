@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Backup-/Transfer-Regeln (Android 12+, SDK 36). Die eigenen Wörter enthalten PII
+  (Namen, Adressen, E-Mails — siehe UserWordValidation) und gehören NICHT in ein
+  Google-Cloud-Backup. Bei einer lokalen Geräteübertragung (neues Telefon) dürfen sie
+  dagegen mit, damit eine kuratierte Wortliste den Umzug überlebt.
+
+  Ohne explizite <include> gilt je Abschnitt „alles ausser den <exclude>" — die
+  unkritischen Einstellungen (nah_settings) werden also weiterhin in beiden Fällen
+  gesichert, nur die Wortliste ist aus dem Cloud-Backup ausgenommen.
+
+  DataStore-Preferences liegen unter files/datastore/<name>.preferences_pb.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="datastore/nah_user_words.preferences_pb" />
+    </cloud-backup>
+</data-extraction-rules>
