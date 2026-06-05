@@ -115,7 +115,14 @@ class NahIme :
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         viewModel.onStartInput(
-            field = info?.let { FieldContext.fromImeOptions(it.imeOptions) } ?: FieldContext(),
+            field = info?.let {
+                FieldContext.fromEditorInfo(
+                    imeOptions = it.imeOptions,
+                    inputType = it.inputType,
+                    initialSelStart = it.initialSelStart,
+                    initialSelEnd = it.initialSelEnd,
+                )
+            } ?: FieldContext(),
             pasteAvailable = clipboardHasText(),
         )
     }

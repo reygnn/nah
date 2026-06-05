@@ -441,4 +441,53 @@ class KeyboardViewModelTest {
         // "hallo " bleibt unberührt, nur "we" → "welt " ersetzt
         assertEquals("hallo welt ", fake.buffer.toString())
     }
+
+    @Test
+    fun `ein numerisches Feld startet auf der Symbol-Ebene`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings()) }
+        vm.onStartInput(FieldContext(numeric = true))
+        assertSame(symbols, vm.state.value.layout)
+    }
+
+    @Test
+    fun `ein Textfeld startet weiterhin auf der Buchstaben-Ebene`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings()) }
+        vm.onStartInput(FieldContext(numeric = false))
+        assertSame(alpha, vm.state.value.layout)
+    }
+
+    @Test
+    fun `ein Passwortfeld unterdrueckt Vorschlaege trotz aktivierter Funktion`() {
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo") })
+            .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
+        vm.onStartInput(FieldContext(isPassword = true))
+        vm.type("ha")
+        assertTrue(vm.state.value.suggestions.isEmpty())
+        assertFalse(vm.state.value.suggestionBarVisible)
+    }
+
+    @Test
+    fun `ein Passwortfeld armiert keine Auto-Grossschreibung`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }
+        // Leerer Puffer wäre sonst ein „Satzanfang" → SHIFTED; im Passwortfeld nicht.
+        vm.onStartInput(FieldContext(isPassword = true))
+        assertEquals(ShiftState.OFF, vm.state.value.shift)
+    }
+
+    @Test
+    fun `die Anfangs-Auswahl aus dem Feld macht Backspace sofort selektionsbewusst`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        fake.buffer.append("hallo")
+        fake.select(1, 4) // "all" markiert, BEVOR ein onSelectionChanged kam
+        // Das Feld meldet die Auswahl direkt beim Start.
+        vm.onStartInput(FieldContext(initialSelStart = 1, initialSelEnd = 4))
+        vm.onKey(FunctionKey(KeyAction.BACKSPACE))
+        // Ohne vorheriges onSelectionChanged wird die Auswahl entfernt, nicht ein Zeichen.
+        assertEquals("ho", fake.buffer.toString())
+    }
 }

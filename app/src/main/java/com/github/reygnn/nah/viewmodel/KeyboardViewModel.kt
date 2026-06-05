@@ -97,15 +97,23 @@ class KeyboardViewModel(
     }
 
     /**
-     * Neues Eingabefeld beginnt: Feld-Eigenschaften übernehmen, zurück zur
-     * Buchstabenebene, Auto-Cap neu bestimmen.
+     * Neues Eingabefeld beginnt: Feld-Eigenschaften übernehmen, passende Ebene wählen
+     * (Ziffernfeld → Symbolebene), Shift auf einen definierten Stand bringen und Auto-Cap
+     * neu bestimmen. Die Anfangs-Auswahl kommt aus dem Feld, damit der selektionsbewusste
+     * Backspace nicht erst aufs erste `onUpdateSelection` warten muss.
      */
     fun onStartInput(field: FieldContext = FieldContext(), pasteAvailable: Boolean = false) {
         this.field = field
-        selStart = 0
-        selEnd = 0
-        _state.value = _state.value.copy(layout = alphaLayout, pasteAvailable = pasteAvailable)
-        recomputeAutoCap()
+        selStart = field.initialSelStart
+        selEnd = field.initialSelEnd
+        val layout = if (field.numeric) symbolsLayout else alphaLayout
+        _state.value = _state.value.copy(layout = layout, pasteAvailable = pasteAvailable)
+        // Jeder Feldstart beginnt mit definiertem Shift: ein vom letzten Feld übrig
+        // gebliebenes CAPS-Lock soll nicht in ein neues, fremdes Feld lecken. Auto-Cap
+        // (falls aktiv und kein Passwortfeld) armiert danach ggf. wieder SHIFTED.
+        setShift(ShiftState.OFF)
+        autoCapArmed = false
+        if (!field.isPassword) recomputeAutoCap()
         refreshSuggestions()
     }
 
@@ -263,7 +271,8 @@ class KeyboardViewModel(
     private fun refreshSuggestions() {
         val s = suggester
         val anySource = settings.suggestionsEnabled || settings.userWordsEnabled
-        if (s == null || !anySource) {
+        // Im Passwortfeld nie Vorschläge zeigen — auch nicht die reservierte Leiste.
+        if (s == null || !anySource || field.isPassword) {
             // Funktion ganz aus → gar keine Leiste (kein verschwendeter Platz).
             _state.value = _state.value.copy(suggestions = emptyList(), suggestionBarVisible = false)
             return
@@ -290,6 +299,7 @@ class KeyboardViewModel(
 
     private fun recomputeAutoCap() {
         if (!settings.autoCapEnabled) return
+        if (field.isPassword) return // case-sensitive: nie automatisch grossschreiben
         if (_state.value.shift == ShiftState.CAPS) return
         // Fehlt die InputConnection (null), den Shift-Zustand UNVERÄNDERT lassen — nicht
         // ein fehlendes Ergebnis als leeren Satzanfang werten und fälschlich kapitalisieren.
