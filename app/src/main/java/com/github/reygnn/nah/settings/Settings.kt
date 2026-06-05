@@ -12,10 +12,6 @@ data class Settings(
     /** Benutzerdefinierte Wörter vorschlagen. Unabhängig von [suggestionsEnabled],
      *  damit man NUR die eigenen Wörter (ohne die de-CH-Liste) bekommen kann. Standard AUS. */
     val userWordsEnabled: Boolean = false,
-    /** Tastaturhöhe als Anteil der Bildschirmhöhe. */
-    val keyboardHeightFraction: Float = 0.34f,
     /** Auto-Grossschreibung am Satzanfang (toggelbar). Kein Autocorrect. */
     val autoCapEnabled: Boolean = true,
-    /** Platzhalter für den Fast-Follow (MissMap-Offset-Lernen). v1 ungenutzt. */
-    val missMapLearningEnabled: Boolean = false,
 )

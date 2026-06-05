@@ -5,8 +5,11 @@ import kotlin.concurrent.read
 import kotlin.concurrent.write
 
 /**
- * Präfix-Trie für Wortvorschläge. Thread-safe (Lese vom UI-Thread, Schreiben vom
- * Hintergrund) via [ReentrantReadWriteLock]. Portiert aus vuot.
+ * Präfix-Trie für Wortvorschläge. Vorsorglich thread-safe via [ReentrantReadWriteLock]:
+ * aktuell laufen Lesen (Vorschläge) wie Schreiben (User-Wörter aktualisieren) auf dem
+ * UI-Thread, aber die Struktur wird über einen Flow-Collector und die UI geteilt — das
+ * Lock hält sie robust, falls ein Aufrufer auf einen Hintergrund-Dispatcher wechselt.
+ * Portiert aus vuot.
  */
 class Trie {
     private val root = TrieNode()
@@ -29,7 +32,10 @@ class Trie {
         }
         val results = mutableListOf<Pair<String, Int>>()
         collectWords(node, results)
-        results.sortedByDescending { it.second }.take(limit)
+        // Sekundär alphabetisch: bei Frequenz-Gleichstand sonst HashMap-abhängig und
+        // damit nicht reproduzierbar (passt nicht zum Determinismus-Anspruch).
+        results.sortedWith(compareByDescending<Pair<String, Int>> { it.second }.thenBy { it.first })
+            .take(limit)
     }
 
     fun contains(word: String): Boolean = lock.read {

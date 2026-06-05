@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      App-Theme für die beiden Compose-Activities. Erbt vom dunklen Material-Theme
+      (die App ist dark-only, siehe NahTheme) und setzt einen dunklen, dynamischen
+      Fensterhintergrund (Material-You-Neutralton, ab Android 12+ verfügbar), damit
+      beim Start NICHT kurz die helle Default-Fläche aufblitzt, bevor Compose
+      rendert. Transparente System-Bars für edge-to-edge — die Screens setzen ihr
+      eigenes systemBarsPadding.
+    -->
+    <style name="Theme.Nah" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@android:color/system_neutral1_900</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>

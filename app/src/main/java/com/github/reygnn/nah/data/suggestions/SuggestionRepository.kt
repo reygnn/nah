@@ -48,7 +48,11 @@ class SuggestionRepository : Suggester {
         if (includeUser) userTrie?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
         if (includeBuiltIn) collect(builtInTrie.getSuggestions(prefix, MAX_SUGGESTIONS))
 
-        return merged.values.sortedByDescending { it.second }.take(MAX_SUGGESTIONS).map { it.first }
+        // Sekundär alphabetisch → deterministische Reihenfolge bei gleicher Frequenz.
+        return merged.values
+            .sortedWith(compareByDescending<Pair<String, Int>> { it.second }.thenBy { it.first })
+            .take(MAX_SUGGESTIONS)
+            .map { it.first }
     }
 
     private companion object {

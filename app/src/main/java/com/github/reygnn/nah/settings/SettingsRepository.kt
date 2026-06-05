@@ -5,7 +5,6 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -17,9 +16,7 @@ class SettingsRepository(private val context: Context) {
     private object Keys {
         val suggestionsEnabled = booleanPreferencesKey("suggestions_enabled")
         val userWordsEnabled = booleanPreferencesKey("user_words_enabled")
-        val keyboardHeightFraction = floatPreferencesKey("keyboard_height_fraction")
         val autoCapEnabled = booleanPreferencesKey("auto_cap_enabled")
-        val missMapLearningEnabled = booleanPreferencesKey("miss_map_learning_enabled")
     }
 
     val settings: Flow<Settings> = context.dataStore.data.map { it.toSettings() }
@@ -29,18 +26,14 @@ class SettingsRepository(private val context: Context) {
             val next = transform(prefs.toSettings())
             prefs[Keys.suggestionsEnabled] = next.suggestionsEnabled
             prefs[Keys.userWordsEnabled] = next.userWordsEnabled
-            prefs[Keys.keyboardHeightFraction] = next.keyboardHeightFraction
             prefs[Keys.autoCapEnabled] = next.autoCapEnabled
-            prefs[Keys.missMapLearningEnabled] = next.missMapLearningEnabled
         }
     }
 
     private fun Preferences.toSettings(): Settings = Settings(
         suggestionsEnabled = this[Keys.suggestionsEnabled] ?: DEFAULT.suggestionsEnabled,
         userWordsEnabled = this[Keys.userWordsEnabled] ?: DEFAULT.userWordsEnabled,
-        keyboardHeightFraction = this[Keys.keyboardHeightFraction] ?: DEFAULT.keyboardHeightFraction,
         autoCapEnabled = this[Keys.autoCapEnabled] ?: DEFAULT.autoCapEnabled,
-        missMapLearningEnabled = this[Keys.missMapLearningEnabled] ?: DEFAULT.missMapLearningEnabled,
     )
 
     private companion object {

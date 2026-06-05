@@ -14,8 +14,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import android.view.HapticFeedbackConstants
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -73,15 +75,25 @@ fun TapKey(
     val bg = if (key is CharKey) colors.surfaceContainerHigh else colors.surfaceContainerLow
     val fg = if (key is CharKey) colors.onSurface else colors.onSurfaceVariant
 
+    // Leichtes haptisches Feedback beim Tasten-Tap — hilft beim Ein-Finger-Tippen
+    // ohne Hinsehen. KEYBOARD_TAP respektiert die System-Einstellung („Haptik beim
+    // Tippen"), ist also de facto dort opt-in; eine eigene App-Option gibt es bewusst nicht.
+    val view = LocalView.current
+    fun tap() {
+        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        onKey(key)
+    }
+
     val isBackspace = key is FunctionKey && key.action == KeyAction.BACKSPACE
     // Backspace löscht beim Gedrückthalten fortlaufend; alle anderen Tasten sind
     // ein simpler Tap. Erst einmal sofort löschen, dann — falls nach der
-    // Anfangsverzögerung noch gehalten — im Repeat-Takt, bis losgelassen wird.
+    // Anfangsverzögerung noch gehalten — im Repeat-Takt, bis losgelassen wird. Die
+    // Haptik nur beim ersten Druck, nicht bei jeder Wiederhol-Löschung (sonst Gebrumm).
     val tapModifier = if (isBackspace) {
         Modifier.pointerInput(key) {
             detectTapGestures(
                 onPress = {
-                    onKey(key)
+                    tap()
                     if (withTimeoutOrNull(BACKSPACE_INITIAL_DELAY_MS) { tryAwaitRelease() } == null) {
                         while (true) {
                             onKey(key)
@@ -92,7 +104,7 @@ fun TapKey(
             )
         }
     } else {
-        Modifier.clickable { onKey(key) }
+        Modifier.clickable { tap() }
     }
 
     Box(

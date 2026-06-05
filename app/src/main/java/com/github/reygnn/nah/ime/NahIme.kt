@@ -8,11 +8,8 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
-import androidx.lifecycle.ViewModelStore
-import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.setViewTreeLifecycleOwner
-import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
@@ -34,13 +31,10 @@ import kotlinx.coroutines.launch
 class NahIme :
     InputMethodService(),
     LifecycleOwner,
-    ViewModelStoreOwner,
     SavedStateRegistryOwner {
 
     private val lifecycleRegistry = LifecycleRegistry(this)
     override val lifecycle: Lifecycle get() = lifecycleRegistry
-
-    override val viewModelStore = ViewModelStore()
 
     private val savedStateController = SavedStateRegistryController.create(this)
     override val savedStateRegistry: SavedStateRegistry
@@ -77,6 +71,8 @@ class NahIme :
     }
 
     override fun onCreateInputView(): View {
+        // Mindestens STARTED, damit der WindowRecomposer der ComposeView aufbaut.
+        // Die volle Resume/Pause-Paarung läuft über onWindowShown/onWindowHidden.
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
 
@@ -93,7 +89,6 @@ class NahIme :
             override fun onAttachedToWindow() {
                 super.onAttachedToWindow()
                 rootView.setViewTreeLifecycleOwner(this@NahIme)
-                rootView.setViewTreeViewModelStoreOwner(this@NahIme)
                 rootView.setViewTreeSavedStateRegistryOwner(this@NahIme)
             }
         }.apply {
@@ -105,6 +100,27 @@ class NahIme :
         super.onStartInputView(info, restarting)
         viewModel.onStartInput(FieldContext(imeAction = info?.imeActionOrNull()))
     }
+
+    /** Tastatur wird sichtbar → RESUMED (no-op, falls bereits resumed). */
+    override fun onWindowShown() {
+        super.onWindowShown()
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+    }
+
+    /**
+     * Tastatur ist versteckt → bis CREATED zurück, damit der Recomposer pausiert
+     * statt dauerhaft „resumed" zu laufen. Gegenstück zu [onWindowShown].
+     */
+    override fun onWindowHidden() {
+        super.onWindowHidden()
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+    }
+
+    /**
+     * Nie der Vollbild-Extract-Editor (Querformat): nah ist eine fixe Tastatur, die
+     * Eingabe soll im echten Zielfeld sichtbar bleiben.
+     */
+    override fun onEvaluateFullscreenMode(): Boolean = false
 
     /**
      * Die von der Return-Taste auszulösende Editor-Action, oder `null`, wenn das Feld
@@ -140,7 +156,6 @@ class NahIme :
 
     override fun onDestroy() {
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
-        viewModelStore.clear()
         super.onDestroy()
     }
 }

@@ -57,6 +57,12 @@ class KeyboardViewModel(
     // vom Service in onStartInput gesetzt.
     private var field = FieldContext()
 
+    // Wurde der aktuelle SHIFTED-Zustand von der Auto-Großschreibung gesetzt (nicht
+    // vom Nutzer)? Dann hebt ein Shift-Tap ihn direkt auf (→ OFF), statt erst über
+    // CAPS zu zyklen — sonst bräuchte man zwei Taps mit Caps-Lock dazwischen, um die
+    // automatische Armierung wieder loszuwerden.
+    private var autoCapArmed = false
+
     fun applySettings(newSettings: Settings) {
         settings = newSettings
         refreshSuggestions() // gated intern — kümmert sich selbst ums Leeren
@@ -168,13 +174,15 @@ class KeyboardViewModel(
     }
 
     private fun cycleShift() {
-        setShift(
-            when (_state.value.shift) {
-                ShiftState.OFF -> ShiftState.SHIFTED
-                ShiftState.SHIFTED -> ShiftState.CAPS
-                ShiftState.CAPS -> ShiftState.OFF
-            },
-        )
+        val next = when (_state.value.shift) {
+            ShiftState.OFF -> ShiftState.SHIFTED
+            // Auto-armiert → der Tap will entwaffnen (OFF); manuell armiert → weiter
+            // zu Caps-Lock. So bleibt der manuelle Zyklus OFF→SHIFTED→CAPS→OFF erhalten.
+            ShiftState.SHIFTED -> if (autoCapArmed) ShiftState.OFF else ShiftState.CAPS
+            ShiftState.CAPS -> ShiftState.OFF
+        }
+        autoCapArmed = false // ein Shift-Tap ist immer manuell
+        setShift(next)
     }
 
     private fun setShift(s: ShiftState) {
@@ -226,6 +234,8 @@ class KeyboardViewModel(
         val before = safeIc { it.getTextBeforeCursor(64, 0)?.toString() } ?: ""
         val trimmed = before.trimEnd()
         val shouldCap = trimmed.isEmpty() || trimmed.last() in SENTENCE_ENDERS
+        // Merken, dass DIESER SHIFTED-Zustand automatisch kam (siehe cycleShift).
+        autoCapArmed = shouldCap
         setShift(if (shouldCap) ShiftState.SHIFTED else ShiftState.OFF)
     }
 

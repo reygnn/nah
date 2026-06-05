@@ -29,6 +29,15 @@ class TrieTest {
     }
 
     @Test
+    fun `gleiche Frequenz wird alphabetisch sortiert (deterministisch)`() {
+        val t = Trie().apply {
+            insert("birne", 500)
+            insert("apfel", 500)
+        }
+        assertEquals(listOf("apfel", "birne"), t.getSuggestions("", limit = 5).map { it.first })
+    }
+
+    @Test
     fun `contains erkennt Woerter`() {
         val t = trie()
         assertTrue(t.contains("hallo"))

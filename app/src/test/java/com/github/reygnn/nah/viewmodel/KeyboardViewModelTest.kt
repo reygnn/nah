@@ -127,6 +127,27 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `shift-tap auf auto-armiertem Shift schaltet direkt aus, nicht auf CAPS`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }
+        vm.onStartInput() // leerer Puffer → Auto-Cap armiert SHIFTED
+        assertEquals(ShiftState.SHIFTED, vm.state.value.shift)
+        vm.onKey(FunctionKey(KeyAction.SHIFT))
+        // Die automatische Armierung wird direkt entwaffnet — kein Umweg über CAPS.
+        assertEquals(ShiftState.OFF, vm.state.value.shift)
+    }
+
+    @Test
+    fun `manuelles Shift zyklet weiterhin ueber CAPS`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.onKey(FunctionKey(KeyAction.SHIFT)) // manuell armiert
+        assertEquals(ShiftState.SHIFTED, vm.state.value.shift)
+        vm.onKey(FunctionKey(KeyAction.SHIFT)) // → CAPS, nicht OFF
+        assertEquals(ShiftState.CAPS, vm.state.value.shift)
+    }
+
+    @Test
     fun `caps lock haelt ueber mehrere Buchstaben`() {
         val fake = FakeIc()
         val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
