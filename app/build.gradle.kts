@@ -13,8 +13,8 @@ android {
         applicationId = "com.github.reygnn.nah"
         minSdk = 36
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.2.0"
+        versionCode = 4
+        versionName = "0.2.1"
     }
 
     buildTypes {
@@ -37,6 +37,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true // für BuildConfig.VERSION_NAME (Versionsanzeige im Settings-Screen)
     }
 
     testOptions {

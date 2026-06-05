@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -19,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import com.github.reygnn.nah.BuildConfig
 import com.github.reygnn.nah.ui.NahTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -69,11 +71,12 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .systemBarsPadding() // sonst kollidiert der Titel mit der Statusleiste (edge-to-edge)
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Nah", style = MaterialTheme.typography.headlineMedium)
+            Text("Nah v${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.headlineMedium)
             Text(
                 "Einfinger-optimierte Schweizer Tastatur. Deterministisch, kein Autocorrect.",
                 style = MaterialTheme.typography.bodyMedium,
