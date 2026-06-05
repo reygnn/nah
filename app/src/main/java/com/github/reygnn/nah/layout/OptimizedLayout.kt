@@ -74,9 +74,10 @@ object OptimizedLayout {
     )
 
     private fun charRow(chars: String): List<KeyboardKey> =
-        chars.map { CharKey(it) }
+        chars.map { CharKey(it, alternatives = KeyAlternatives.forChar(it)) }
 
-    /** Ersetzt die q-Taste durch die Digraph-Taste „qu" (committet zwei Zeichen). */
+    /** Ersetzt die q-Taste durch die Digraph-Taste „qu" (committet zwei Zeichen);
+     *  ihre Alternative (einzelnes „q") kommt aus [KeyAlternatives]. */
     private fun List<KeyboardKey>.withQu(): List<KeyboardKey> =
-        map { if (it is CharKey && it.char == 'q') CharKey('q', output = "qu") else it }
+        map { if (it is CharKey && it.char == 'q') it.copy(output = "qu") else it }
 }

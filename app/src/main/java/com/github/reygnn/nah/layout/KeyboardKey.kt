@@ -22,6 +22,9 @@ data class CharKey(
      *  bei Digraph-Tasten wie „qu" (committet zwei Zeichen — ehrlich so beschriftet,
      *  kein Autocorrect). [char] bleibt der Buchstabe für Reise-Metrik und Farb-Hinweis. */
     val output: String = char.toString(),
+    /** Alternativen für das Long-Press-Popup (sichtbar, schieben+loslassen): z. B.
+     *  `c` → ch/ck/sch, die qu-Taste → einzelnes `q`, Vokale → Akzente. Leer = nur Tap. */
+    val alternatives: List<String> = emptyList(),
     override val weight: Float = 1f,
 ) : KeyboardKey {
     override val label: String get() = output

@@ -65,9 +65,17 @@ class OptimizedLayoutTravelTest {
     }
 
     @Test
-    fun `die q-Taste ist die qu-Digraph-Taste`() {
+    fun `die q-Taste ist die qu-Digraph-Taste mit einzelnem q als Alternative`() {
         val q = OptimizedLayout.deCh().rows.flatten()
             .filterIsInstance<CharKey>().first { it.char == 'q' }
         assertEquals("qu", q.output)
+        assertEquals(listOf("q"), q.alternatives) // einzelnes q via Long-Press
+    }
+
+    @Test
+    fun `die c-Taste bietet ch und ck, die s-Taste sch`() {
+        val keys = OptimizedLayout.deCh().rows.flatten().filterIsInstance<CharKey>()
+        assertEquals(listOf("ch", "ck"), keys.first { it.char == 'c' }.alternatives)
+        assertEquals(listOf("sch"), keys.first { it.char == 's' }.alternatives)
     }
 }

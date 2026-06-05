@@ -30,6 +30,7 @@ fun KeyboardScreen(viewModel: KeyboardViewModel, onOpenSettings: () -> Unit) {
         KeyboardContent(
             state = state,
             onKey = viewModel::onKey,
+            onAlternative = viewModel::onAlternative,
             onSuggestion = viewModel::onSuggestionTap,
             onOpenSettings = onOpenSettings,
         )
@@ -41,6 +42,7 @@ fun KeyboardScreen(viewModel: KeyboardViewModel, onOpenSettings: () -> Unit) {
 fun KeyboardContent(
     state: KeyboardUiState,
     onKey: (com.github.reygnn.nah.layout.KeyboardKey) -> Unit,
+    onAlternative: (String) -> Unit,
     onSuggestion: (String) -> Unit,
     onOpenSettings: () -> Unit,
 ) {
@@ -82,6 +84,7 @@ fun KeyboardContent(
                             .weight(key.weight)
                             .fillMaxHeight(),
                         onKey = onKey,
+                        onAlternative = onAlternative,
                     )
                 }
             }

@@ -111,6 +111,24 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `alternative committet genau den gewaehlten Text`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.onAlternative("sch")
+        assertEquals("sch", fake.buffer.toString())
+    }
+
+    @Test
+    fun `alternative mit shift schreibt nur den ersten Buchstaben gross`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.onKey(FunctionKey(KeyAction.SHIFT))
+        vm.onAlternative("sch")
+        assertEquals("Sch", fake.buffer.toString())
+        assertEquals(ShiftState.OFF, vm.state.value.shift)
+    }
+
+    @Test
     fun `backspace loescht ein Zeichen`() {
         val fake = FakeIc()
         val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }

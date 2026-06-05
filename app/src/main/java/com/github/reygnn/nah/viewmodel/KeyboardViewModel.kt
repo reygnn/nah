@@ -105,14 +105,23 @@ class KeyboardViewModel(
         }
     }
 
-    private fun onChar(key: CharKey) {
+    private fun onChar(key: CharKey) = commitWithShift(key.output)
+
+    /**
+     * Eine im Long-Press-Popup gewählte Alternative committen (z. B. „sch", „é", das
+     * einzelne „q"). Läuft durch dieselbe Shift-Casing-Logik wie ein normaler Tap —
+     * kein Autocorrect, committet genau das Gewählte.
+     */
+    fun onAlternative(text: String) = commitWithShift(text)
+
+    /** Committet [text] mit Shift-Casing: SHIFTED grossschreibt nur den ersten
+     *  Buchstaben („qu"→„Qu", „sch"→„Sch"), CAPS alles. */
+    private fun commitWithShift(text: String) {
         val shift = _state.value.shift
-        // Committet [CharKey.output] (meist ein Buchstabe, bei der qu-Taste zwei). Shift
-        // grossschreibt nur den ersten Buchstaben, Caps-Lock alles — gilt für „qu" → „Qu"/„QU".
         val out = when (shift) {
-            ShiftState.OFF -> key.output
-            ShiftState.SHIFTED -> key.output.replaceFirstChar { it.uppercaseChar() }
-            ShiftState.CAPS -> key.output.uppercase()
+            ShiftState.OFF -> text
+            ShiftState.SHIFTED -> text.replaceFirstChar { it.uppercaseChar() }
+            ShiftState.CAPS -> text.uppercase()
         }
         safeIc { it.commitText(out, 1) }
         if (shift == ShiftState.SHIFTED) setShift(ShiftState.OFF)
