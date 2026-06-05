@@ -65,6 +65,16 @@ class FieldContextTest {
     }
 
     @Test
+    fun `nur das Telefonfeld ist phone, Zahl und Datum nicht`() {
+        val phone = ctx(inputType = InputType.TYPE_CLASS_PHONE)
+        assertTrue(phone.phone)
+        assertTrue(phone.numeric) // phone impliziert numeric
+        assertFalse(ctx(inputType = InputType.TYPE_CLASS_NUMBER).phone)
+        assertFalse(ctx(inputType = InputType.TYPE_CLASS_DATETIME).phone)
+        assertFalse(ctx(inputType = InputType.TYPE_CLASS_TEXT).phone)
+    }
+
+    @Test
     fun `Text-Passwortvarianten werden als Passwort erkannt`() {
         val plain = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
         val web = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD

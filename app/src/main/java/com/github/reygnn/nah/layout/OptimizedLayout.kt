@@ -61,6 +61,35 @@ object OptimizedLayout {
         ),
     )
 
+    /**
+     * Telefon-Wählfeld: das klassische 3-spaltige Dialpad (Muskelgedächtnis) mit grossen
+     * Tasten — Fat-Finger-tauglich, weil nur drei Tasten pro Reihe die volle Breite teilen.
+     * Nur der **Startview** für Telefonfelder (`TYPE_CLASS_PHONE`); reine Zahlen-/Datumsfelder
+     * bleiben auf der allgemeinen Symbolebene. Alle Tasten sichtbar beschriftet (keine Lernwand):
+     * `+`, `*`, `#` liegen offen, kein verstecktes Long-Press. Über `ABC` geht es zum vollen
+     * Alphabet (z. B. Vanity-Nummern, Durchwahl-Buchstaben), `?123` von dort zur Symbolebene.
+     *
+     *   1 2 3
+     *   4 5 6
+     *   7 8 9
+     *   * 0 #
+     *   ABC + ⌫ ⏎          (fünf Reihen wie die anderen Ebenen → keine Höhensprünge)
+     */
+    fun phone(): KeyboardLayout = KeyboardLayout(
+        rows = listOf(
+            charRow("123"),
+            charRow("456"),
+            charRow("789"),
+            charRow("*0#"),
+            listOf(
+                FunctionKey(KeyAction.ALPHA, weight = 1.5f),
+                CharKey('+'),
+                FunctionKey(KeyAction.BACKSPACE, weight = 1.5f),
+                FunctionKey(KeyAction.RETURN, weight = 1.5f),
+            ),
+        ),
+    )
+
     /** Untere Funktionsreihe, auf beiden Ebenen identisch (nur der Toggle links
      *  unterscheidet sich: ?123 vs ABC). Einfügen-Taste ganz links — immer sichtbar. */
     private fun functionRow(toggle: KeyAction): List<KeyboardKey> = listOf(

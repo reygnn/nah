@@ -73,6 +73,20 @@ class OptimizedLayoutTravelTest {
     }
 
     @Test
+    fun `das Telefon-Waehlfeld bietet Ziffern, Stern, Raute und Plus`() {
+        val keys = OptimizedLayout.phone().rows.flatten()
+        val chars = keys.filterIsInstance<CharKey>().map { it.output }.toSet()
+        assertTrue(chars.containsAll("0123456789".map { it.toString() }))
+        assertTrue(chars.containsAll(listOf("*", "#", "+")))
+        // Kein verstecktes Long-Press auf dem Wählfeld (alles sichtbar beschriftet).
+        assertTrue(keys.filterIsInstance<CharKey>().all { it.alternatives.isEmpty() })
+        val actions = keys.filterIsInstance<FunctionKey>().map { it.action }
+        assertTrue(actions.contains(KeyAction.ALPHA)) // zurück zum Alphabet
+        assertTrue(actions.contains(KeyAction.BACKSPACE))
+        assertTrue(actions.contains(KeyAction.RETURN))
+    }
+
+    @Test
     fun `Konsonanten-Cluster auf den Long-Press-Tasten`() {
         val keys = OptimizedLayout.deCh().rows.flatten().filterIsInstance<CharKey>()
         assertEquals(listOf("ch", "ck"), keys.first { it.char == 'c' }.alternatives)

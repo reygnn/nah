@@ -62,6 +62,7 @@ class KeyboardViewModelTest {
 
     private val alpha: KeyboardLayout = OptimizedLayout.deCh()
     private val symbols: KeyboardLayout = OptimizedLayout.symbols()
+    private val phone: KeyboardLayout = OptimizedLayout.phone()
 
     private fun vm(
         fake: FakeIc,
@@ -70,6 +71,7 @@ class KeyboardViewModelTest {
     ) = KeyboardViewModel(
         alphaLayout = alpha,
         symbolsLayout = symbols,
+        phoneLayout = phone,
         inputConnectionProvider = { fake.ic },
         suggester = suggester,
         clipboardTextProvider = clipboardTextProvider,
@@ -289,6 +291,7 @@ class KeyboardViewModelTest {
         val vm = KeyboardViewModel(
             alphaLayout = alpha,
             symbolsLayout = symbols,
+            phoneLayout = phone,
             inputConnectionProvider = { null },
         ).apply { applySettings(Settings(autoCapEnabled = true)) }
         assertEquals(ShiftState.OFF, vm.state.value.shift)
@@ -456,6 +459,32 @@ class KeyboardViewModelTest {
         val vm = vm(fake).apply { applySettings(Settings()) }
         vm.onStartInput(FieldContext(numeric = false))
         assertSame(alpha, vm.state.value.layout)
+    }
+
+    @Test
+    fun `ein Telefonfeld startet auf dem eigenen Waehlfeld`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings()) }
+        // phone impliziert numeric — das Wählfeld gewinnt vor der Symbolebene.
+        vm.onStartInput(FieldContext(numeric = true, phone = true))
+        assertSame(phone, vm.state.value.layout)
+    }
+
+    @Test
+    fun `ein reines Zahlenfeld bleibt auf der Symbol-Ebene (kein Waehlfeld)`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings()) }
+        vm.onStartInput(FieldContext(numeric = true, phone = false))
+        assertSame(symbols, vm.state.value.layout)
+    }
+
+    @Test
+    fun `ein numerisches Feld armiert keine Auto-Grossschreibung`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }
+        // Leerer Puffer wäre sonst ein „Satzanfang" → SHIFTED; im Zahlenfeld nicht.
+        vm.onStartInput(FieldContext(numeric = true))
+        assertEquals(ShiftState.OFF, vm.state.value.shift)
     }
 
     @Test

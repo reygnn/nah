@@ -16,11 +16,17 @@ data class FieldContext(
      */
     val imeAction: Int? = null,
     /**
-     * Das Feld erwartet primär Ziffern (Zahl/Telefon/Datum) → direkt auf der
-     * Symbol-/Ziffernebene starten, statt den Nutzer für eine PLZ/PIN/Betrag erst
+     * Das Feld erwartet primär Ziffern (Zahl/Telefon/Datum) → direkt auf einer
+     * ziffern­zentrierten Ebene starten, statt den Nutzer für eine PLZ/PIN/Betrag erst
      * `?123` drücken zu lassen. Das volle Alphabet bleibt einen Tap entfernt (`ABC`).
      */
     val numeric: Boolean = false,
+    /**
+     * Speziell ein Telefonfeld (`TYPE_CLASS_PHONE`) → eigenes Wähl­feld-Layout (Dialpad)
+     * statt der allgemeinen Symbolebene. Impliziert [numeric]; reine Zahlen-/Datumsfelder
+     * setzen nur [numeric].
+     */
+    val phone: Boolean = false,
     /**
      * Passwortfeld → Auto-Grossschreibung UND Vorschläge unterdrücken: ein
      * case-sensitives Passwort soll nicht versehentlich kapitalisiert werden, und
@@ -52,6 +58,7 @@ data class FieldContext(
         ): FieldContext = FieldContext(
             imeAction = imeActionOrNull(imeOptions),
             numeric = isNumericInputType(inputType),
+            phone = isPhoneInputType(inputType),
             isPassword = isPasswordInputType(inputType),
             initialSelStart = initialSelStart.coerceAtLeast(0),
             initialSelEnd = initialSelEnd.coerceAtLeast(0),
@@ -78,6 +85,10 @@ data class FieldContext(
                 -> true
                 else -> false
             }
+
+        /** Speziell ein Telefonfeld → eigenes Wählfeld statt der allgemeinen Symbolebene. */
+        private fun isPhoneInputType(inputType: Int): Boolean =
+            (inputType and InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_PHONE
 
         /**
          * Passwort-Varianten (Text sichtbar/unsichtbar/Web, sowie numerisches PIN-Feld) —

@@ -59,6 +59,7 @@ data class KeyboardUiState(
 class KeyboardViewModel(
     private val alphaLayout: KeyboardLayout,
     private val symbolsLayout: KeyboardLayout,
+    private val phoneLayout: KeyboardLayout,
     private val inputConnectionProvider: () -> InputConnection?,
     private val suggester: Suggester? = null,
     /** Liefert den aktuellen Zwischenablage-Text (oder `null`/leer). Wird NUR beim
@@ -106,7 +107,11 @@ class KeyboardViewModel(
         this.field = field
         selStart = field.initialSelStart
         selEnd = field.initialSelEnd
-        val layout = if (field.numeric) symbolsLayout else alphaLayout
+        val layout = when {
+            field.phone -> phoneLayout // eigenes Wählfeld
+            field.numeric -> symbolsLayout // Zahl/Datum → allgemeine Ziffern-/Symbolebene
+            else -> alphaLayout
+        }
         _state.value = _state.value.copy(layout = layout, pasteAvailable = pasteAvailable)
         // Jeder Feldstart beginnt mit definiertem Shift: ein vom letzten Feld übrig
         // gebliebenes CAPS-Lock soll nicht in ein neues, fremdes Feld lecken. Auto-Cap
@@ -315,6 +320,7 @@ class KeyboardViewModel(
     private fun recomputeAutoCap() {
         if (!settings.autoCapEnabled) return
         if (field.isPassword) return // case-sensitive: nie automatisch grossschreiben
+        if (field.numeric) return // Zahl-/Telefonfeld kennt keinen „Satzanfang"
         if (_state.value.shift == ShiftState.CAPS) return
         // Fehlt die InputConnection (null), den Shift-Zustand UNVERÄNDERT lassen — nicht
         // ein fehlendes Ergebnis als leeren Satzanfang werten und fälschlich kapitalisieren.
