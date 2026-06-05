@@ -110,6 +110,22 @@ class OptimizedLayoutTravelTest {
     }
 
     @Test
+    fun `die Symboltaste bietet per Long-Press das Ziffern-Pad und das Waehlfeld`() {
+        val toggle = OptimizedLayout.deCh().rows.flatten()
+            .filterIsInstance<FunctionKey>().first { it.action == KeyAction.SYMBOLS }
+        // Beide Grosstasten-Pads sind über den Long-Press erreichbar (löst Punkt 1).
+        assertEquals(listOf(KeyAction.NUMPAD, KeyAction.DIALPAD), toggle.longPressActions)
+    }
+
+    @Test
+    fun `die ABC-Taste der Symbolebene traegt keine Long-Press-Shortcuts`() {
+        // Nur ?123 bekommt die Pad-Shortcuts; ein „ABC mit 123-Popup" wäre semantisch schief.
+        val toggle = OptimizedLayout.symbols().rows.flatten()
+            .filterIsInstance<FunctionKey>().first { it.action == KeyAction.ALPHA }
+        assertTrue(toggle.longPressActions.isEmpty())
+    }
+
+    @Test
     fun `das Telefon-Waehlfeld bietet Ziffern, Stern, Raute und Plus`() {
         val keys = OptimizedLayout.phone().rows.flatten()
         val chars = keys.filterIsInstance<CharKey>().map { it.output }.toSet()

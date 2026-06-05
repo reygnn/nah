@@ -377,6 +377,35 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `long-press shortcut NUMPAD schaltet aufs Ziffern-Pad`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings()) }
+        // Aus dem Alpha-Layer (wo man nach einem ABC-Tap in einem Zahlenfeld landet) zurück
+        // aufs Grosstasten-Pad — der Long-Press-Shortcut der ?123-Taste löst die Einbahnstrasse.
+        vm.onKey(FunctionKey(KeyAction.NUMPAD))
+        assertSame(number, vm.state.value.layout)
+    }
+
+    @Test
+    fun `long-press shortcut DIALPAD schaltet aufs Waehlfeld`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings()) }
+        vm.onKey(FunctionKey(KeyAction.DIALPAD))
+        assertSame(phone, vm.state.value.layout)
+    }
+
+    @Test
+    fun `vom per Long-Press erreichten Ziffern-Pad fuehrt ABC zurueck ins Alphabet`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings()) }
+        vm.onKey(FunctionKey(KeyAction.NUMPAD))
+        assertSame(number, vm.state.value.layout)
+        // Kein neuer Dead-End: das Pad hat seinerseits ABC zurück ins Alphabet.
+        vm.onKey(FunctionKey(KeyAction.ALPHA))
+        assertSame(alpha, vm.state.value.layout)
+    }
+
+    @Test
     fun `vorschlaege sind standardmaessig aus`() {
         val fake = FakeIc()
         val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo") })

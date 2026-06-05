@@ -241,6 +241,19 @@ class KeyboardViewModel(
                 _state.value = _state.value.copy(layout = alphaLayout)
                 refreshForCursor(reconsiderAutoCap = false)
             }
+            // Per Long-Press auf ?123 erreichbar (siehe OptimizedLayout.functionRow): zurück
+            // aufs Grosstasten-Pad. Löst die Einbahnstrasse — aus einem Zahl-/Telefonfeld führt
+            // ABC ins Alphabet, von dort kommt man so wieder aufs grosse Pad statt nur auf die
+            // schmale Symbol-Ziffernreihe. Wie die übrigen Ebenenwechsel bewegt das den Cursor
+            // nicht → kein Auto-Cap-Recompute.
+            KeyAction.NUMPAD -> {
+                _state.value = _state.value.copy(layout = numberLayout)
+                refreshForCursor(reconsiderAutoCap = false)
+            }
+            KeyAction.DIALPAD -> {
+                _state.value = _state.value.copy(layout = phoneLayout)
+                refreshForCursor(reconsiderAutoCap = false)
+            }
         }
     }
 

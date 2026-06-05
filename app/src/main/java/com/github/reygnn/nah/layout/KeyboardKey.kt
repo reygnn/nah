@@ -33,6 +33,11 @@ data class CharKey(
 data class FunctionKey(
     val action: KeyAction,
     override val weight: Float = 1f,
+    /** Per Long-Press erreichbare Alternativ-Aktionen (sichtbares Popup, schieben+loslassen
+     *  — dieselbe Geste wie [CharKey.alternatives], nur löst ein Chip eine [KeyAction] aus
+     *  statt ein Zeichen zu committen). Genutzt von der ?123-Taste, um die Grosstasten-Pads
+     *  ([KeyAction.NUMPAD]/[KeyAction.DIALPAD]) erreichbar zu machen. Leer = nur Tap. */
+    val longPressActions: List<KeyAction> = emptyList(),
 ) : KeyboardKey {
     override val label: String get() = action.label
 }
@@ -47,4 +52,9 @@ enum class KeyAction(val label: String) {
     PERIOD("."),
     COMMA(","),
     PASTE("Einfügen"), // Zwischenablage einfügen (Icon-Taste)
+    // Nur als Long-Press-Ziel der ?123-Taste verwendet (nie als eigene Tastenfläche) — der
+    // [label] dient zugleich als Chip-Text im Popup. NUMPAD = grosses Ziffern-Pad (, . -),
+    // DIALPAD = Wählfeld (* # +).
+    NUMPAD("123"),
+    DIALPAD("*#+"),
 }

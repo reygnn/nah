@@ -76,14 +76,21 @@ private val CHIP_WIDTH = 46.dp
 private val CHIP_HEIGHT = 50.dp
 private val POPUP_GAP = 6.dp
 
+/** Ein Long-Press-Chip: sichtbares [label] + Wirkung beim Loslassen darauf. Vereinheitlicht
+ *  die beiden Quellen (CharKey-Alternativen committen einen String, FunctionKey-Shortcuts
+ *  lösen eine Aktion aus) auf dieselbe Popup-Geste. */
+private class LongPressItem(val label: String, val onSelect: () -> Unit)
+
 /**
  * Eine grosse, deterministische Tipp-Taste. Ein Tap = genau diese [key]. Labels
  * sind immer sichtbar → ab Tag eins per hunt-and-peck benutzbar, keine Lernwand.
  *
- * Tasten mit [CharKey.alternatives] zeigen beim **Gedrückthalten** ein sichtbares
- * Popup (z. B. `c` → ch/ck/sch, qu-Taste → einzelnes `q`). Auswahl: Finger zum Chip
- * **schieben und loslassen** — losgelassen auf der Taste committet den Basis-Output.
- * Sichtbar = keine Lernkurve (anders als vuots unsichtbare Swipes).
+ * Tasten mit Long-Press-Einträgen zeigen beim **Gedrückthalten** ein sichtbares Popup.
+ * Zwei Quellen, gleiche Geste: [CharKey.alternatives] committen ein Zeichen (z. B. `c` →
+ * ch/ck/sch, qu-Taste → einzelnes `q`), [FunctionKey.longPressActions] lösen eine Aktion
+ * aus (die ?123-Taste → grosses Ziffern-Pad/Wählfeld). Auswahl: Finger zum Chip
+ * **schieben und loslassen** — losgelassen auf der Taste committet den Basis-Output bzw.
+ * löst die Basis-Aktion aus. Sichtbar = keine Lernkurve (anders als vuots unsichtbare Swipes).
  */
 @Composable
 fun TapKey(
@@ -152,9 +159,14 @@ fun TapKey(
     }
 
     val isBackspace = key is FunctionKey && key.action == KeyAction.BACKSPACE
-    val alternatives = (key as? CharKey)?.alternatives.orEmpty()
+    // Vereinheitlichte Long-Press-Einträge: CharKey-Alternativen committen einen String, die
+    // Shortcuts der ?123-Taste lösen eine KeyAction aus — beide über dieselbe sichtbare Geste.
+    val longPressItems: List<LongPressItem> = when (key) {
+        is CharKey -> key.alternatives.map { alt -> LongPressItem(alt) { onAlternative(alt) } }
+        is FunctionKey -> key.longPressActions.map { act -> LongPressItem(act.label) { onKey(FunctionKey(act)) } }
+    }
 
-    // Long-Press-Popup-Zustand (nur für Tasten mit Alternativen).
+    // Long-Press-Popup-Zustand (nur für Tasten mit Long-Press-Einträgen).
     var popupOpen by remember { mutableStateOf(false) }
     var highlight by remember { mutableIntStateOf(-1) }
     // Linke Tastenkante in Fensterkoordinaten (via onGloballyPositioned gepflegt) und die
@@ -194,12 +206,12 @@ fun TapKey(
                     },
                 )
             }
-        alternatives.isNotEmpty() -> Modifier
+        longPressItems.isNotEmpty() -> Modifier
             .semantics(mergeDescendants = true) { role = Role.Button; onClick { onKey(key); true } }
             .indication(interactionSource, ripple())
             .pointerInput(key) {
             val chipPx = CHIP_WIDTH.toPx()
-            val bandPx = alternatives.size * chipPx
+            val bandPx = longPressItems.size * chipPx
             awaitEachGesture {
                 val down = awaitFirstDown(requireUnconsumed = false)
                 val press = PressInteraction.Press(down.position)
@@ -219,26 +231,26 @@ fun TapKey(
                 val bandLeft = bandLeftInWindow(keyLeft, size.width.toFloat(), bandPx, view.width.toFloat())
                 bandLeftPx = bandLeft
                 popupOpen = true
-                highlight = chipIndexFor(longPress.position, keyLeft, bandLeft, chipPx, alternatives.size, keyHeight)
+                highlight = chipIndexFor(longPress.position, keyLeft, bandLeft, chipPx, longPressItems.size, keyHeight)
                 while (true) {
                     val event = awaitPointerEvent()
                     val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                    highlight = chipIndexFor(change.position, keyLeft, bandLeft, chipPx, alternatives.size, keyHeight)
+                    highlight = chipIndexFor(change.position, keyLeft, bandLeft, chipPx, longPressItems.size, keyHeight)
                     change.consume()
                     if (!change.pressed) break
                 }
-                // Losgelassen: gewählten Chip committen; auf der Taste → Basis-Output; unter
-                // die Taste gezogen ([CHIP_CANCEL]) → nichts committen (Geste abgebrochen).
+                // Losgelassen: gewählten Chip auslösen; auf der Taste → Basis-Aktion; unter
+                // die Taste gezogen ([CHIP_CANCEL]) → nichts (Geste abgebrochen).
                 val selected = highlight
                 popupOpen = false
                 highlight = CHIP_BASE
                 when {
-                    selected in alternatives.indices -> {
+                    selected in longPressItems.indices -> {
                         view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                        onAlternative(alternatives[selected])
+                        longPressItems[selected].onSelect()
                     }
-                    selected == CHIP_CANCEL -> Unit // bewusst abgebrochen → kein Commit
-                    else -> onKey(key) // CHIP_BASE
+                    selected == CHIP_CANCEL -> Unit // bewusst abgebrochen → keine Wirkung
+                    else -> onKey(key) // CHIP_BASE → Basis-Output bzw. -Aktion der Taste
                 }
                 scope.launch { interactionSource.emit(PressInteraction.Release(press)) } // Ripple aus
             }
@@ -281,8 +293,10 @@ fun TapKey(
             )
         }
         if (popupOpen) {
+            // shift.applyTo (im Popup) wirkt nur auf die Buchstaben-Alternativen; die
+            // Aktions-Labels der ?123-Taste („123"/„*#+") tragen keine Buchstaben → No-op.
             AlternativesPopup(
-                alternatives = alternatives,
+                alternatives = longPressItems.map { it.label },
                 shift = shift,
                 highlight = highlight,
                 bandLeftPx = bandLeftPx,

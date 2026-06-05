@@ -123,10 +123,20 @@ object OptimizedLayout {
     )
 
     /** Untere Funktionsreihe, auf beiden Ebenen identisch (nur der Toggle links
-     *  unterscheidet sich: ?123 vs ABC). Einfügen-Taste ganz links — immer sichtbar. */
+     *  unterscheidet sich: ?123 vs ABC). Einfügen-Taste ganz links — immer sichtbar.
+     *
+     *  Die ?123-Taste (nur sie, nicht das ABC der Symbolebene) bietet per Long-Press die
+     *  Grosstasten-Pads an: so kommt man aus dem Alphabet (wo man nach einem ABC-Tap in
+     *  einem Zahl-/Telefonfeld landet) wieder aufs grosse Ziffern-Pad bzw. Wählfeld zurück,
+     *  statt nur auf die schmale Symbol-Ziffernreihe — ohne dafür eine sichtbare Taste zu
+     *  opfern. Tap bleibt unverändert (→ Symbolebene); der Pad-Zugang ist rein additiv. */
     private fun functionRow(toggle: KeyAction): List<KeyboardKey> = listOf(
         FunctionKey(KeyAction.PASTE, weight = 1f),
-        FunctionKey(toggle, weight = 1.5f),
+        if (toggle == KeyAction.SYMBOLS) {
+            FunctionKey(toggle, weight = 1.5f, longPressActions = listOf(KeyAction.NUMPAD, KeyAction.DIALPAD))
+        } else {
+            FunctionKey(toggle, weight = 1.5f)
+        },
         FunctionKey(KeyAction.COMMA, weight = 1f),
         FunctionKey(KeyAction.SPACE, weight = 4f),
         FunctionKey(KeyAction.PERIOD, weight = 1f),
