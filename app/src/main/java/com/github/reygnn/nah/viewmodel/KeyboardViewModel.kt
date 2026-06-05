@@ -124,6 +124,9 @@ class KeyboardViewModel(
      * Auswahl für den selektionsbewussten Backspace.
      */
     fun onSelectionChanged(newSelStart: Int, newSelEnd: Int) {
+        // Unveränderter Callback (Editoren melden `onUpdateSelection` auch mal ohne echte
+        // Bewegung, z. B. beim Aktualisieren der Kandidatenregion) → nichts neu zu rechnen.
+        if (newSelStart == selStart && newSelEnd == selEnd) return
         selStart = newSelStart
         selEnd = newSelEnd
         refreshSuggestions()
@@ -152,7 +155,13 @@ class KeyboardViewModel(
         val shift = _state.value.shift
         val out = shift.applyTo(text)
         safeIc { it.commitText(out, 1) }
-        if (shift == ShiftState.SHIFTED) setShift(ShiftState.OFF)
+        // SHIFTED gilt „nur für den nächsten Buchstaben". Eine Ziffer/ein Symbol (etwa auf
+        // der ?123-Ebene) wird von applyTo ohnehin nicht verändert und soll eine armierte
+        // Grossschreibung NICHT verbrauchen — sonst ginge die Auto-Cap-Armierung verloren,
+        // sobald am Satzanfang erst eine Ziffer kommt. CAPS bleibt ohnehin stehen.
+        if (shift == ShiftState.SHIFTED && text.firstOrNull()?.isLetter() == true) {
+            setShift(ShiftState.OFF)
+        }
         afterTextChanged()
     }
 
@@ -258,6 +267,12 @@ class KeyboardViewModel(
     }
 
     private fun afterTextChanged() {
+        // Synchron direkt nach dem eigenen Edit, damit Shift/Vorschläge ohne sichtbare
+        // Verzögerung stehen. Das vom Commit ausgelöste `onUpdateSelection`-Echo ruft
+        // dieselbe Logik gleich nochmal auf — das ist gewollt (es deckt auch externe
+        // Cursor-Sprünge ab) und idempotent: `setShift`/`copy` sind No-ops bei Gleichstand.
+        // Bewusst NICHT per Cursor-Vorhersage entdoppelt — eine falsche Vorhersage würde ein
+        // nötiges Recompute überspringen und falsch grossschreiben (schlechter Tausch).
         refreshSuggestions()
         if (_state.value.shift == ShiftState.OFF) recomputeAutoCap()
     }

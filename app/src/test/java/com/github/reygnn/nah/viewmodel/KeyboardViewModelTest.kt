@@ -479,6 +479,35 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `eine Ziffer verbraucht eine armierte Grossschreibung nicht`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.onKey(FunctionKey(KeyAction.SHIFT)) // SHIFTED armiert
+        vm.onKey(CharKey('5')) // Ziffer (z. B. auf der ?123-Ebene)
+        assertEquals("5", fake.buffer.toString())
+        assertEquals(ShiftState.SHIFTED, vm.state.value.shift) // bleibt armiert
+        vm.onKey(CharKey('h')) // erst der Buchstabe verbraucht die Armierung
+        assertEquals("5H", fake.buffer.toString())
+        assertEquals(ShiftState.OFF, vm.state.value.shift)
+    }
+
+    @Test
+    fun `ein unveraenderter Selektions-Callback rechnet nichts neu`() {
+        val fake = FakeIc()
+        var calls = 0
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> calls++; listOf("hallo") })
+            .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
+        fake.buffer.append("ha")
+        fake.select(2, 2)
+        vm.onSelectionChanged(2, 2)
+        assertEquals(1, calls)
+        vm.onSelectionChanged(2, 2) // identische Position → Guard greift, kein erneutes Rechnen
+        assertEquals(1, calls)
+        vm.onSelectionChanged(1, 1) // echte Bewegung → wieder rechnen
+        assertEquals(2, calls)
+    }
+
+    @Test
     fun `die Anfangs-Auswahl aus dem Feld macht Backspace sofort selektionsbewusst`() {
         val fake = FakeIc()
         val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
