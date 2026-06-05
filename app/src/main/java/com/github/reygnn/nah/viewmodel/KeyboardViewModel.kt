@@ -291,7 +291,10 @@ class KeyboardViewModel(
     private fun recomputeAutoCap() {
         if (!settings.autoCapEnabled) return
         if (_state.value.shift == ShiftState.CAPS) return
-        val before = safeIc { it.getTextBeforeCursor(64, 0)?.toString() } ?: ""
+        // Fehlt die InputConnection (null), den Shift-Zustand UNVERÄNDERT lassen — nicht
+        // ein fehlendes Ergebnis als leeren Satzanfang werten und fälschlich kapitalisieren.
+        // Ein wirklich leeres Feld liefert "" (nicht null) und armiert weiterhin korrekt.
+        val before = safeIc { it.getTextBeforeCursor(64, 0)?.toString() } ?: return
         val trimmed = before.trimEnd()
         val shouldCap = trimmed.isEmpty() || trimmed.last() in SENTENCE_ENDERS
         // Merken, dass DIESER SHIFTED-Zustand automatisch kam (siehe cycleShift).

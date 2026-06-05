@@ -283,6 +283,20 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `auto-cap kapitalisiert nicht, wenn die InputConnection fehlt`() {
+        // Ohne IC darf recomputeAutoCap das fehlende Ergebnis nicht als leeren Satzanfang
+        // werten und faelschlich SHIFTED armieren (Punkt 4 der Code-Analyse).
+        val vm = KeyboardViewModel(
+            alphaLayout = alpha,
+            symbolsLayout = symbols,
+            inputConnectionProvider = { null },
+        ).apply { applySettings(Settings(autoCapEnabled = true)) }
+        assertEquals(ShiftState.OFF, vm.state.value.shift)
+        vm.onSelectionChanged(5, 5) // mitten im Text, IC aber nicht verfuegbar
+        assertEquals(ShiftState.OFF, vm.state.value.shift)
+    }
+
+    @Test
     fun `return fuehrt die Editor-Action aus, wenn das Feld eine verlangt`() {
         val fake = FakeIc()
         val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
