@@ -54,7 +54,7 @@ enum class KeyAction(val label: String) {
     ALPHA("ABC"),
     PERIOD("."),
     COMMA(","),
-    PASTE("Insert"), // clipboard paste (icon key; the spoken label comes from R.string.key_paste_cd)
+    PASTE("Insert"), // clipboard paste (icon key; the label is unused — rendered as an icon)
     // Long-Press-Ziele der Ebenen-Umschalttaste (nie eigene Tastenfläche) — der [label] ist zugleich
     // der Chip-Text. Einheitliches 3-Buchstaben-Schema: NUM = grosses Ziffern-Pad (, . -),
     // TEL = Wählfeld (* # +). Zusammen mit SYM/ABC erreicht man so von jeder Ebene jede andere.

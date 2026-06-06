@@ -64,6 +64,12 @@ Concretely:
    are flagged by a small corner dot.
 4. **Daily driver**, de-CH only (no ß — "ss").
 
+Nah targets a **sighted** user typing by eye. It has **no screen-reader
+(TalkBack) support** — keys carry no content descriptions, and the visible
+long-press menus rely on a slide-and-release gesture a screen reader can't drive
+(so the umlauts and accents that live there aren't reachable that way). This is a
+deliberate scope choice for a single-user personal keyboard, not an oversight.
+
 ## Features
 
 - **Travel-optimised de-CH layout** with a central vowel cluster, four letter

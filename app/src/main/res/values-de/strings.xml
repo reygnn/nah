@@ -10,19 +10,6 @@
     <string name="settings_manage_user_words">Eigene Wörter verwalten</string>
     <string name="settings_auto_cap">Auto-Grossschreibung am Satzanfang</string>
     <string name="settings_color_hints">Lern-Farben (Vokale &amp; häufige Konsonanten)</string>
-    <string name="settings_open_cd">Einstellungen</string>
-
-    <!-- Tastatur-Tasten (Barrierefreiheit) -->
-    <string name="key_space_cd">Leertaste</string>
-    <string name="key_paste_cd">Aus Zwischenablage einfügen</string>
-    <string name="key_backspace_cd">Löschen</string>
-    <string name="key_return_cd">Eingabe</string>
-    <string name="key_shift_cd">Umschalt</string>
-    <string name="key_symbols_cd">Symbole und Zahlen</string>
-    <string name="key_alpha_cd">Buchstaben</string>
-    <string name="shift_state_off">aus</string>
-    <string name="shift_state_on">ein</string>
-    <string name="shift_state_caps">Feststelltaste</string>
 
     <!-- Eigene Wörter -->
     <string name="user_words_title">Eigene Wörter</string>

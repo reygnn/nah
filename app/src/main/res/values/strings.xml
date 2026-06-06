@@ -12,19 +12,6 @@
     <string name="settings_manage_user_words">Manage your own words</string>
     <string name="settings_auto_cap">Auto-capitalise at sentence start</string>
     <string name="settings_color_hints">Learning colours (vowels &amp; frequent consonants)</string>
-    <string name="settings_open_cd">Settings</string>
-
-    <!-- Keyboard keys (accessibility) -->
-    <string name="key_space_cd">Space</string>
-    <string name="key_paste_cd">Insert from clipboard</string>
-    <string name="key_backspace_cd">Delete</string>
-    <string name="key_return_cd">Enter</string>
-    <string name="key_shift_cd">Shift</string>
-    <string name="key_symbols_cd">Symbols and numbers</string>
-    <string name="key_alpha_cd">Letters</string>
-    <string name="shift_state_off">off</string>
-    <string name="shift_state_on">on</string>
-    <string name="shift_state_caps">caps lock</string>
 
     <!-- User words -->
     <string name="user_words_title">Your own words</string>

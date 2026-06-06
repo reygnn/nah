@@ -39,15 +39,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.disabled
-import androidx.compose.ui.semantics.onClick
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
-import com.github.reygnn.nah.R
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -138,37 +129,6 @@ fun TapKey(
         is FunctionKey -> key.label
     }
 
-    // Lokalisierte TalkBack-Beschreibung pro Funktionstaste statt der rohen Glyphe/des
-    // Symbol-Strings: Icon-Tasten (Backspace/Shift/Return/Paste) trügen sonst nur ihr
-    // Unicode-Symbol, die Layer-Toggles (SYM/ABC) nur ihren kurzen Label-String — beides
-    // buchstabiert ein Screenreader sinnlos. CharKeys und ,/. sind selbsterklärend (sichtbarer
-    // Text genügt) → null. Eine Quelle für Icon-contentDescription UND die Box-Semantik unten.
-    val functionCd: String? = (key as? FunctionKey)?.let {
-        when (it.action) {
-            KeyAction.SPACE -> stringResource(R.string.key_space_cd)
-            KeyAction.PASTE -> stringResource(R.string.key_paste_cd)
-            KeyAction.BACKSPACE -> stringResource(R.string.key_backspace_cd)
-            KeyAction.RETURN -> stringResource(R.string.key_return_cd)
-            KeyAction.SHIFT -> stringResource(R.string.key_shift_cd)
-            KeyAction.SYMBOLS -> stringResource(R.string.key_symbols_cd)
-            KeyAction.ALPHA -> stringResource(R.string.key_alpha_cd)
-            else -> null
-        }
-    }
-
-    // Der Shift-Zustand (aus/einmal/Feststelltaste) ist visuell nur am wechselnden Icon
-    // erkennbar; für TalkBack zusätzlich als stateDescription, damit ein blinder Nutzer hört,
-    // ob gerade Caps-Lock aktiv ist (sonst committen Buchstaben überraschend gross/klein).
-    val shiftStateCd: String? = if (key is FunctionKey && key.action == KeyAction.SHIFT) {
-        when (shift) {
-            ShiftState.OFF -> stringResource(R.string.shift_state_off)
-            ShiftState.SHIFTED -> stringResource(R.string.shift_state_on)
-            ShiftState.CAPS -> stringResource(R.string.shift_state_caps)
-        }
-    } else {
-        null
-    }
-
     // Backspace, Shift und Return zeigen ein Material-Vektor-Icon statt der
     // Unicode-Glyphe; alle anderen Tasten bleiben Text.
     val icon: ImageVector? = when {
@@ -217,13 +177,6 @@ fun TapKey(
         is CharKey -> key.alternatives.map { alt -> LongPressItem(alt) { onAlternative(alt) } }
         is FunctionKey -> key.longPressActions.map { act -> LongPressItem(act.label) { onKey(FunctionKey(act)) } }
     }
-    // BEWUSSTE a11y-Grenze: Die Long-Press-Alternativen sind nur über die Schiebe/Loslass-Geste
-    // erreichbar, die TalkBack nicht synthetisieren kann — es gibt KEINE semantics-CustomActions
-    // dafür. Akzeptiert, weil Long-Press eine sehende Komfortgeste ist und JEDE Funktion auch per
-    // Tap erreichbar bleibt (einzelnes q über die qu-Alternative ist Komfort; Ziffern voll über
-    // die SYM-Ebene, Akzente notfalls per Symbolebene). Vollständige TalkBack-Bedienung ist für
-    // diese Einfinger-Sicht-Tastatur kein Ziel (siehe Basis-Labels oben).
-
     // Long-Press-Popup-Zustand (nur für Tasten mit Long-Press-Einträgen).
     var popupOpen by remember { mutableStateOf(false) }
     var highlight by remember { mutableIntStateOf(CHIP_CANCEL) }
@@ -234,9 +187,8 @@ fun TapKey(
     var keyLeftInWindow by remember { mutableFloatStateOf(0f) }
     var bandLeftPx by remember { mutableFloatStateOf(0f) }
     // Geteilte Interaction-Source für den Ripple der Gesten-Tasten (Backspace + Long-Press-
-    // Tasten). Die nutzen rohes pointerInput statt clickable und bekämen sonst weder Ripple
-    // noch (s. die semantics-Modifier unten) eine TalkBack-aktivierbare Klick-Semantik —
-    // anders als die normalen Tasten, die clickable beides liefert.
+    // Tasten). Die nutzen rohes pointerInput statt clickable und bekämen sonst keinen Ripple —
+    // anders als die normalen Tasten, die clickable ihn von selbst liefert.
     val interactionSource = remember { MutableInteractionSource() }
     // awaitEachGesture läuft in einem restricted Scope (kein suspend-emit möglich); der
     // Ripple der Long-Press-Tasten wird daher über diesen Scope getrieben.
@@ -249,7 +201,6 @@ fun TapKey(
 
     val tapModifier = when {
         isBackspace -> Modifier
-            .semantics(mergeDescendants = true) { role = Role.Button; onClick { onKey(key); true } }
             .indication(interactionSource, ripple())
             .pointerInput(key) {
                 // Backspace: erst sofort löschen, dann — falls gehalten — im Repeat-Takt.
@@ -270,7 +221,6 @@ fun TapKey(
                 )
             }
         longPressItems.isNotEmpty() -> Modifier
-            .semantics(mergeDescendants = true) { role = Role.Button; onClick { onKey(key); true } }
             .indication(interactionSource, ripple())
             .pointerInput(key) {
             val chipWidthPx = CHIP_WIDTH.toPx()
@@ -329,9 +279,7 @@ fun TapKey(
                 }
             }
         }
-        // role = Button macht die normalen Tasten für TalkBack konsistent zu den
-        // Gesten-Tasten (Backspace/Alternativen setzen es oben schon explizit).
-        else -> Modifier.clickable(role = Role.Button) { tap() }
+        else -> Modifier.clickable { tap() }
     }
 
     Box(
@@ -341,33 +289,10 @@ fun TapKey(
             .onGloballyPositioned { keyLeftInWindow = it.positionInWindow().x }
             .clip(RoundedCornerShape(8.dp))
             .background(bg)
-            .then(
-                if (enabled) {
-                    tapModifier
-                } else {
-                    // Deaktiviert (z. B. Einfügen bei leerer Zwischenablage): keine Geste, aber
-                    // TalkBack soll den Deaktiviert-Zustand ansagen statt die Taste still
-                    // wirkungslos zu lassen. Die Beschreibung liefert weiterhin das Icon (functionCd).
-                    Modifier.semantics(mergeDescendants = true) { disabled(); role = Role.Button }
-                },
-            )
-            .then(
-                // Text-gerenderte Funktionstasten (Space/SYM/ABC) trügen sonst nur ihren
-                // sichtbaren String; die lokalisierte contentDescription macht daraus eine
-                // gesprochene Funktion. Icon-Tasten beschreibt das Icon selbst (unten).
-                if (icon == null && functionCd != null) {
-                    Modifier.semantics(mergeDescendants = true) { contentDescription = functionCd }
-                } else {
-                    Modifier
-                },
-            )
-            .then(
-                if (shiftStateCd != null) {
-                    Modifier.semantics(mergeDescendants = true) { stateDescription = shiftStateCd }
-                } else {
-                    Modifier
-                },
-            ),
+            // Deaktiviert (z. B. Einfügen bei leerer Zwischenablage): keine Geste. Sichtbar gedimmt
+            // ist die Taste ohnehin schon über fg (alpha). nah hat keine Screenreader-Unterstützung
+            // (bewusst sehende Einfinger-Tastatur), also keine semantics/contentDescription.
+            .then(if (enabled) tapModifier else Modifier),
         contentAlignment = Alignment.Center,
     ) {
         if (icon != null) {
@@ -377,7 +302,7 @@ fun TapKey(
             val isSpace = key is FunctionKey && key.action == KeyAction.SPACE
             Icon(
                 imageVector = icon,
-                contentDescription = functionCd ?: label,
+                contentDescription = null, // dekorativ — keine Screenreader-Unterstützung (sehende App)
                 tint = fg,
                 modifier = if (isSpace) Modifier.size(width = 72.dp, height = 24.dp) else Modifier.size(24.dp),
             )
