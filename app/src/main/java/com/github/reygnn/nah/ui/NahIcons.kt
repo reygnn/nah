@@ -41,14 +41,14 @@ object NahIcons {
     )
 
     /** ⎵ — Leertaste (Material `space_bar`, gefüllt): macht die sonst leere Space-Taste sichtbar
-     *  und ihren Mittelpunkt erkennbar. **Doppelt breit** in einem eigenen 48×24-Viewport (statt
+     *  und ihren Mittelpunkt erkennbar. **Dreifach breit** in einem eigenen 72×24-Viewport (statt
      *  das 24×24-Glyph zu strecken), damit der Balken breit, die Endstriche aber unverzerrt
-     *  bleiben. Wird in [TapKey] passend mit 48×24 dp gerendert. */
+     *  bleiben. Wird in [TapKey] passend mit 72×24 dp gerendert. */
     val Space: ImageVector = materialIcon(
         "Space",
-        "M38 9v4H10V9H8v6h32V9z",
-        viewportWidth = 48f,
-        widthDp = 48.dp,
+        "M62 9v4H10V9H8v6h56V9z",
+        viewportWidth = 72f,
+        widthDp = 72.dp,
     )
 
     /** 📋 — Einfügen (Material `content_paste`, gefüllt). */
