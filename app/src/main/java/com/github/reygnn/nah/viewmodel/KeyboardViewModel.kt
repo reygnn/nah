@@ -124,6 +124,9 @@ class KeyboardViewModel(
         this.field = field
         selStart = field.initialSelStart
         selEnd = field.initialSelEnd
+        // Reihenfolge ist load-bearing: ein Telefonfeld ist BEIDES (field.phone UND field.numeric,
+        // siehe FieldContext) — phone MUSS zuerst geprüft werden, sonst bekäme es das allgemeine
+        // Zahlen-Pad statt des Wählfelds. Nicht umsortieren.
         val layout = when {
             field.phone -> phoneLayout // eigenes Wählfeld (Telefon: * # +)
             field.numeric -> numberLayout // Zahl/PIN/Datum → Grosstasten-Ziffern-Pad (, . -)
