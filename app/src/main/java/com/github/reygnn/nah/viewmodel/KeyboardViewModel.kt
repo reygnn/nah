@@ -578,7 +578,15 @@ class KeyboardViewModel(
     private companion object {
         const val TAG = "NahIme"
         /** Wie viele Zeichen vor dem Cursor pro Schritt gelesen werden — deckt sowohl den
-         *  Satzanfang-Scan (Auto-Cap) als auch das Vorschlags-Präfix mit einem Read ab. */
+         *  Satzanfang-Scan (Auto-Cap) als auch das Vorschlags-Präfix mit einem Read ab.
+         *
+         *  Bekannte Grenze (wie die Abkürzungs-Heuristik in [computeAutoCapShift]): stünden
+         *  vor dem Cursor MEHR als so viele reine Whitespace-/transparente Zeichen, läge das
+         *  letzte bedeutungstragende Zeichen ausserhalb des Fensters → der Satzanfang-Scan
+         *  sähe nur Leerraum (`meaningful == ""`) und armierte fälschlich gross. Praktisch
+         *  irrelevant (niemand tippt 64 Leerzeichen) und folgenarm — es armiert nur EIN
+         *  Zeichen, das ein Shift-Tap sofort wieder entwaffnet. Ein grösseres Fenster kostete
+         *  pro Schritt mehr, ohne realen Gewinn. */
         const val CONTEXT_LOOKBEHIND = 64
         val SENTENCE_ENDERS = setOf('.', '!', '?')
         /**
