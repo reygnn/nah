@@ -17,6 +17,15 @@ Der Fugen-Review (`wh7db942v`) fand genau die gesuchte Edge-of-Edge-Klasse:
 Kandidaten** (Vorschlag-Tap über noch nicht gemeldete Live-Auswahl). Beide
 verifiziert (letzterer per Negativ-Kontrolle) und gefixt.
 
+Zusätzlich abgesichert:
+- **Invarianten-Fuzzer** (siehe (b)) — 12 500 zufällige Op-Sequenzen, 0 Brüche.
+- **Paste-Guard-Logik** in die reine Einheit `ime/PasteGuard` extrahiert und
+  deterministisch JVM-getestet (`PasteGuardTest`): echter Feldwechsel/Feld-Ende
+  verwirft, reiner Restart hält. Damit ist die Service-/Async-Naht auf der
+  **Entscheidungs-Ebene** bewiesen statt nur durchargumentiert. Was prinzipiell
+  ungetestet bleibt, ist allein die Framework-Message-Reihenfolge (Timing-Race) —
+  die ist nirgends deterministisch testbar (kein androidTest im Projekt, bewusst).
+
 ---
 
 ## ✅ ERLEDIGT — die zwei Fugen-Funde (Branch `fix/seam-followups`)

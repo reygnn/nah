@@ -50,12 +50,9 @@ class NahIme :
     private lateinit var settingsRepository: SettingsRepository
     private lateinit var userWordRepository: UserWordRepository
 
-    // Zählt jeden ECHTEN Feldwechsel hoch (in onStartInput(!restarting) und onFinishInput, NICHT bei
-    // einem reinen Restart desselben Feldes). Ein asynchron aufgelöster Einfüge-Inhalt (requestPaste)
-    // merkt sich den Stand zur Geste und committet nur, wenn er beim Zurückkommen auf dem Main-Thread
-    // noch stimmt — sonst landete der (evtl. langsam über einen Content-URI aufgelöste) Text im
-    // inzwischen fokussierten FREMDEN Feld (Fehlcommit + Privacy-Leck).
-    private var fieldEpoch = 0
+    // Schützt einen asynchron aufgelösten Einfüge-Inhalt davor, nach einem Feldwechsel ins fremde Feld
+    // zu committen (Fehlcommit + Privacy-Leck). Reine, JVM-getestete Entscheidungslogik (siehe PasteGuard).
+    private val pasteGuard = PasteGuard()
 
     override fun onCreate() {
         super.onCreate()
@@ -144,14 +141,14 @@ class NahIme :
      */
     override fun onStartInput(info: EditorInfo?, restarting: Boolean) {
         super.onStartInput(info, restarting)
-        if (!restarting) fieldEpoch++
+        pasteGuard.onFieldStarted(restarting)
     }
 
     /** Das Feld endet → ein noch laufender Paste-Commit gehört in kein Feld mehr und wird entwertet
      *  (er würde sonst gegen eine bereits umgeschaltete/ungültige IC committen). */
     override fun onFinishInput() {
         super.onFinishInput()
-        fieldEpoch++
+        pasteGuard.onFieldFinished()
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
@@ -199,14 +196,14 @@ class NahIme :
      * Main-Thread committen. Inhalt-Zugriff weiterhin NUR hier, bei der expliziten Geste.
      */
     private fun requestPaste() {
-        val requestedAtEpoch = fieldEpoch
+        val token = pasteGuard.beginPaste()
         lifecycleScope.launch(Dispatchers.Default) {
             val text = clipboardText()
             withContext(Dispatchers.Main) {
                 // Nur committen, wenn seit dem Tap kein Feldwechsel stattfand — sonst schriebe ein
                 // langsam aufgelöster URI-Clip in ein inzwischen fremdes Feld. Lieber den Paste
                 // fallen lassen (Nutzer tippt erneut) als ihn ins falsche Feld zu setzen.
-                if (requestedAtEpoch == fieldEpoch) viewModel.commitClipboardText(text)
+                if (pasteGuard.mayCommit(token)) viewModel.commitClipboardText(text)
             }
         }
     }
