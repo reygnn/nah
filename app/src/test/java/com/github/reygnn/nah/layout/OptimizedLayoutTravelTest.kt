@@ -146,6 +146,17 @@ class OptimizedLayoutTravelTest {
     }
 
     @Test
+    fun `die Punkt-Taste bietet auf der Buchstabenebene Frage- und Ausrufezeichen per Long-Press`() {
+        val alphaPeriod = OptimizedLayout.deCh().rows.flatten()
+            .filterIsInstance<FunctionKey>().first { it.action == KeyAction.PERIOD }
+        assertEquals(listOf(KeyAction.QUESTION, KeyAction.EXCLAMATION), alphaPeriod.longPressActions)
+        // Auf der Symbolebene liegen ? und ! offen → der Punkt trägt dort kein (redundantes) Long-Press.
+        val symbolsPeriod = OptimizedLayout.symbols().rows.flatten()
+            .filterIsInstance<FunctionKey>().first { it.action == KeyAction.PERIOD }
+        assertTrue(symbolsPeriod.longPressActions.isEmpty())
+    }
+
+    @Test
     fun `das Telefon-Waehlfeld bietet Ziffern, Stern, Raute und Plus`() {
         val keys = OptimizedLayout.phone().rows.flatten()
         val chars = keys.filterIsInstance<CharKey>().map { it.output }.toSet()

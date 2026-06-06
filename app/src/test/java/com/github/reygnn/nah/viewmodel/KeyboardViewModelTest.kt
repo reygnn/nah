@@ -326,6 +326,28 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `fragezeichen per Long-Press committet und armiert danach Auto-Cap`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }
+        vm.onStartInput()
+        vm.type("hallo")
+        vm.onKey(FunctionKey(KeyAction.QUESTION)) // Long-Press-Ziel der Punkt-Taste
+        // ? ist ein Satzende → der nächste Buchstabe wird gross armiert (wie nach einem Punkt).
+        assertEquals(ShiftState.SHIFTED, vm.state.value.shift)
+        vm.type("w")
+        assertEquals("Hallo?W", fake.buffer.toString())
+    }
+
+    @Test
+    fun `ausrufezeichen per Long-Press committet das Zeichen woertlich`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.type("hey")
+        vm.onKey(FunctionKey(KeyAction.EXCLAMATION)) // Long-Press-Ziel der Punkt-Taste
+        assertEquals("hey!", fake.buffer.toString())
+    }
+
+    @Test
     fun `auto-cap aktiviert shift am Anfang einer neuen Zeile`() {
         val fake = FakeIc()
         val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }

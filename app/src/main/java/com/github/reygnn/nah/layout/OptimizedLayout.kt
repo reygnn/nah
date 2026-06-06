@@ -162,7 +162,19 @@ object OptimizedLayout {
         },
         FunctionKey(KeyAction.COMMA, weight = 1f),
         FunctionKey(KeyAction.SPACE, weight = 4f),
-        FunctionKey(KeyAction.PERIOD, weight = 1f),
+        // Auf der Buchstabenebene (toggle == SYMBOLS) bietet die Punkt-Taste ? und ! per
+        // Long-Press an — so braucht es für ein Frage-/Ausrufezeichen keinen Wechsel auf die
+        // Symbolebene. Auf der Symbolebene selbst liegen ? und ! ohnehin offen → dort kein
+        // (redundantes) Long-Press, also auch kein Eck-Marker.
+        if (toggle == KeyAction.SYMBOLS) {
+            FunctionKey(
+                KeyAction.PERIOD,
+                weight = 1f,
+                longPressActions = listOf(KeyAction.QUESTION, KeyAction.EXCLAMATION),
+            )
+        } else {
+            FunctionKey(KeyAction.PERIOD, weight = 1f)
+        },
         FunctionKey(KeyAction.RETURN, weight = 1.5f),
     )
 

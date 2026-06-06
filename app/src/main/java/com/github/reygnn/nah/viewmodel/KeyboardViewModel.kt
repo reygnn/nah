@@ -225,6 +225,10 @@ class KeyboardViewModel(
             KeyAction.SPACE -> { commit(" "); afterTextChanged() }
             KeyAction.PERIOD -> { commit("."); afterTextChanged() }
             KeyAction.COMMA -> { commit(","); afterTextChanged() }
+            // Per Long-Press auf der Punkt-Taste (Buchstabenebene) erreichbar. Wie der Punkt:
+            // committen das Zeichen wörtlich und armieren danach Auto-Cap (? und ! sind Satzenden).
+            KeyAction.QUESTION -> { commit("?"); afterTextChanged() }
+            KeyAction.EXCLAMATION -> { commit("!"); afterTextChanged() }
             // Einfügen anfordern — der Service löst den Inhalt off-main auf und committet
             // ihn über commitClipboardText (kein UI-Thread-Block, siehe onPasteRequested).
             KeyAction.PASTE -> onPasteRequested()

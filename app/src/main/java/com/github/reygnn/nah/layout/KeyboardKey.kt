@@ -57,4 +57,9 @@ enum class KeyAction(val label: String) {
     // DIALPAD = Wählfeld (* # +).
     NUMPAD("123"),
     DIALPAD("*#+"),
+    // Nur als Long-Press-Ziel der Punkt-Taste (Buchstabenebene) verwendet, nie als eigene
+    // Tastenfläche — der [label] ist zugleich der Chip-Text. So setzt man ein Frage-/Ausrufe-
+    // zeichen, ohne erst auf die Symbolebene zu wechseln.
+    QUESTION("?"),
+    EXCLAMATION("!"),
 }
