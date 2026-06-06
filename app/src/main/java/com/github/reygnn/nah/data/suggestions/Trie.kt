@@ -17,9 +17,17 @@ class Trie {
         for (char in word.lowercase()) {
             node = node.children.getOrPut(char) { TrieNode() }
         }
-        node.isWord = true
-        node.frequency = frequency
-        node.originalWord = word
+        // Case-insensitive Kollision (z. B. „morgen" 830 vs. „Morgen" 670 — beide landen auf
+        // demselben kleingeschriebenen Pfad): die HÖHERE Frequenz behalten, nicht den zuletzt
+        // eingefügten Eintrag gewinnen lassen. Sonst verdeckte die spätere, seltenere Schreibweise
+        // stumm die häufigere und der Vorschlag käme falsch gecast heraus (klein getipptes „morge"
+        // → „Morgen") — genau die stille Fehlschreibung, die nah ablehnt. Gleichstand behält den
+        // ersten Eintrag (deterministisch).
+        if (!node.isWord || frequency > node.frequency) {
+            node.isWord = true
+            node.frequency = frequency
+            node.originalWord = word
+        }
     }
 
     fun getSuggestions(prefix: String, limit: Int): List<Pair<String, Int>> {

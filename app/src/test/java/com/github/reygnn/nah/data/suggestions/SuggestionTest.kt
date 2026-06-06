@@ -38,6 +38,16 @@ class TrieTest {
     }
 
     @Test
+    fun `case-Kollision behaelt die hoehere Frequenz, unabhaengig von der Einfuegereihenfolge`() {
+        // „morgen"/„Morgen" landen auf demselben kleingeschriebenen Pfad. Die höhere Frequenz muss
+        // gewinnen — egal welche Schreibweise zuletzt eingefügt wird (sonst stille Fehlschreibung).
+        val lowerFirst = Trie().apply { insert("morgen", 830); insert("Morgen", 670) }
+        val upperFirst = Trie().apply { insert("Morgen", 670); insert("morgen", 830) }
+        assertEquals(listOf("morgen" to 830), lowerFirst.getSuggestions("morgen", limit = 3))
+        assertEquals(listOf("morgen" to 830), upperFirst.getSuggestions("morgen", limit = 3))
+    }
+
+    @Test
     fun `contains erkennt Woerter`() {
         val t = trie()
         assertTrue(t.contains("hallo"))
@@ -100,6 +110,13 @@ class SuggestionRepositoryTest {
         )
         // … aber nicht ein Teilstring mitten drin (kein strstr).
         assertTrue(r.suggest("strasse", includeBuiltIn = false, includeUser = true).isEmpty())
+    }
+
+    @Test
+    fun `case-Dublette der eingebauten Liste liefert die haeufigere Schreibweise`() {
+        // GermanWordList enthält „morgen" (830) und „Morgen" (670) — auf demselben Trie-Pfad. Die
+        // häufigere (kleine) Form muss gewinnen, obwohl die Grossschreibung später eingefügt wird.
+        assertEquals("morgen", repo.suggest("morge", includeBuiltIn = true, includeUser = false).first())
     }
 
     @Test
