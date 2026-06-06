@@ -157,6 +157,7 @@ class OptimizedLayoutTravelTest {
         assertTrue(actions.contains(KeyAction.ALPHA)) // zurück zum Alphabet
         assertTrue(actions.contains(KeyAction.BACKSPACE))
         assertTrue(actions.contains(KeyAction.RETURN))
+        assertTrue(actions.contains(KeyAction.PASTE)) // kopierte Nummer direkt einfügbar (Punkt 1)
     }
 
     @Test
@@ -173,6 +174,7 @@ class OptimizedLayoutTravelTest {
         assertTrue(actions.contains(KeyAction.ALPHA)) // zurück zum Alphabet
         assertTrue(actions.contains(KeyAction.BACKSPACE))
         assertTrue(actions.contains(KeyAction.RETURN))
+        assertTrue(actions.contains(KeyAction.PASTE)) // kopierten Betrag/Code direkt einfügbar (Punkt 1)
     }
 
     @Test

@@ -22,14 +22,16 @@ class NahColorsTest {
     }
 
     @Test
-    fun `seltene Buchstaben x und y sind Rare`() {
+    fun `seltene Buchstaben x, y und q sind Rare`() {
         assertEquals(NahColors.Hint.Rare, NahColors.hintFor('x'))
         assertEquals(NahColors.Hint.Rare, NahColors.hintFor('y'))
+        // q kommt nur als „qu" vor und sitzt auf der Digraph-Taste → ebenfalls gedimmt.
+        assertEquals(NahColors.Hint.Rare, NahColors.hintFor('q'))
     }
 
     @Test
     fun `uebrige Buchstaben sind neutral`() {
-        for (c in "bcfgjklmpqvwz") {
+        for (c in "bcfgjklmpvwz") {
             assertNull("'$c' sollte neutral sein", NahColors.hintFor(c))
         }
     }

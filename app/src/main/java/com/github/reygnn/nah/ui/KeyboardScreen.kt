@@ -25,7 +25,14 @@ import com.github.reygnn.nah.viewmodel.KeyboardViewModel
 /** Abstand der Tasten zur Bildschirmunterkante (über die Gestenzone). Tunebar —
  *  am Pixel 9a einstellen: zu wenig = Kollision mit der Wischleiste, zu viel =
  *  unnötig hoher dunkler Streifen unten. Im Querformat deutlich kleiner, sonst frisst
- *  die fünfreihige Tastatur zu viel der knappen Höhe. */
+ *  die fünfreihige Tastatur zu viel der knappen Höhe.
+ *
+ *  **Bewusst ein fester Wert statt echter `WindowInsets`:** der Wert ist auf die
+ *  Pixel-9a-Gestennavigation getunt. `navigationBarsPadding()` in der IME-ComposeView
+ *  liess die Höhe auf den Inset kollabieren (leere Tastatur) — darum nicht verwendet.
+ *  Konsequenz: bei 3-Knopf-Navigation oder einem anderen Gerät stimmt der Abstand nicht
+ *  exakt; das ist akzeptiert (nah ist eine Single-Device-Privat-App). Ein robusteres
+ *  Insets-Handling wäre nur mit echtem Gerätetest gefahrlos umzustellen. */
 private val BOTTOM_INSET_PORTRAIT: Dp = 48.dp
 private val BOTTOM_INSET_LANDSCAPE: Dp = 8.dp
 

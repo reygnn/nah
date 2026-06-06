@@ -33,7 +33,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -80,10 +79,11 @@ private const val BACKSPACE_REPEAT_MS = 55L
 /**
  * Marker (kleiner gefüllter Kreis, rechts oben) auf Tasten mit Long-Press-Menü: macht die
  * sonst unsichtbaren Alternativen sichtbar (Discoverability — Anforderung 3), ohne das
- * zentrierte Label anzutasten. Eine einzige Quelle für die Farbe → trivial umstellbar.
- * [MARKER_INSET] hält den Punkt innerhalb des abgerundeten Tasten-Clips (8.dp-Ecke).
+ * zentrierte Label anzutasten. Die Farbe kommt aus dem Theme-Akzent (`colorScheme.primary`)
+ * statt eines festen Rots: theme-konsistenter Kontrast auf dem dynamischen Schema und kein
+ * „Fehler/Benachrichtigung"-Beiklang eines roten Punktes. [MARKER_INSET] hält den Punkt
+ * innerhalb des abgerundeten Tasten-Clips (8.dp-Ecke).
  */
-private val MARKER_COLOR = Color(0xFFE53935)
 private val MARKER_SIZE = 7.dp
 private val MARKER_INSET = 4.dp
 
@@ -386,7 +386,7 @@ fun TapKey(
                     .align(Alignment.TopEnd)
                     .padding(MARKER_INSET)
                     .size(MARKER_SIZE)
-                    .background(MARKER_COLOR, CircleShape),
+                    .background(colors.primary, CircleShape),
             )
         }
         if (popupOpen) {

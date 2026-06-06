@@ -33,9 +33,11 @@ object NahColors {
      *  wären kein Anker mehr. */
     private val keyConsonants = "srntdh".toSet()
 
-    /** Praktisch nie gebraucht (Korpus: x = 0 %, y = 0.23 %). Bewusst nur diese zwei —
-     *  w/z sind häufiger als sie wirken und bleiben darum normal. */
-    private val rareLetters = "xy".toSet()
+    /** Praktisch nie gebraucht (Korpus: x = 0 %, y = 0.23 %; q kommt nur als „qu" vor und sitzt
+     *  ohnehin auf der Digraph-Taste). Bewusst nur diese drei — w/z sind häufiger als sie wirken
+     *  und bleiben darum normal. Die qu-Taste trägt char 'q', wird also über diesen Eintrag
+     *  mitgedimmt — konsistent zum „selten gebraucht"-Signal. */
+    private val rareLetters = "xyq".toSet()
 
     /** Welche Hinweisfarbe gilt für diesen Buchstaben (oder `null` = neutral)? Rein,
      *  case-insensitiv — JVM-testbar. */

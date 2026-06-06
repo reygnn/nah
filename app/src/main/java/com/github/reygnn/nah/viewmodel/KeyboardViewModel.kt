@@ -93,6 +93,13 @@ class KeyboardViewModel(
     // automatische Armierung wieder loszuwerden.
     private var autoCapArmed = false
 
+    // Hat der Nutzer ein AUTO-armiertes SHIFTED gerade per Shift-Tap bewusst entwaffnet? Dann
+    // soll ein blosser Cursor-/Selektions-Callback (der den Satzanfang erneut „sähe") Auto-Cap
+    // an dieser Stelle NICHT wieder anwerfen — der Nutzerwille zählt. Gilt nur bis zur nächsten
+    // echten Aktion (Tippen/Edit/Feldwechsel), die den Merker zurücksetzt; ein dann erreichter
+    // neuer Satzanfang armiert wieder normal.
+    private var userDisarmedAutoCap = false
+
     fun applySettings(newSettings: Settings) {
         settings = newSettings
         if (_state.value.colorHints != newSettings.letterColorHintsEnabled) {
@@ -134,6 +141,7 @@ class KeyboardViewModel(
             // Ebene/Einfügen/Shift in derselben Emission setzen. refreshForCursor armiert danach
             // ggf. wieder SHIFTED; computeAutoCapShift lässt Passwort-/Zahlenfelder selbst aus.
             autoCapArmed = false
+            userDisarmedAutoCap = false // neues Feld → ein Entwaffnen aus dem alten Feld gilt nicht mehr
             _state.value = _state.value.copy(
                 layout = layout,
                 pasteAvailable = pasteAvailable,
@@ -345,6 +353,7 @@ class KeyboardViewModel(
         selEnd = selStart // nach dem Eigen-Edit gibt es keine aktive Auswahl mehr
         setShift(ShiftState.OFF)
         clearSuggestions()
+        userDisarmedAutoCap = false // ein Vorschlag-Commit ist eine echte Aktion → Auto-Cap rechnet wieder
         recomputeAutoCap()
     }
 
@@ -371,7 +380,13 @@ class KeyboardViewModel(
     }
 
     private fun cycleShift() {
-        val next = when (_state.value.shift) {
+        val current = _state.value.shift
+        // Tippt der Nutzer Shift auf einem AUTO-armierten SHIFTED, will er die automatische
+        // Grossschreibung bewusst weghaben — bis zur nächsten echten Aktion darf sie ein
+        // Cursor-Callback an dieser Stelle nicht wieder anwerfen (siehe userDisarmedAutoCap).
+        // Jeder andere Shift-Tap ist eine normale manuelle Wahl und löscht den Merker wieder.
+        userDisarmedAutoCap = current == ShiftState.SHIFTED && autoCapArmed
+        val next = when (current) {
             ShiftState.OFF -> ShiftState.SHIFTED
             // Auto-armiert → der Tap will entwaffnen (OFF); manuell armiert → weiter
             // zu Caps-Lock. So bleibt der manuelle Zyklus OFF→SHIFTED→CAPS→OFF erhalten.
@@ -399,6 +414,9 @@ class KeyboardViewModel(
         // Cursor-Sprünge ab) und idempotent: `copy` ist ein No-op bei Gleichstand.
         // Bewusst NICHT per Cursor-Vorhersage entdoppelt — eine falsche Vorhersage würde ein
         // nötiges Recompute überspringen und falsch grossschreiben (schlechter Tausch).
+        // Eine echte Tipp-/Edit-Aktion hebt ein vorheriges manuelles Entwaffnen wieder auf:
+        // ab hier soll Auto-Cap wieder normal aus dem (neuen) Kontext rechnen.
+        userDisarmedAutoCap = false
         refreshForCursor(reconsiderAutoCap = true)
     }
 
@@ -487,6 +505,10 @@ class KeyboardViewModel(
      */
     private fun computeAutoCapShift(before: String?): ShiftState? {
         if (!settings.autoCapEnabled) return null
+        // Der Nutzer hat Auto-Cap an dieser Stelle gerade bewusst entwaffnet → nicht wieder
+        // anwerfen (ein blosser Cursor-Callback soll den Willen nicht überschreiben). Der Merker
+        // hält nur bis zur nächsten echten Aktion (s. userDisarmedAutoCap / afterTextChanged).
+        if (userDisarmedAutoCap) return null
         if (field.isPassword) return null // case-sensitive: nie automatisch grossschreiben
         if (field.numeric) return null // Zahl-/Telefonfeld kennt keinen „Satzanfang"
         val shift = _state.value.shift

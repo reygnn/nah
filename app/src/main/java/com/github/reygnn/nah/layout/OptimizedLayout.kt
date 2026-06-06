@@ -74,11 +74,15 @@ object OptimizedLayout {
      * `+`, `*`, `#` liegen offen, kein verstecktes Long-Press. Über `ABC` geht es zum vollen
      * Alphabet (z. B. Vanity-Nummern, Durchwahl-Buchstaben), `?123` von dort zur Symbolebene.
      *
+     * Die **Einfügen-Taste sitzt sichtbar ganz links** (wie auf der Alpha-/Symbolebene), damit
+     * sich eine kopierte Nummer direkt einfügen lässt, ohne erst über `ABC` auszuweichen — sie
+     * dimmt automatisch bei leerer Zwischenablage (Deaktivier-Logik in `KeyboardContent`).
+     *
      *   1 2 3
      *   4 5 6
      *   7 8 9
      *   * 0 #
-     *   ABC + ⌫ ⏎          (fünf Reihen wie die anderen Ebenen → keine Höhensprünge)
+     *   ⧉ ABC + ⌫ ⏎        (fünf Reihen wie die anderen Ebenen → keine Höhensprünge)
      */
     fun phone(): KeyboardLayout = KeyboardLayout(
         rows = listOf(
@@ -87,6 +91,7 @@ object OptimizedLayout {
             charRow("789"),
             charRow("*0#"),
             listOf(
+                FunctionKey(KeyAction.PASTE, weight = 1f),
                 FunctionKey(KeyAction.ALPHA, weight = 1.5f),
                 CharKey('+'),
                 FunctionKey(KeyAction.BACKSPACE, weight = 1.5f),
@@ -106,11 +111,15 @@ object OptimizedLayout {
      * entfernt. Alle Tasten sichtbar beschriftet (kein verstecktes Long-Press, wie das
      * Wählfeld). Fünf Reihen wie überall → keine Höhensprünge.
      *
+     * Die **Einfügen-Taste sitzt sichtbar ganz links** (wie auf der Alpha-/Symbolebene), damit
+     * sich ein kopierter Betrag/Code/eine PLZ direkt einfügen lässt, ohne erst über `ABC`
+     * auszuweichen — sie dimmt automatisch bei leerer Zwischenablage (s. `KeyboardContent`).
+     *
      *   1 2 3
      *   4 5 6
      *   7 8 9
      *   , 0 .
-     *   ABC - ⌫ ⏎
+     *   ⧉ ABC - ⌫ ⏎
      */
     fun number(): KeyboardLayout = KeyboardLayout(
         rows = listOf(
@@ -119,6 +128,7 @@ object OptimizedLayout {
             charRow("789"),
             charRow(",0."),
             listOf(
+                FunctionKey(KeyAction.PASTE, weight = 1f),
                 FunctionKey(KeyAction.ALPHA, weight = 1.5f),
                 CharKey('-'),
                 FunctionKey(KeyAction.BACKSPACE, weight = 1.5f),

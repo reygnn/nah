@@ -706,6 +706,39 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `bewusst entwaffnetes Auto-Cap ueberlebt einen Selektions-Callback`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }
+        fake.buffer.append("hallo. ")
+        fake.select(7, 7)
+        vm.onSelectionChanged(7, 7)             // nach „. " → Auto-Cap armiert SHIFTED
+        assertEquals(ShiftState.SHIFTED, vm.state.value.shift)
+        vm.onKey(FunctionKey(KeyAction.SHIFT))  // Nutzer entwaffnet die Auto-Armierung bewusst
+        assertEquals(ShiftState.OFF, vm.state.value.shift)
+        // Ein blosser Cursor-Callback (auch zurück an denselben Satzanfang) darf Auto-Cap NICHT
+        // wieder anwerfen — sonst wäre das bewusste Entwaffnen sinnlos (Punkt 2 der Code-Analyse).
+        fake.select(3, 3); vm.onSelectionChanged(3, 3)
+        fake.select(7, 7); vm.onSelectionChanged(7, 7)
+        assertEquals(ShiftState.OFF, vm.state.value.shift)
+    }
+
+    @Test
+    fun `nach dem Entwaffnen hebt ein Tastendruck die Auto-Cap-Sperre wieder auf`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }
+        vm.onStartInput()                       // leerer Puffer → SHIFTED armiert
+        vm.onKey(FunctionKey(KeyAction.SHIFT))  // bewusst entwaffnet → OFF
+        assertEquals(ShiftState.OFF, vm.state.value.shift)
+        vm.type("x")                            // echte Aktion: klein committet, Sperre fällt weg
+        assertEquals("x", fake.buffer.toString())
+        // Ein danach frisch erreichter Satzanfang (nach „. ") armiert wieder ganz normal.
+        fake.buffer.append(". ")
+        fake.select(3, 3)
+        vm.onSelectionChanged(3, 3)
+        assertEquals(ShiftState.SHIFTED, vm.state.value.shift)
+    }
+
+    @Test
     fun `vorschlag-tap ersetzt nur das aktuelle Wort, nie fertigen Text`() {
         val fake = FakeIc()
         val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("welt") })
