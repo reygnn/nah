@@ -11,7 +11,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -112,12 +112,14 @@ private fun nonScaledSp(size: Dp): TextUnit = with(LocalDensity.current) { size.
  * Eine grosse, deterministische Tipp-Taste. Ein Tap = genau diese [key]. Labels
  * sind immer sichtbar → ab Tag eins per hunt-and-peck benutzbar, keine Lernwand.
  *
- * Tasten mit Long-Press-Einträgen zeigen beim **Gedrückthalten** ein sichtbares Popup.
- * Zwei Quellen, gleiche Geste: [CharKey.alternatives] committen ein Zeichen (z. B. `c` →
- * ch/ck/sch, qu-Taste → einzelnes `q`), [FunctionKey.longPressActions] lösen eine Aktion
- * aus (die ?123-Taste → grosses Ziffern-Pad/Wählfeld). Auswahl: Finger zum Chip
- * **schieben und loslassen** — losgelassen auf der Taste committet den Basis-Output bzw.
- * löst die Basis-Aktion aus. Sichtbar = keine Lernkurve (anders als vuots unsichtbare Swipes).
+ * Tasten mit Long-Press-Einträgen zeigen beim **Gedrückthalten** ein sichtbares Popup, das
+ * **vertikal nach oben** aufklappt. Zwei Quellen, gleiche Geste: [CharKey.alternatives]
+ * committen ein Zeichen (z. B. `a` → ä/à/â, qu-Taste → einzelnes `q`),
+ * [FunctionKey.longPressActions] lösen eine Aktion aus (die ?123-Taste → Ziffern-Pad/Wählfeld).
+ * Auswahl: **Halten und loslassen** committet das **erste** Item (z. B. ä) — der Finger muss
+ * sich nicht bewegen; für weitere Items den Finger nach **oben** schieben, zum Abbrechen nach
+ * **unten** unter die Taste ziehen. Ein normaler **Tap** committet immer das Basiszeichen.
+ * Sichtbar = keine Lernkurve (anders als vuots unsichtbare Swipes).
  */
 @Composable
 fun TapKey(
@@ -223,7 +225,7 @@ fun TapKey(
 
     // Long-Press-Popup-Zustand (nur für Tasten mit Long-Press-Einträgen).
     var popupOpen by remember { mutableStateOf(false) }
-    var highlight by remember { mutableIntStateOf(-1) }
+    var highlight by remember { mutableIntStateOf(CHIP_CANCEL) }
     // Linke Tastenkante in Fensterkoordinaten (via onGloballyPositioned gepflegt) und die
     // daraus berechnete, ggf. an den Fensterrand geclampte linke Kante des Popup-Bands.
     // BEIDE — Popup-Position UND Chip-Auswahl — rechnen gegen denselben Wert, damit ein
@@ -265,8 +267,8 @@ fun TapKey(
             .semantics(mergeDescendants = true) { role = Role.Button; onClick { onKey(key); true } }
             .indication(interactionSource, ripple())
             .pointerInput(key) {
-            val chipPx = CHIP_WIDTH.toPx()
-            val bandPx = longPressItems.size * chipPx
+            val chipWidthPx = CHIP_WIDTH.toPx()
+            val chipHeightPx = CHIP_HEIGHT.toPx()
             awaitEachGesture {
                 val down = awaitFirstDown(requireUnconsumed = false)
                 val press = PressInteraction.Press(down.position)
@@ -281,41 +283,37 @@ fun TapKey(
                         tap() // schneller Tap → Basis-Output
                         return@awaitEachGesture // finally unten gibt den Ripple frei
                     }
-                    // Gehalten → Popup öffnen, Auswahl per Schieben verfolgen. Band-Kante
-                    // einmal pro Geste festlegen (mittig über der Taste, an den Fensterrand
-                    // geclampt) — Popup und Chip-Auswahl teilen sich genau diesen Wert.
+                    // Gehalten → Popup öffnen, Auswahl per Schieben nach oben verfolgen. Die
+                    // X-Kante der Spalte (mittig über der Taste, an den Fensterrand geclampt)
+                    // bestimmt nur die Anzeige; die Auswahl ist rein vertikal (chipIndexFor).
                     view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                     val keyLeft = keyLeftInWindow
                     val keyHeight = size.height.toFloat()
-                    val bandLeft = bandLeftInWindow(keyLeft, size.width.toFloat(), bandPx, view.width.toFloat())
-                    bandLeftPx = bandLeft
+                    bandLeftPx = bandLeftInWindow(keyLeft, size.width.toFloat(), chipWidthPx, view.width.toFloat())
                     popupOpen = true
-                    highlight = chipIndexFor(longPress.position, keyLeft, bandLeft, chipPx, longPressItems.size, keyHeight)
+                    highlight = chipIndexFor(longPress.position, chipHeightPx, longPressItems.size, keyHeight)
                     while (true) {
                         val event = awaitPointerEvent()
                         val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                        highlight = chipIndexFor(change.position, keyLeft, bandLeft, chipPx, longPressItems.size, keyHeight)
+                        highlight = chipIndexFor(change.position, chipHeightPx, longPressItems.size, keyHeight)
                         change.consume()
                         if (!change.pressed) break
                     }
-                    // Losgelassen: gewählten Chip auslösen; auf der Taste → Basis-Aktion; unter
-                    // die Taste gezogen ([CHIP_CANCEL]) → nichts (Geste abgebrochen).
+                    // Losgelassen: gewählten Chip auslösen. Default ist Chip 0 (Halten ohne
+                    // Schieben), nach oben gezogen die weiteren; unter die Taste ([CHIP_CANCEL])
+                    // → nichts. Das Basiszeichen gibt es hier NICHT — dafür ist der Tap da.
                     val selected = highlight
                     popupOpen = false
-                    highlight = CHIP_BASE
-                    when {
-                        selected in longPressItems.indices -> {
-                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                            longPressItems[selected].onSelect()
-                        }
-                        selected == CHIP_CANCEL -> Unit // bewusst abgebrochen → keine Wirkung
-                        else -> onKey(key) // CHIP_BASE → Basis-Output bzw. -Aktion der Taste
+                    highlight = CHIP_CANCEL
+                    if (selected in longPressItems.indices) {
+                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                        longPressItems[selected].onSelect()
                     }
                 } finally {
                     // Räumt das Popup auch bei Abbruch auf (sonst bliebe es bei einer mitten im
                     // Halten abgebrochenen Geste sichtbar offen) und gibt den Ripple frei.
                     popupOpen = false
-                    highlight = CHIP_BASE
+                    highlight = CHIP_CANCEL
                     scope.launch { interactionSource.emit(PressInteraction.Release(press)) } // Ripple aus
                 }
             }
@@ -421,42 +419,36 @@ internal fun bandLeftInWindow(
     return (keyCenter - bandWidthPx / 2f).coerceIn(0f, maxLeft)
 }
 
-/** Loslassen auf der Taste selbst → Basis-Output (kein Chip gewählt). */
-internal const val CHIP_BASE = -1
-
 /** Unter die Tastenunterkante gezogen → Geste abgebrochen, Loslassen committet nichts. */
 internal const val CHIP_CANCEL = -2
 
 /**
- * Welcher Chip ist unter dem Finger?
- *  - über die Tastenoberkante ([pos].y < 0) ins Popup-Band gezogen → der getroffene Chip,
- *  - noch auf der Taste (0 ≤ y ≤ [keyHeightPx]) → [CHIP_BASE] (Loslassen committet den Basis-Output),
+ * Welcher Chip ist unter dem Finger im **vertikalen**, nach oben aufklappenden Menü?
+ *  - Finger noch auf der Taste (0 ≤ y ≤ [keyHeightPx]) → Chip 0, der Default: Halten und
+ *    Loslassen ohne jede Bewegung committet das erste Item (z. B. ä),
+ *  - je [chipHeightPx] weiter über die Tastenoberkante (y < 0) gezogen → der nächsthöhere Chip,
  *  - unter die Tastenunterkante (y > [keyHeightPx]) → [CHIP_CANCEL] (Abbruch, kein Commit).
  *
- * Gerechnet in Fensterkoordinaten gegen [bandLeftInWindow] ([keyLeftInWindow] verschiebt
- * die tastenlokale Finger-X dorthin), damit ein randnah geclamptes Popup den richtigen
- * Chip liefert.
+ * Rein y-basiert: die Alternativen stehen in einer einzigen Spalte mittig über der Taste,
+ * die Finger-X ist für die Auswahl belanglos (anders als beim früheren horizontalen Band).
  */
 internal fun chipIndexFor(
     pos: Offset,
-    keyLeftInWindow: Float,
-    bandLeftInWindow: Float,
-    chipPx: Float,
+    chipHeightPx: Float,
     count: Int,
     keyHeightPx: Float,
 ): Int {
-    if (count == 0) return CHIP_BASE
+    if (count == 0) return CHIP_CANCEL
     if (pos.y > keyHeightPx) return CHIP_CANCEL
-    if (pos.y >= 0f) return CHIP_BASE
-    val pointerXInWindow = keyLeftInWindow + pos.x
-    return floor((pointerXInWindow - bandLeftInWindow) / chipPx).toInt().coerceIn(0, count - 1)
+    return floor(-pos.y / chipHeightPx).toInt().coerceIn(0, count - 1)
 }
 
-/** Sichtbares Alternativen-Popup, mittig über der Taste. Der hervorgehobene Chip
- *  (unter dem Finger) wird beim Loslassen committet. Die Chips zeigen die Alternative
- *  durch dieselbe Casing-Quelle ([ShiftState.applyTo]) wie der Commit (onAlternative →
- *  commitWithShift) — sonst zeigte das Popup unter Shift/Caps „sch", committete aber
- *  „Sch"/„SCH" und bräche die „Angezeigtes == Getipptes"-Garantie der Basistasten. */
+/** Sichtbares Alternativen-Popup als **vertikale Spalte**, mittig über der Taste. Item 0 sitzt
+ *  **unten** (direkt über dem Finger) → Loslassen ohne Schieben committet es; höhere Items
+ *  liegen darüber. Der hervorgehobene Chip (unter dem Finger) wird beim Loslassen committet. Die
+ *  Chips zeigen die Alternative durch dieselbe Casing-Quelle ([ShiftState.applyTo]) wie der Commit
+ *  (onAlternative → commitWithShift) — sonst zeigte das Popup unter Shift/Caps „sch", committete
+ *  aber „Sch"/„SCH" und bräche die „Angezeigtes == Getipptes"-Garantie der Basistasten. */
 @Composable
 private fun AlternativesPopup(
     alternatives: List<String>,
@@ -465,8 +457,8 @@ private fun AlternativesPopup(
     bandLeftPx: Float,
 ) {
     val colors = MaterialTheme.colorScheme
-    // x kommt aus der bereits geclampten Band-Kante (siehe bandLeftInWindow) — dieselbe
-    // Quelle wie die Chip-Auswahl, damit Anzeige und Commit deckungsgleich sind.
+    // x zentriert die (eine Chip breite) Spalte über der Taste, geclampt an den Fensterrand
+    // (siehe bandLeftInWindow). Die Chip-Auswahl ist rein vertikal, hängt also nicht daran.
     val positionProvider = remember(bandLeftPx) {
         object : PopupPositionProvider {
             override fun calculatePosition(
@@ -482,14 +474,15 @@ private fun AlternativesPopup(
     }
     Popup(popupPositionProvider = positionProvider) {
         // Invers zu den (dunklen) Tasten: helle, schwebende Fläche → klar als eigenes
-        // Element erkennbar. Der hervorgehobene Chip in der Akzentfarbe.
-        Row(
+        // Element erkennbar. Der hervorgehobene Chip in der Akzentfarbe. Von oben nach unten
+        // absteigend gerendert, damit Item 0 ganz unten (am Finger) steht.
+        Column(
             modifier = Modifier
                 .padding(bottom = POPUP_GAP)
                 .shadow(6.dp, RoundedCornerShape(10.dp))
                 .background(colors.inverseSurface),
         ) {
-            alternatives.forEachIndexed { i, alt ->
+            for (i in alternatives.indices.reversed()) {
                 Box(
                     modifier = Modifier
                         .size(CHIP_WIDTH, CHIP_HEIGHT)
@@ -497,7 +490,7 @@ private fun AlternativesPopup(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = shift.applyTo(alt),
+                        text = shift.applyTo(alternatives[i]),
                         color = if (i == highlight) colors.onPrimary else colors.inverseOnSurface,
                         fontSize = nonScaledSp(20.dp), // wie die Tasten: fixe Chip-Höhe, kein Clipping
                         maxLines = 1,
