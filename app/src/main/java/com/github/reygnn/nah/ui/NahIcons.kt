@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
@@ -40,10 +41,14 @@ object NahIcons {
     )
 
     /** ⎵ — Leertaste (Material `space_bar`, gefüllt): macht die sonst leere Space-Taste sichtbar
-     *  und ihren Mittelpunkt erkennbar. */
+     *  und ihren Mittelpunkt erkennbar. **Doppelt breit** in einem eigenen 48×24-Viewport (statt
+     *  das 24×24-Glyph zu strecken), damit der Balken breit, die Endstriche aber unverzerrt
+     *  bleiben. Wird in [TapKey] passend mit 48×24 dp gerendert. */
     val Space: ImageVector = materialIcon(
         "Space",
-        "M18 9v4H6V9H4v6h16V9z",
+        "M38 9v4H10V9H8v6h32V9z",
+        viewportWidth = 48f,
+        widthDp = 48.dp,
     )
 
     /** 📋 — Einfügen (Material `content_paste`, gefüllt). */
@@ -89,15 +94,23 @@ object NahIcons {
 private const val OUTLINE_STROKE = 1.25f
 
 /**
- * Baut aus einem 24×24-SVG-Pfad eine [ImageVector]. [filled] = gefüllte Silhouette;
- * sonst nur die zarte Kontur (Stroke) — die `Icon`-Composable tintet beides über `tint`.
+ * Baut aus einem SVG-Pfad eine [ImageVector]. [filled] = gefüllte Silhouette; sonst nur die
+ * zarte Kontur (Stroke) — die `Icon`-Composable tintet beides über `tint`. Höhe/Viewport-Höhe
+ * sind fix 24; [viewportWidth]/[widthDp] erlauben ein breiteres Glyph (z. B. die doppelt breite
+ * Leertaste) ohne Verzerrung, weil Box-Seitenverhältnis und Viewport gleich bleiben.
  */
-private fun materialIcon(name: String, pathStr: String, filled: Boolean = true): ImageVector =
+private fun materialIcon(
+    name: String,
+    pathStr: String,
+    filled: Boolean = true,
+    viewportWidth: Float = 24f,
+    widthDp: Dp = 24.dp,
+): ImageVector =
     ImageVector.Builder(
         name = name,
-        defaultWidth = 24.dp,
+        defaultWidth = widthDp,
         defaultHeight = 24.dp,
-        viewportWidth = 24f,
+        viewportWidth = viewportWidth,
         viewportHeight = 24f,
     ).apply {
         addPath(

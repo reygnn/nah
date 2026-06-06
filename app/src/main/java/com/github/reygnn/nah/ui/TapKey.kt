@@ -361,11 +361,15 @@ fun TapKey(
         contentAlignment = Alignment.Center,
     ) {
         if (icon != null) {
+            // Die Leertaste trägt ein doppelt breites Space-Bar-Glyph (48×24-Viewport, siehe
+            // NahIcons.Space) → hier auch mit 48×24 dp rendern, damit es nicht ins Quadrat
+            // gestaucht wird. Alle anderen Icons bleiben quadratisch 24×24.
+            val isSpace = key is FunctionKey && key.action == KeyAction.SPACE
             Icon(
                 imageVector = icon,
                 contentDescription = functionCd ?: label,
                 tint = fg,
-                modifier = Modifier.size(24.dp),
+                modifier = if (isSpace) Modifier.size(width = 48.dp, height = 24.dp) else Modifier.size(24.dp),
             )
         } else {
             Text(
