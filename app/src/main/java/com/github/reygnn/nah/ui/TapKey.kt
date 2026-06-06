@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -47,12 +48,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import com.github.reygnn.nah.R
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import com.github.reygnn.nah.layout.CharKey
@@ -82,6 +84,17 @@ private val POPUP_GAP = 6.dp
  *  die beiden Quellen (CharKey-Alternativen committen einen String, FunctionKey-Shortcuts
  *  lösen eine Aktion aus) auf dieselbe Popup-Geste. */
 private class LongPressItem(val label: String, val onSelect: () -> Unit)
+
+/**
+ * Schriftgrösse, die NICHT mit der System-Schriftskalierung mitwächst. Tastenbeschriftungen
+ * (und Popup-Chips) sind feste Symbole in Containern mit fixer dp-Höhe; skalierte `sp` würde
+ * bei grossem System-Font-Scale über die Tastenhöhe wachsen und das Label vertikal abschneiden —
+ * ein Bruch der „sichtbare Labels"-Anforderung genau für die Nutzergruppe, die grosse Schrift
+ * braucht. `dp.toSp()` im aktuellen Density-Kontext liefert eine fontScale-unabhängige Grösse, das
+ * Label passt also deterministisch in die Taste. (Fliesstext anderswo skaliert weiterhin normal.)
+ */
+@Composable
+private fun nonScaledSp(size: Dp): TextUnit = with(LocalDensity.current) { size.toSp() }
 
 /**
  * Eine grosse, deterministische Tipp-Taste. Ein Tap = genau diese [key]. Labels
@@ -347,8 +360,12 @@ fun TapKey(
             Text(
                 text = label,
                 color = fg,
-                fontSize = if (key is CharKey) 22.sp else 18.sp,
+                // Bewusst nicht-skalierend (siehe nonScaledSp): das Label muss in die fixe
+                // Tastenhöhe passen. maxLines/softWrap als Absicherung gegen Umbruch.
+                fontSize = if (key is CharKey) nonScaledSp(22.dp) else nonScaledSp(18.dp),
                 textAlign = TextAlign.Center,
+                maxLines = 1,
+                softWrap = false,
             )
         }
         if (popupOpen) {
@@ -459,7 +476,9 @@ private fun AlternativesPopup(
                     Text(
                         text = shift.applyTo(alt),
                         color = if (i == highlight) colors.onPrimary else colors.inverseOnSurface,
-                        fontSize = 20.sp,
+                        fontSize = nonScaledSp(20.dp), // wie die Tasten: fixe Chip-Höhe, kein Clipping
+                        maxLines = 1,
+                        softWrap = false,
                     )
                 }
             }
