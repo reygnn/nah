@@ -93,6 +93,16 @@ class FieldContextTest {
     }
 
     @Test
+    fun `NO_SUGGESTIONS wird nur fuer die Textklasse gelesen`() {
+        val textNoSug = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+        assertTrue(ctx(inputType = textNoSug).noSuggestions)
+        assertFalse(ctx(inputType = InputType.TYPE_CLASS_TEXT).noSuggestions)
+        // Dasselbe Flag-Bit bedeutet in der Number-Klasse etwas anderes → nicht als noSuggestions lesen.
+        val numberSameBit = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+        assertFalse(ctx(inputType = numberSameBit).noSuggestions)
+    }
+
+    @Test
     fun `Anfangs-Auswahl wird uebernommen, Unbekanntes (-1) auf 0 gezogen`() {
         val field = ctx(initialSelStart = 3, initialSelEnd = 7)
         assertEquals(3, field.initialSelStart)

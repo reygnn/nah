@@ -11,9 +11,12 @@ import android.content.res.Configuration
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.unit.Dp
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.reygnn.nah.viewmodel.KeyboardUiState
@@ -58,53 +61,60 @@ fun KeyboardContent(
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val bottomInset = if (landscape) BOTTOM_INSET_LANDSCAPE else BOTTOM_INSET_PORTRAIT
     val rowHeight = if (landscape) ROW_HEIGHT_LANDSCAPE else ROW_HEIGHT_PORTRAIT
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceContainerLowest)
-            // Fester Unterrand: schiebt die Tasten über die System-Gestenzone,
-            // damit die unterste Reihe nicht mit den Wischgesten kollidiert. Der
-            // Hintergrund (oben gesetzt) füllt weiter bis zur Unterkante, nur die
-            // Tasten rücken hoch. Bewusst KEIN navigationBarsPadding() — das liess
-            // in der IME-ComposeView die Höhe auf den Inset kollabieren (leere
-            // Tastatur). Fester Wert ist deterministisch und tunebar.
-            .padding(bottom = bottomInset)
-            .padding(2.dp),
-    ) {
-        // Sichtbar (mit fester Höhe), sobald die Funktion aktiv ist — auch ohne
-        // aktuelle Vorschläge. So springen die Tasten beim Tippen nicht in der Höhe;
-        // ist die Funktion aus, fehlt die Leiste ganz (kein verschwendeter Platz).
-        if (state.suggestionBarVisible) {
-            SuggestionBar(
-                suggestions = state.suggestions,
-                onSuggestion = onSuggestion,
-                onOpenSettings = onOpenSettings,
-            )
-        }
-        state.layout.rows.forEach { row ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(rowHeight),
-            ) {
-                row.forEach { key ->
-                    // Einfügen-Taste ist inaktiv, wenn die Zwischenablage keinen Text hat.
-                    val enabled = !(
-                        key is com.github.reygnn.nah.layout.FunctionKey &&
-                            key.action == com.github.reygnn.nah.layout.KeyAction.PASTE &&
-                            !state.pasteAvailable
+    // Die Tastenanordnung ist optimizer-generiert und in LTR definiert; sie darf NIE von der
+    // System-Locale gespiegelt werden. Eine RTL-Systemsprache (Arabisch/Hebräisch/…) würde sonst
+    // jede reihenbasierte Row spiegeln und damit die gesamte optimierte Anordnung (das Kernver-
+    // sprechen) umkehren — lautlos, weil letterPositions() rein aus Spalten-Indizes rechnet und
+    // der Reise-Test es nicht merkt. Fest LTR erzwingen (umfasst auch die SuggestionBar darunter).
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                // Fester Unterrand: schiebt die Tasten über die System-Gestenzone,
+                // damit die unterste Reihe nicht mit den Wischgesten kollidiert. Der
+                // Hintergrund (oben gesetzt) füllt weiter bis zur Unterkante, nur die
+                // Tasten rücken hoch. Bewusst KEIN navigationBarsPadding() — das liess
+                // in der IME-ComposeView die Höhe auf den Inset kollabieren (leere
+                // Tastatur). Fester Wert ist deterministisch und tunebar.
+                .padding(bottom = bottomInset)
+                .padding(2.dp),
+        ) {
+            // Sichtbar (mit fester Höhe), sobald die Funktion aktiv ist — auch ohne
+            // aktuelle Vorschläge. So springen die Tasten beim Tippen nicht in der Höhe;
+            // ist die Funktion aus, fehlt die Leiste ganz (kein verschwendeter Platz).
+            if (state.suggestionBarVisible) {
+                SuggestionBar(
+                    suggestions = state.suggestions,
+                    onSuggestion = onSuggestion,
+                    onOpenSettings = onOpenSettings,
+                )
+            }
+            state.layout.rows.forEach { row ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(rowHeight),
+                ) {
+                    row.forEach { key ->
+                        // Einfügen-Taste ist inaktiv, wenn die Zwischenablage keinen Text hat.
+                        val enabled = !(
+                            key is com.github.reygnn.nah.layout.FunctionKey &&
+                                key.action == com.github.reygnn.nah.layout.KeyAction.PASTE &&
+                                !state.pasteAvailable
+                            )
+                        TapKey(
+                            key = key,
+                            shift = state.shift,
+                            colorHints = state.colorHints,
+                            enabled = enabled,
+                            modifier = Modifier
+                                .weight(key.weight)
+                                .fillMaxHeight(),
+                            onKey = onKey,
+                            onAlternative = onAlternative,
                         )
-                    TapKey(
-                        key = key,
-                        shift = state.shift,
-                        colorHints = state.colorHints,
-                        enabled = enabled,
-                        modifier = Modifier
-                            .weight(key.weight)
-                            .fillMaxHeight(),
-                        onKey = onKey,
-                        onAlternative = onAlternative,
-                    )
+                    }
                 }
             }
         }

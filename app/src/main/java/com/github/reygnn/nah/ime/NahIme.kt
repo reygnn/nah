@@ -50,6 +50,12 @@ class NahIme :
     private lateinit var settingsRepository: SettingsRepository
     private lateinit var userWordRepository: UserWordRepository
 
+    // Zählt jeden Feldstart hoch. Ein asynchron aufgelöster Einfüge-Inhalt (requestPaste) merkt
+    // sich den Stand zur Geste und committet nur, wenn er beim Zurückkommen auf dem Main-Thread
+    // noch stimmt — sonst landete der (evtl. langsam über einen Content-URI aufgelöste) Text im
+    // inzwischen fokussierten FREMDEN Feld (Fehlcommit + Privacy-Leck).
+    private var fieldEpoch = 0
+
     override fun onCreate() {
         super.onCreate()
         savedStateController.performAttach()
@@ -127,6 +133,7 @@ class NahIme :
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        fieldEpoch++ // neuer (oder neu gestarteter) Feld-Kontext → ein laufender Paste-Commit gilt nicht mehr
         viewModel.onStartInput(
             field = info?.let {
                 FieldContext.fromEditorInfo(
@@ -169,9 +176,15 @@ class NahIme :
      * Main-Thread committen. Inhalt-Zugriff weiterhin NUR hier, bei der expliziten Geste.
      */
     private fun requestPaste() {
+        val requestedAtEpoch = fieldEpoch
         lifecycleScope.launch(Dispatchers.Default) {
             val text = clipboardText()
-            withContext(Dispatchers.Main) { viewModel.commitClipboardText(text) }
+            withContext(Dispatchers.Main) {
+                // Nur committen, wenn seit dem Tap kein Feldwechsel stattfand — sonst schriebe ein
+                // langsam aufgelöster URI-Clip in ein inzwischen fremdes Feld. Lieber den Paste
+                // fallen lassen (Nutzer tippt erneut) als ihn ins falsche Feld zu setzen.
+                if (requestedAtEpoch == fieldEpoch) viewModel.commitClipboardText(text)
+            }
         }
     }
 

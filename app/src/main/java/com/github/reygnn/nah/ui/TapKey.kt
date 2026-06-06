@@ -40,9 +40,11 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import com.github.reygnn.nah.R
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -109,20 +111,33 @@ fun TapKey(
         is FunctionKey -> key.label
     }
 
-    // Die Space-Taste rendert nur " " — ohne contentDescription läse TalkBack ein leeres
-    // Label vor („Schaltfläche"). Alle anderen Tasten haben sichtbaren Text bzw. ein Icon
-    // mit contentDescription und brauchen das nicht.
-    val spaceCd = if (key is FunctionKey && key.action == KeyAction.SPACE) {
-        stringResource(R.string.key_space_cd)
-    } else {
-        null
+    // Lokalisierte TalkBack-Beschreibung pro Funktionstaste statt der rohen Glyphe/des
+    // Symbol-Strings: Icon-Tasten (Backspace/Shift/Return/Paste) trügen sonst nur ihr
+    // Unicode-Symbol, die Layer-Toggles (?123/ABC) nur ihren Symbol-String — beides
+    // buchstabiert ein Screenreader sinnlos. CharKeys und ,/. sind selbsterklärend (sichtbarer
+    // Text genügt) → null. Eine Quelle für Icon-contentDescription UND die Box-Semantik unten.
+    val functionCd: String? = (key as? FunctionKey)?.let {
+        when (it.action) {
+            KeyAction.SPACE -> stringResource(R.string.key_space_cd)
+            KeyAction.PASTE -> stringResource(R.string.key_paste_cd)
+            KeyAction.BACKSPACE -> stringResource(R.string.key_backspace_cd)
+            KeyAction.RETURN -> stringResource(R.string.key_return_cd)
+            KeyAction.SHIFT -> stringResource(R.string.key_shift_cd)
+            KeyAction.SYMBOLS -> stringResource(R.string.key_symbols_cd)
+            KeyAction.ALPHA -> stringResource(R.string.key_alpha_cd)
+            else -> null
+        }
     }
 
-    // Die Einfügen-Taste rendert nur ein Icon; ihr von TalkBack vorgelesenes Label kommt aus
-    // den Resourcen (lokalisiert) statt aus dem englischen Enum-Fallback — gleiches Muster wie
-    // spaceCd, konsistent mit der „UI-Strings in strings.xml"-Konvention.
-    val pasteCd = if (key is FunctionKey && key.action == KeyAction.PASTE) {
-        stringResource(R.string.key_paste_cd)
+    // Der Shift-Zustand (aus/einmal/Feststelltaste) ist visuell nur am wechselnden Icon
+    // erkennbar; für TalkBack zusätzlich als stateDescription, damit ein blinder Nutzer hört,
+    // ob gerade Caps-Lock aktiv ist (sonst committen Buchstaben überraschend gross/klein).
+    val shiftStateCd: String? = if (key is FunctionKey && key.action == KeyAction.SHIFT) {
+        when (shift) {
+            ShiftState.OFF -> stringResource(R.string.shift_state_off)
+            ShiftState.SHIFTED -> stringResource(R.string.shift_state_on)
+            ShiftState.CAPS -> stringResource(R.string.shift_state_caps)
+        }
     } else {
         null
     }
@@ -174,6 +189,12 @@ fun TapKey(
         is CharKey -> key.alternatives.map { alt -> LongPressItem(alt) { onAlternative(alt) } }
         is FunctionKey -> key.longPressActions.map { act -> LongPressItem(act.label) { onKey(FunctionKey(act)) } }
     }
+    // BEWUSSTE a11y-Grenze: Die Long-Press-Alternativen sind nur über die Schiebe/Loslass-Geste
+    // erreichbar, die TalkBack nicht synthetisieren kann — es gibt KEINE semantics-CustomActions
+    // dafür. Akzeptiert, weil Long-Press eine sehende Komfortgeste ist und JEDE Funktion auch per
+    // Tap erreichbar bleibt (einzelnes q über die qu-Alternative ist Komfort; Ziffern voll über
+    // die ?123-Ebene, Akzente notfalls per Symbolebene). Vollständige TalkBack-Bedienung ist für
+    // diese Einfinger-Sicht-Tastatur kein Ziel (siehe Basis-Labels oben).
 
     // Long-Press-Popup-Zustand (nur für Tasten mit Long-Press-Einträgen).
     var popupOpen by remember { mutableStateOf(false) }
@@ -225,43 +246,53 @@ fun TapKey(
                 val down = awaitFirstDown(requireUnconsumed = false)
                 val press = PressInteraction.Press(down.position)
                 scope.launch { interactionSource.emit(press) } // Ripple an
-                val longPress = awaitLongPressOrCancellation(down.id)
-                if (longPress == null) {
-                    tap() // schneller Tap → Basis-Output
-                    scope.launch { interactionSource.emit(PressInteraction.Release(press)) }
-                    return@awaitEachGesture
-                }
-                // Gehalten → Popup öffnen, Auswahl per Schieben verfolgen. Band-Kante
-                // einmal pro Geste festlegen (mittig über der Taste, an den Fensterrand
-                // geclampt) — Popup und Chip-Auswahl teilen sich genau diesen Wert.
-                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                val keyLeft = keyLeftInWindow
-                val keyHeight = size.height.toFloat()
-                val bandLeft = bandLeftInWindow(keyLeft, size.width.toFloat(), bandPx, view.width.toFloat())
-                bandLeftPx = bandLeft
-                popupOpen = true
-                highlight = chipIndexFor(longPress.position, keyLeft, bandLeft, chipPx, longPressItems.size, keyHeight)
-                while (true) {
-                    val event = awaitPointerEvent()
-                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                    highlight = chipIndexFor(change.position, keyLeft, bandLeft, chipPx, longPressItems.size, keyHeight)
-                    change.consume()
-                    if (!change.pressed) break
-                }
-                // Losgelassen: gewählten Chip auslösen; auf der Taste → Basis-Aktion; unter
-                // die Taste gezogen ([CHIP_CANCEL]) → nichts (Geste abgebrochen).
-                val selected = highlight
-                popupOpen = false
-                highlight = CHIP_BASE
-                when {
-                    selected in longPressItems.indices -> {
-                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                        longPressItems[selected].onSelect()
+                // try/finally: der Release MUSS laufen, auch wenn die Geste mittendrin abbricht
+                // (Pointer-Reset / Rekomposition mit geändertem key während des Haltens) — sonst
+                // bliebe der Ripple-Highlight dauerhaft hängen. clickable/detectTapGestures
+                // garantieren das intern; diese handgeschriebene Geste muss es selbst tun.
+                try {
+                    val longPress = awaitLongPressOrCancellation(down.id)
+                    if (longPress == null) {
+                        tap() // schneller Tap → Basis-Output
+                        return@awaitEachGesture // finally unten gibt den Ripple frei
                     }
-                    selected == CHIP_CANCEL -> Unit // bewusst abgebrochen → keine Wirkung
-                    else -> onKey(key) // CHIP_BASE → Basis-Output bzw. -Aktion der Taste
+                    // Gehalten → Popup öffnen, Auswahl per Schieben verfolgen. Band-Kante
+                    // einmal pro Geste festlegen (mittig über der Taste, an den Fensterrand
+                    // geclampt) — Popup und Chip-Auswahl teilen sich genau diesen Wert.
+                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    val keyLeft = keyLeftInWindow
+                    val keyHeight = size.height.toFloat()
+                    val bandLeft = bandLeftInWindow(keyLeft, size.width.toFloat(), bandPx, view.width.toFloat())
+                    bandLeftPx = bandLeft
+                    popupOpen = true
+                    highlight = chipIndexFor(longPress.position, keyLeft, bandLeft, chipPx, longPressItems.size, keyHeight)
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        highlight = chipIndexFor(change.position, keyLeft, bandLeft, chipPx, longPressItems.size, keyHeight)
+                        change.consume()
+                        if (!change.pressed) break
+                    }
+                    // Losgelassen: gewählten Chip auslösen; auf der Taste → Basis-Aktion; unter
+                    // die Taste gezogen ([CHIP_CANCEL]) → nichts (Geste abgebrochen).
+                    val selected = highlight
+                    popupOpen = false
+                    highlight = CHIP_BASE
+                    when {
+                        selected in longPressItems.indices -> {
+                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                            longPressItems[selected].onSelect()
+                        }
+                        selected == CHIP_CANCEL -> Unit // bewusst abgebrochen → keine Wirkung
+                        else -> onKey(key) // CHIP_BASE → Basis-Output bzw. -Aktion der Taste
+                    }
+                } finally {
+                    // Räumt das Popup auch bei Abbruch auf (sonst bliebe es bei einer mitten im
+                    // Halten abgebrochenen Geste sichtbar offen) und gibt den Ripple frei.
+                    popupOpen = false
+                    highlight = CHIP_BASE
+                    scope.launch { interactionSource.emit(PressInteraction.Release(press)) } // Ripple aus
                 }
-                scope.launch { interactionSource.emit(PressInteraction.Release(press)) } // Ripple aus
             }
         }
         // role = Button macht die normalen Tasten für TalkBack konsistent zu den
@@ -276,10 +307,29 @@ fun TapKey(
             .onGloballyPositioned { keyLeftInWindow = it.positionInWindow().x }
             .clip(RoundedCornerShape(8.dp))
             .background(bg)
-            .then(if (enabled) tapModifier else Modifier)
             .then(
-                if (spaceCd != null) {
-                    Modifier.semantics(mergeDescendants = true) { contentDescription = spaceCd }
+                if (enabled) {
+                    tapModifier
+                } else {
+                    // Deaktiviert (z. B. Einfügen bei leerer Zwischenablage): keine Geste, aber
+                    // TalkBack soll den Deaktiviert-Zustand ansagen statt die Taste still
+                    // wirkungslos zu lassen. Die Beschreibung liefert weiterhin das Icon (functionCd).
+                    Modifier.semantics(mergeDescendants = true) { disabled(); role = Role.Button }
+                },
+            )
+            .then(
+                // Text-gerenderte Funktionstasten (Space/?123/ABC) trügen sonst nur ihren
+                // sichtbaren String; die lokalisierte contentDescription macht daraus eine
+                // gesprochene Funktion. Icon-Tasten beschreibt das Icon selbst (unten).
+                if (icon == null && functionCd != null) {
+                    Modifier.semantics(mergeDescendants = true) { contentDescription = functionCd }
+                } else {
+                    Modifier
+                },
+            )
+            .then(
+                if (shiftStateCd != null) {
+                    Modifier.semantics(mergeDescendants = true) { stateDescription = shiftStateCd }
                 } else {
                     Modifier
                 },
@@ -289,7 +339,7 @@ fun TapKey(
         if (icon != null) {
             Icon(
                 imageVector = icon,
-                contentDescription = pasteCd ?: label,
+                contentDescription = functionCd ?: label,
                 tint = fg,
                 modifier = Modifier.size(24.dp),
             )

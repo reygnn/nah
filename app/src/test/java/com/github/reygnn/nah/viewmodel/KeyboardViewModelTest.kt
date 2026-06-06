@@ -769,6 +769,39 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `ein Feld mit NO_SUGGESTIONS-Flag unterdrueckt die Vorschlaege`() {
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo") })
+            .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
+        // Kein Passwortfeld, aber das Ziel-Feld bittet ausdrücklich um keine Vorschläge (OTP/Kreditkarte).
+        vm.onStartInput(FieldContext(noSuggestions = true))
+        vm.type("ha")
+        assertTrue(vm.state.value.suggestions.isEmpty())
+        assertFalse(vm.state.value.suggestionBarVisible)
+    }
+
+    @Test
+    fun `null hinter dem Cursor (flakige IC) gilt nicht als Wortende, kein Vorschlag`() {
+        // Eigene IC: getTextBeforeCursor liefert ein Präfix, getTextAfterCursor aber null
+        // (unbekannt — die API darf das). null darf NICHT als Wortende gewertet werden, sonst
+        // böte ein Tap einen Vorschlag an, der fertigen Text mitten im Wort zerstückeln könnte.
+        val ic = mockk<InputConnection>(relaxed = true)
+        every { ic.getTextBeforeCursor(any(), any()) } returns "ha"
+        every { ic.getTextAfterCursor(any(), any()) } returns null
+        val vm = KeyboardViewModel(
+            alphaLayout = alpha,
+            symbolsLayout = symbols,
+            numberLayout = number,
+            phoneLayout = phone,
+            inputConnectionProvider = { ic },
+            suggester = Suggester { _, _, _ -> listOf("hallo") },
+        ).apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
+        vm.onSelectionChanged(2, 2) // löst refreshForCursor aus: before="ha", after=null
+        assertTrue(vm.state.value.suggestions.isEmpty())
+        assertTrue(vm.state.value.suggestionBarVisible) // Leiste bleibt reserviert, nur leer
+    }
+
+    @Test
     fun `ein Passwortfeld armiert keine Auto-Grossschreibung`() {
         val fake = FakeIc()
         val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }

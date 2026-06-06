@@ -35,6 +35,13 @@ data class FieldContext(
      */
     val isPassword: Boolean = false,
     /**
+     * Das Feld setzt `TYPE_TEXT_FLAG_NO_SUGGESTIONS` (typisch für Kreditkartennummer-, OTP-/2FA-
+     * Code- und Benutzernamenfelder) → Vorschlagsleiste unterdrücken, auch wenn es KEIN Passwortfeld
+     * ist. Respektiert das ausdrückliche „hier keine Vorschläge"-Signal des Ziel-Editors; verhindert,
+     * dass über einem sensiblen Feld eigene kuratierte Wörter (Namen/Adressen) als Vorschlag auftauchen.
+     */
+    val noSuggestions: Boolean = false,
+    /**
      * Cursor-/Auswahlposition beim Feldstart (aus `EditorInfo.initialSel*`). Ohne
      * diese wüsste der selektionsbewusste Backspace bis zum ersten `onUpdateSelection`
      * nichts von einer bereits im Zielfeld bestehenden Auswahl. Unbekannt (`-1`) → 0.
@@ -60,6 +67,7 @@ data class FieldContext(
             numeric = isNumericInputType(inputType),
             phone = isPhoneInputType(inputType),
             isPassword = isPasswordInputType(inputType),
+            noSuggestions = isNoSuggestionsInputType(inputType),
             initialSelStart = initialSelStart.coerceAtLeast(0),
             initialSelEnd = initialSelEnd.coerceAtLeast(0),
         )
@@ -89,6 +97,15 @@ data class FieldContext(
         /** Speziell ein Telefonfeld → eigenes Wählfeld statt der allgemeinen Symbolebene. */
         private fun isPhoneInputType(inputType: Int): Boolean =
             (inputType and InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_PHONE
+
+        /**
+         * Das Feld bittet ausdrücklich um keine Vorschläge (`TYPE_TEXT_FLAG_NO_SUGGESTIONS`). Nur für
+         * die Textklasse ausgewertet — das Flag-Bit ist nur dort definiert; in anderen Klassen
+         * (Number/Phone/Datetime) bedeutet dasselbe Bit etwas anderes und darf nicht mitgelesen werden.
+         */
+        private fun isNoSuggestionsInputType(inputType: Int): Boolean =
+            (inputType and InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_TEXT &&
+                (inputType and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) != 0
 
         /**
          * Passwort-Varianten (Text sichtbar/unsichtbar/Web, sowie numerisches PIN-Feld) —

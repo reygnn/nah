@@ -17,6 +17,14 @@
     <!-- Keyboard keys (accessibility) -->
     <string name="key_space_cd">Space</string>
     <string name="key_paste_cd">Insert from clipboard</string>
+    <string name="key_backspace_cd">Delete</string>
+    <string name="key_return_cd">Enter</string>
+    <string name="key_shift_cd">Shift</string>
+    <string name="key_symbols_cd">Symbols and numbers</string>
+    <string name="key_alpha_cd">Letters</string>
+    <string name="shift_state_off">off</string>
+    <string name="shift_state_on">on</string>
+    <string name="shift_state_caps">caps lock</string>
 
     <!-- User words -->
     <string name="user_words_title">Your own words</string>

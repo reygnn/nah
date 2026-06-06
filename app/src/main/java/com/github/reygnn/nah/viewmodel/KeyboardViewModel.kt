@@ -302,16 +302,25 @@ class KeyboardViewModel(
         val isUserWord = settings.userWordsEnabled && suggester?.isUserWord(word) == true
         val out = if (isUserWord) word else casedLikePrefix(word, prefix)
         safeIc { ic ->
-            // deleteSurroundingText zählt UTF-16-Code-Units — hier sicher, weil [prefix] aus
-            // wordBeforeCursor nur isLetterOrDigit-Zeichen sammelt; einzelne Surrogat-Hälften
-            // sind das nicht, also ist der Präfix garantiert BMP-only und prefix.length (Units)
-            // == Anzahl Zeichen. (Backspace nutzt bewusst die Code-Point-Variante, weil dort
-            // eingefügte astrale Zeichen wie Emoji im Spiel sein können — hier nie.)
-            if (prefix.isNotEmpty()) ic.deleteSurroundingText(prefix.length, 0)
-            // Bewusst ein angehängtes Leerzeichen (Standard-Wort-Vervollständigung) — auch für
-            // Phrasen wie „max@firma.ch". KEIN feldtyp-abhängiges Weglassen (E-Mail/URL): das
-            // wäre genau das „Raten", das nah ablehnt. Stört es, ist es ein Backspace.
-            ic.commitText("$out ", 1)
+            // Delete + Commit als EIN atomarer Edit (beginBatchEdit/endBatchEdit) — sonst sieht der
+            // Editor den Zwischenzustand „Präfix weg, Ersatz noch nicht da": ein Redraw kann flackern
+            // und der Service bekäme zwei onUpdateSelection-Echos (eines auf halb-editiertem Text)
+            // statt einem. Das finally garantiert endBatchEdit auch bei einer Ausnahme dazwischen.
+            ic.beginBatchEdit()
+            try {
+                // deleteSurroundingText zählt UTF-16-Code-Units — hier sicher, weil [prefix] aus
+                // wordBeforeCursor nur isLetterOrDigit-Zeichen sammelt; einzelne Surrogat-Hälften
+                // sind das nicht, also ist der Präfix garantiert BMP-only und prefix.length (Units)
+                // == Anzahl Zeichen. (Backspace nutzt bewusst die Code-Point-Variante, weil dort
+                // eingefügte astrale Zeichen wie Emoji im Spiel sein können — hier nie.)
+                if (prefix.isNotEmpty()) ic.deleteSurroundingText(prefix.length, 0)
+                // Bewusst ein angehängtes Leerzeichen (Standard-Wort-Vervollständigung) — auch für
+                // Phrasen wie „max@firma.ch". KEIN feldtyp-abhängiges Weglassen (E-Mail/URL): das
+                // wäre genau das „Raten", das nah ablehnt. Stört es, ist es ein Backspace.
+                ic.commitText("$out ", 1)
+            } finally {
+                ic.endBatchEdit()
+            }
         }
         selEnd = selStart // nach dem Eigen-Edit gibt es keine aktive Auswahl mehr
         setShift(ShiftState.OFF)
@@ -412,9 +421,10 @@ class KeyboardViewModel(
     private fun computeSuggestions(before: String?): Pair<List<String>, Boolean> {
         val s = suggester
         val anySource = settings.suggestionsEnabled || settings.userWordsEnabled
-        // Funktion ganz aus oder Passwortfeld → gar keine Leiste (kein verschwendeter Platz,
-        // kein Schulter-Surfen über der Passworteingabe).
-        if (s == null || !anySource || field.isPassword) return emptyList<String>() to false
+        // Funktion ganz aus, Passwortfeld oder ein Feld mit „keine Vorschläge"-Flag (OTP/Kreditkarte/
+        // Benutzername) → gar keine Leiste (kein verschwendeter Platz, kein Schulter-Surfen über
+        // sensibler Eingabe, und das ausdrückliche Feld-Signal wird respektiert).
+        if (s == null || !anySource || field.isPassword || field.noSuggestions) return emptyList<String>() to false
         // Ab hier ist die Leiste reserviert (feste Höhe), auch ohne aktuelle Vorschläge.
         // Bei einer aktiven Auswahl keine Vorschläge: onSuggestionTap löscht nur das Präfix
         // vor dem Cursor und committet darüber — bei bestehender Selektion würde derselbe Tap
@@ -433,9 +443,15 @@ class KeyboardViewModel(
      * Steht direkt hinter dem Cursor noch ein Buchstabe, sind wir mitten im Wort —
      * dort werden keine Vorschläge angeboten: ein Antippen würde nur das Präfix vor
      * dem Cursor ersetzen (siehe [onSuggestionTap]) und so das Wortende zerstückeln.
+     *
+     * `null` heisst **unbekannt** (fehlende/flakige InputConnection), NICHT „leer/Wortende":
+     * dann konservativ `false` zurückgeben (kein Vorschlag), statt im Zweifel einen Vorschlag
+     * anzubieten, der ein mitten im Wort stehendes Wortende zerstückeln könnte — das wäre eine
+     * Verletzung des obersten Gesetzes. Gleiche null-als-unbekannt-Haltung wie [computeAutoCapShift].
+     * Ein echtes Wortende liefert "" (nicht null) und wird korrekt als Wortende gewertet.
      */
     private fun atWordEnd(): Boolean {
-        val after = safeIc { it.getTextAfterCursor(1, 0)?.toString() } ?: return true
+        val after = safeIc { it.getTextAfterCursor(1, 0)?.toString() } ?: return false
         return after.isEmpty() || !after[0].isLetterOrDigit()
     }
 
