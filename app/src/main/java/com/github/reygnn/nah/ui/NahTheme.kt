@@ -3,6 +3,7 @@ package com.github.reygnn.nah.ui
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 
 /**
@@ -12,8 +13,13 @@ import androidx.compose.ui.platform.LocalContext
  */
 @Composable
 fun NahTheme(content: @Composable () -> Unit) {
+    // Das Schema an den Context binden statt bei jeder Recomposition neu zu bauen: die
+    // Tastatur rekomponiert pro Tastendruck, und dynamicDarkColorScheme allokiert jedes Mal
+    // ein komplettes ColorScheme, das als neue Instanz durch MaterialTheme propagieren würde.
+    val context = LocalContext.current
+    val colorScheme = remember(context) { dynamicDarkColorScheme(context) }
     MaterialTheme(
-        colorScheme = dynamicDarkColorScheme(LocalContext.current),
+        colorScheme = colorScheme,
         content = content,
     )
 }

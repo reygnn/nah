@@ -905,6 +905,24 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `ein manuelles SHIFTED ueberlebt ein Leerzeichen, der naechste Buchstabe wird gross`() {
+        val fake = FakeIc()
+        // Dieselbe Regel wie über eine Ziffer (Test darunter): Space/Punkt/Komma laufen über
+        // commit() statt commitWithShift und verbrauchen ein manuell gesetztes SHIFTED daher
+        // NICHT — der Verbrauchs-Guard greift nur bei einem Buchstaben. computeAutoCapShift lässt
+        // ein manuelles SHIFTED (autoCapArmed == false) ebenfalls unangetastet. Ein manuell
+        // gesetztes Shift heisst also „der nächste BUCHSTABE soll gross", auch über ein Leerzeichen
+        // hinweg. Pinnt diese Entscheidung gegen ein künftiges Refactoring.
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.onKey(FunctionKey(KeyAction.SHIFT)) // manuell armiert
+        vm.onKey(FunctionKey(KeyAction.SPACE)) // Leerzeichen verbraucht das SHIFTED nicht
+        assertEquals(ShiftState.SHIFTED, vm.state.value.shift)
+        vm.type("a")                           // erst der Buchstabe verbraucht die Armierung
+        assertEquals(" A", fake.buffer.toString())
+        assertEquals(ShiftState.OFF, vm.state.value.shift)
+    }
+
+    @Test
     fun `ein manuell armiertes SHIFTED ueberlebt eine Ziffer auch bei aktivem Auto-Cap`() {
         val fake = FakeIc()
         // Wie oben, aber mit eingeschaltetem Auto-Cap: der Guard (nicht das fehlende Auto-Cap)
