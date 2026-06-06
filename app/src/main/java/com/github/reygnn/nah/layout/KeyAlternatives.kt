@@ -20,9 +20,10 @@ object KeyAlternatives {
         'c' to listOf("ch", "ck"),          // häufige Konsonanten-Cluster
         's' to listOf("sch", "st", "sp"),
         'p' to listOf("pf", "ph"),
-        // „en" ist das zweithäufigste de-Bigramm (nach „er") — als Long-Press auf n ein
-        // Einfinger-Shortcut. Bricht bewusst das „Cluster beginnt mit dem Basisbuchstaben"-
-        // Muster der anderen Einträge (en endet auf n), weil n hier die naheliegende Taste ist.
+        // „er"/„en" sind die zwei häufigsten de-Bigramme — als Long-Press auf r bzw. n je ein
+        // Einfinger-Shortcut. Brechen bewusst das „Cluster beginnt mit dem Basisbuchstaben"-
+        // Muster der anderen Einträge (sie enden auf r/n), weil r/n hier die naheliegende Taste ist.
+        'r' to listOf("er"),
         'n' to listOf("en"),
         'a' to listOf("ä", "à", "â"),       // Umlaut zuerst, dann franz. Akzente
         'e' to listOf("é", "è", "ê"),

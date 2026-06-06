@@ -194,7 +194,8 @@ class OptimizedLayoutTravelTest {
         assertEquals(listOf("ch", "ck"), keys.first { it.char == 'c' }.alternatives)
         assertEquals(listOf("sch", "st", "sp"), keys.first { it.char == 's' }.alternatives)
         assertEquals(listOf("pf", "ph"), keys.first { it.char == 'p' }.alternatives)
-        // „en" (zweithäufigstes Bigramm) als Einfinger-Shortcut auf der n-Taste.
+        // „er"/„en" (die zwei häufigsten Bigramme) als Einfinger-Shortcuts auf r bzw. n.
+        assertEquals(listOf("er"), keys.first { it.char == 'r' }.alternatives)
         assertEquals(listOf("en"), keys.first { it.char == 'n' }.alternatives)
     }
 }
