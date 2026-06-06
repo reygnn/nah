@@ -19,6 +19,9 @@ android {
 
     buildTypes {
         release {
+            // R8 bewusst aus: keine Reflection im Code, und für eine persönliche Single-User-App
+            // rechtfertigt der marginal kleinere AAB nicht das Compose-Keep-Regel-Tuning + den
+            // Testzyklus. Nicht versehentlich „zur Optimierung" einschalten.
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

@@ -308,6 +308,9 @@ class KeyboardViewModel(
             // == Anzahl Zeichen. (Backspace nutzt bewusst die Code-Point-Variante, weil dort
             // eingefügte astrale Zeichen wie Emoji im Spiel sein können — hier nie.)
             if (prefix.isNotEmpty()) ic.deleteSurroundingText(prefix.length, 0)
+            // Bewusst ein angehängtes Leerzeichen (Standard-Wort-Vervollständigung) — auch für
+            // Phrasen wie „max@firma.ch". KEIN feldtyp-abhängiges Weglassen (E-Mail/URL): das
+            // wäre genau das „Raten", das nah ablehnt. Stört es, ist es ein Backspace.
             ic.commitText("$out ", 1)
         }
         selEnd = selStart // nach dem Eigen-Edit gibt es keine aktive Auswahl mehr
