@@ -9,8 +9,9 @@ Offene, bewusst zurückgestellte Punkte. Erledigtes/Verworfenes steht in
 
 Drei flache adversarielle Review-Runden (13 → 2 → 0) plus ein **Fugen-Review**
 (Edge×Edge, Trace-Konstruktion) sind durch. Alle gefundenen echten Defekte sind
-gefixt und auf `main`: Korrektheit, IC-Robustheit, a11y, RTL, Font-Scale,
-Paste-Guard, DataStore-Resilienz — und die zwei Fugen-Funde (s. u.).
+gefixt und auf `main`: Korrektheit, IC-Robustheit, a11y (später wieder komplett
+entfernt — sehende App, s. u.), RTL, Font-Scale, Paste-Guard, DataStore-Resilienz
+— und die zwei Fugen-Funde (s. u.).
 
 Der Fugen-Review (`wh7db942v`) fand genau die gesuchte Edge-of-Edge-Klasse:
 **1 bestätigten** Doppel-Edge (Paste-Epoch am falschen Lebenszyklus-Hook) **+ 1
@@ -25,6 +26,23 @@ Zusätzlich abgesichert:
   **Entscheidungs-Ebene** bewiesen statt nur durchargumentiert. Was prinzipiell
   ungetestet bleibt, ist allein die Framework-Message-Reihenfolge (Timing-Race) —
   die ist nirgends deterministisch testbar (kein androidTest im Projekt, bewusst).
+
+---
+
+## Seither (Folge-Sessions, Analyse-Runden)
+
+- **Auto-Cap × Settings-Toggle (gefixt, v0.7.26).** Auto-Cap ausschalten, während ein
+  AUTO-armiertes SHIFTED stand, schrieb den nächsten Buchstaben noch gross. `applySettings`
+  entwaffnet diesen einen Übergang jetzt sofort (manuelles SHIFTED/CAPS bleiben unberührt,
+  nichts wird neu armiert). Drei Regressionstests.
+- **`pendingSelfEcho` = bewusste reine Dedup-Optimierung, KEIN Bug.** Schon analysiert
+  (`5117861`, `3a14dca`) und per Invarianten-Test gepinnt; eine veraltete Vorhersage kostet
+  höchstens EIN Recompute, der synchrone Read in `afterTextChanged` trägt die Korrektheit.
+  Nicht erneut als Befund aufkochen.
+- **Trie-Vorschlagskosten quantifiziert** → `tools/trie_benchmark.md`. ~0,1–0,2 µs/Wort im
+  Teilbaum; grün bis ~50k Wörter (<~1 ms/Tastendruck am Gerät), Branch-and-Bound (s.
+  `Trie.collectWords`) lohnt erst ab ~100k–200k. Der „grösseres Korpus"-Fast-Follow braucht
+  bis dahin **keine** Code-Änderung. Heute (363 Wörter): ~1 µs, irrelevant.
 
 ---
 
@@ -88,16 +106,15 @@ Deterministisch (fixe Seeds → kein flaky CI; tiefer suchen = Seed-Zahl erhöhe
 
 ---
 
-## Barrierefreiheit: Long-Press-Alternativen für TalkBack — ENTSCHIEDEN (bewusst nicht unterstützt)
+## Barrierefreiheit — ENTSCHIEDEN (bewusst NICHT unterstützt, komplett entfernt)
 
-**Status: in dieser Session entschieden.** Die Basis-a11y wurde vervollständigt
-(lokalisierte `contentDescription` für Backspace/Shift/Return/?123/ABC,
-`stateDescription` der Shift-Taste, `disabled()`-Semantik der Paste-Taste — siehe
-`ui/TapKey.kt`, `res/values*/strings.xml`). Die **Long-Press-Alternativen** bleiben
-für TalkBack bewusst unerreichbar (keine `CustomAccessibilityAction`): Long-Press ist
-eine sehende Komfortgeste, und **jede Basis-Ausgabe ist per Tap erreichbar** (einzelnes
-`q`, Ziffern über `?123`, Akzente notfalls über die Symbolebene). Als dokumentierte
-Grenze im Code festgehalten (`ui/TapKey.kt`, Kommentar an `longPressItems`).
+**Status: entschieden & umgesetzt.** Screenreader-/TalkBack-Support wurde später wieder
+**komplett entfernt** (Commit `197f97d`): keine `contentDescription`/`stateDescription`/
+`semantics` mehr, die Tasten tragen keine a11y-Knoten. (Eine frühere Iteration hatte
+Basis-a11y hinzugefügt — das ist Geschichte, nicht der aktuelle Stand; vgl. die
+„a11y"-Erwähnung im Handoff oben.) nah ist eine bewusst **sehende** Einfinger-Tastatur,
+getippt nach Augenmass; die sichtbaren Long-Press-Menüs hängen ohnehin an einer Schiebe-
+Geste, die ein Screenreader nicht treiben kann, und jede Basis-Ausgabe ist per Tap
+erreichbar. Als dokumentierte Grenze im Code (`ui/TapKey.kt`) und im README festgehalten.
 
-→ Kann nach `CLAUDE.md` (Fast-Follow → „Erledigt/verworfen") wandern; hier nur noch
-als Verweis.
+→ Erledigt/verworfen — gehört nach `CLAUDE.md` (Fast-Follow), hier nur noch als Verweis.

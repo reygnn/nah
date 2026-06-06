@@ -22,7 +22,7 @@ x qu k o p j y
 v  c  h u a l f      ← vowels o/u/i · a/e centre (ä/ö/ü on long-press)
 z  m  s i e r b
 ⇧  w  t n d g ⌫
-⎀ ?123 , ␣ . ⏎        ← ⎀ paste (always visible, left of ?123)
+⎀ SYM , ␣ . ⏎        ← ⎀ paste (always visible, left of SYM)
 ```
 
 The consonants are placed by simulated annealing over de-CH bigram frequencies
@@ -88,12 +88,18 @@ deliberate scope choice for a single-user personal keyboard, not an oversight.
 - **Training-wheel colours** (optional, off by default) — tint vowels and the
   highest-frequency consonants in fixed colours, and dim the rarely-used `x`/`y`,
   while muscle memory settles.
-- **Symbols / numbers layer** of equal height (no resize jump when switching),
-  with `,` `.` space and return in the same positions as the letter layer.
+- **Symbols layer** of equal height (no resize jump when switching), with `,` `.`
+  space and return in the same positions as the letter layer. `?` and `!` sit on a
+  long-press of the period key.
+- **Big-key number & phone pads** — numeric and phone fields open straight onto a
+  3-column large-key pad (PIN, amount, dial number) instead of the narrow symbol
+  row. Every layer reaches every other: a long-press on the layer-toggle key
+  offers the pads it can't tap to (NUM / TEL) plus the settings (OPT) — a full mesh.
 - **Optional suggestion bar** — Trie-backed, fed by a baked-in de-CH word list
   plus your own words/phrases (independently toggleable). **Off by default**, and
   *non-intrusive*: tapping a suggestion only replaces the current unfinished
-  prefix, never finished text. Its reserved strip hosts a settings button.
+  prefix, never finished text. (Settings are reached via a long-press on the
+  layer-toggle key — see above — not from this strip.)
 - **Custom words & phrases** — add your own (letters, digits, spaces — e.g. a
   postal code or `Hauptstrasse 115`), matched strncmp-style from the start.
 - **Paste key** — always visible at the bottom-left, inserts the clipboard
@@ -122,16 +128,20 @@ Single `:app` Gradle module, **no DI framework** — a plain `ViewModel` +
 ime/        NahIme : InputMethodService — thin glue, hosts the Compose UI in a
             ComposeView (ViewTree owners via a FrameLayout wrapper), safeIc { },
             window-shown/hidden lifecycle, editor-action + selection plumbing.
+            PasteGuard (pure: blocks an async paste landing in a switched field).
 viewmodel/  KeyboardViewModel — StateFlow, the whole typing state machine.
             FieldContext (distilled EditorInfo).
 layout/     KeyboardKey / KeyAction, KeyboardLayout (row + weight based),
-            OptimizedLayout (letters + symbols), KeyAlternatives (long-press).
-ui/         KeyboardScreen / TapKey / SuggestionBar / NahColors / NahIcons (Compose).
+            OptimizedLayout (letters + symbols + big-key number/phone pads),
+            KeyAlternatives (long-press).
+ui/         KeyboardScreen / TapKey / SuggestionBar / NahColors / NahIcons,
+            LongPressGesture (pure long-press state machine) — Compose.
 settings/   Settings, SettingsRepository (DataStore), SettingsActivity,
             UserWordsActivity (manage own words).
 data/suggestions/  Trie, GermanWordList, SuggestionRepository, UserWordRepository,
             UserWordValidation.
-tools/      optimize_layout.py — the layout optimiser (reproducible).
+tools/      optimize_layout.py — the layout optimiser (reproducible);
+            trie_benchmark.md — suggestion-cost measurement + corpus threshold.
 ```
 
 - **Kotlin + Jetpack Compose + Material 3**, Compose-only (no XML layouts).
@@ -145,7 +155,11 @@ tools/      optimize_layout.py — the layout optimiser (reproducible).
 JVM-only unit tests (JUnit 4 + MockK + kotlinx-coroutines-test, no Robolectric).
 Covered: the layout's travel property (must beat QWERTZ), the ViewModel state
 machine (commit / backspace / shift / caps / layer switch / auto-cap / the
-"suggestion never replaces finished text" invariant), and the Trie.
+"suggestion never replaces finished text" invariant), the Trie, and the pure
+units lifted out of the Compose/Service layer (PasteGuard, LongPressGesture,
+FieldContext, user-word validation, the self-echo dedup). A seed-reproducible
+**invariant fuzzer** runs thousands of random op sequences against the hard
+invariants (finished text never altered, shown == typed, no stranded shift).
 
 ## Building
 
@@ -162,7 +176,10 @@ personal key at install time, not by Gradle.
 
 Deliberately deferred from v1:
 
-- Clipboard history, theme selection, a bigger optimiser corpus.
+- Clipboard history, theme selection, a bigger optimiser corpus. (The suggestion
+  Trie's per-keystroke cost is measured in
+  [`tools/trie_benchmark.md`](tools/trie_benchmark.md): comfortable up to ~50k
+  words, so corpus growth needs no code change until well beyond that.)
 
 Per-character offset learning (a `MissMap`) was once earmarked as the next
 fat-finger win. **Dropped** — in practice the big keys plus the dead zone around
