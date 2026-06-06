@@ -241,6 +241,11 @@ fun TapKey(
     // awaitEachGesture läuft in einem restricted Scope (kein suspend-emit möglich); der
     // Ripple der Long-Press-Tasten wird daher über diesen Scope getrieben.
     val scope = rememberCoroutineScope()
+    // Reine, JVM-getestete Zustandsmaschine der Long-Press-Geste (siehe LongPressGesture). Die
+    // pointerInput-Schleife unten ist nur noch ihr Event-Adapter und spiegelt ihre Outputs
+    // (popupOpen/highlight) in den Compose-State, damit das Popup rekomponiert. Neu gebaut, wenn
+    // sich die Taste (und damit die Item-Zahl) ändert.
+    val gesture = remember(key) { LongPressGesture(longPressItems.size) }
 
     val tapModifier = when {
         isBackspace -> Modifier
@@ -291,28 +296,33 @@ fun TapKey(
                     val keyLeft = keyLeftInWindow
                     val keyHeight = size.height.toFloat()
                     bandLeftPx = bandLeftInWindow(keyLeft, size.width.toFloat(), chipWidthPx, view.width.toFloat())
-                    popupOpen = true
-                    highlight = chipIndexFor(longPress.position, chipHeightPx, longPressItems.size, keyHeight)
+                    // Ab hier nur noch Event→Modell→Compose-State: die Auswahl-Logik liegt in
+                    // LongPressGesture (JVM-getestet), hier wird sie nur getrieben und gespiegelt.
+                    gesture.onLongPressBegin(longPress.position.y, chipHeightPx, keyHeight)
+                    popupOpen = gesture.popupOpen
+                    highlight = gesture.highlight
                     while (true) {
                         val event = awaitPointerEvent()
                         val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                        highlight = chipIndexFor(change.position, chipHeightPx, longPressItems.size, keyHeight)
+                        gesture.onMove(change.position.y, chipHeightPx, keyHeight)
+                        highlight = gesture.highlight
                         change.consume()
                         if (!change.pressed) break
                     }
                     // Losgelassen: gewählten Chip auslösen. Default ist Chip 0 (Halten ohne
                     // Schieben), nach oben gezogen die weiteren; unter die Taste ([CHIP_CANCEL])
-                    // → nichts. Das Basiszeichen gibt es hier NICHT — dafür ist der Tap da.
-                    val selected = highlight
+                    // → null. Das Basiszeichen gibt es hier NICHT — dafür ist der Tap da.
+                    val selected = gesture.onRelease()
                     popupOpen = false
                     highlight = CHIP_CANCEL
-                    if (selected in longPressItems.indices) {
+                    if (selected != null) {
                         view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                         longPressItems[selected].onSelect()
                     }
                 } finally {
                     // Räumt das Popup auch bei Abbruch auf (sonst bliebe es bei einer mitten im
                     // Halten abgebrochenen Geste sichtbar offen) und gibt den Ripple frei.
+                    gesture.onCancel()
                     popupOpen = false
                     highlight = CHIP_CANCEL
                     scope.launch { interactionSource.emit(PressInteraction.Release(press)) } // Ripple aus
@@ -442,10 +452,22 @@ internal fun chipIndexFor(
     chipHeightPx: Float,
     count: Int,
     keyHeightPx: Float,
+): Int = chipIndexForY(pos.y, chipHeightPx, count, keyHeightPx)
+
+/**
+ * Offset-freier Kern von [chipIndexFor]: die Chip-Auswahl hängt allein an der Finger-Höhe
+ * [y] (tastenlokal, 0 = Oberkante, +y nach unten). Bewusst ohne Compose-Typ, damit
+ * [LongPressGesture] und ihr JVM-Test ihn ohne Android/Compose-Abhängigkeit nutzen können.
+ */
+internal fun chipIndexForY(
+    y: Float,
+    chipHeightPx: Float,
+    count: Int,
+    keyHeightPx: Float,
 ): Int {
     if (count == 0) return CHIP_CANCEL
-    if (pos.y > keyHeightPx) return CHIP_CANCEL
-    return floor(-pos.y / chipHeightPx).toInt().coerceIn(0, count - 1)
+    if (y > keyHeightPx) return CHIP_CANCEL
+    return floor(-y / chipHeightPx).toInt().coerceIn(0, count - 1)
 }
 
 /** Sichtbares Alternativen-Popup als **vertikale Spalte**, mittig über der Taste. Item 0 sitzt
