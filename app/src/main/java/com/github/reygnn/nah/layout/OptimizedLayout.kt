@@ -154,32 +154,33 @@ object OptimizedLayout {
      *  statt nur auf die schmale Symbol-Ziffernreihe — ohne dafür eine sichtbare Taste zu
      *  opfern. Tap bleibt unverändert (→ Symbolebene); der Pad-Zugang ist rein additiv. */
     private fun functionRow(toggle: KeyAction): List<KeyboardKey> = listOf(
+        // Gesamtgewicht der Reihe = 7 (fünf Tasten je 1 Spalte + Leertaste 2 Spalten), genau wie
+        // die Buchstabenreihen darüber → jede Funktionstaste fluchtet exakt unter einer Spalte
+        // (Paste↔⇧, ?123↔w, ,↔t, Space↔n+d, .↔g, ⏎↔⌫). Damit sind , und . zugleich genau eine
+        // Buchstabentastenbreite (fat-finger-tauglich); der Preis ist eine etwas schmalere
+        // Leertaste (2/7 statt der früheren ~36 %), die aber die mit Abstand breiteste Taste bleibt.
         FunctionKey(KeyAction.PASTE, weight = 1f),
         if (toggle == KeyAction.SYMBOLS) {
-            FunctionKey(toggle, weight = 1.5f, longPressActions = listOf(KeyAction.NUMPAD, KeyAction.DIALPAD))
+            FunctionKey(toggle, weight = 1f, longPressActions = listOf(KeyAction.NUMPAD, KeyAction.DIALPAD))
         } else {
-            FunctionKey(toggle, weight = 1.5f)
+            FunctionKey(toggle, weight = 1f)
         },
-        // Komma/Punkt bewusst weight 1.5f (nicht 1f): in der von der breiten Leertaste (4f)
-        // dominierten Funktionsreihe rendert weight 1f nur ~10.5 % breit — schmaler als eine
-        // Buchstabentaste. 1.5f bringt sie auf ≈ Buchstabentastenbreite und damit fat-finger-
-        // tauglich (leichter zu treffen).
-        FunctionKey(KeyAction.COMMA, weight = 1.5f),
-        FunctionKey(KeyAction.SPACE, weight = 4f),
+        FunctionKey(KeyAction.COMMA, weight = 1f),
+        FunctionKey(KeyAction.SPACE, weight = 2f),
         // Auf der Buchstabenebene (toggle == SYMBOLS) bietet die Punkt-Taste ? und ! per
         // Long-Press an — so braucht es für ein Frage-/Ausrufezeichen keinen Wechsel auf die
         // Symbolebene. Auf der Symbolebene selbst liegen ? und ! ohnehin offen → dort kein
-        // (redundantes) Long-Press, also auch kein Eck-Marker. Breite wie das Komma (1.5f).
+        // (redundantes) Long-Press, also auch kein Eck-Marker.
         if (toggle == KeyAction.SYMBOLS) {
             FunctionKey(
                 KeyAction.PERIOD,
-                weight = 1.5f,
+                weight = 1f,
                 longPressActions = listOf(KeyAction.QUESTION, KeyAction.EXCLAMATION),
             )
         } else {
-            FunctionKey(KeyAction.PERIOD, weight = 1.5f)
+            FunctionKey(KeyAction.PERIOD, weight = 1f)
         },
-        FunctionKey(KeyAction.RETURN, weight = 1.5f),
+        FunctionKey(KeyAction.RETURN, weight = 1f),
     )
 
     private fun charRow(chars: String): List<KeyboardKey> =
