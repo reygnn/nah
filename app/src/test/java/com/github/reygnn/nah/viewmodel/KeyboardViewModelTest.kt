@@ -780,6 +780,49 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `Auto-Cap ausschalten entwaffnet ein gerade auto-armiertes SHIFTED sofort`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }
+        vm.onStartInput()                       // leerer Puffer → Auto-Cap armiert SHIFTED
+        assertEquals(ShiftState.SHIFTED, vm.state.value.shift)
+        // Auto-Cap ausschalten: das armierte Zeichen sofort entwaffnen, nicht noch einmal gross-
+        // schreiben lassen. Sonst käme ein einzelner ungewollter Grossbuchstabe.
+        vm.applySettings(Settings(autoCapEnabled = false))
+        assertEquals(ShiftState.OFF, vm.state.value.shift)
+        vm.type("h")
+        assertEquals("h", fake.buffer.toString())
+    }
+
+    @Test
+    fun `ein manuelles SHIFTED bleibt beim Ausschalten von Auto-Cap erhalten`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }
+        vm.onStartInput()
+        // Den auto-armierten Anfang bewusst entwaffnen und dann MANUELL SHIFTED setzen (autoCapArmed
+        // == false) — dieser Zustand darf von einem Settings-Toggle NICHT angetastet werden.
+        vm.onKey(FunctionKey(KeyAction.SHIFT)) // SHIFTED auto → OFF (Entwaffnen)
+        vm.onKey(FunctionKey(KeyAction.SHIFT)) // OFF → SHIFTED, jetzt manuell
+        assertEquals(ShiftState.SHIFTED, vm.state.value.shift)
+        vm.applySettings(Settings(autoCapEnabled = false))
+        assertEquals(ShiftState.SHIFTED, vm.state.value.shift) // manuelles Shift überlebt
+        vm.type("h")
+        assertEquals("H", fake.buffer.toString())
+    }
+
+    @Test
+    fun `Caps-Lock bleibt beim Ausschalten von Auto-Cap erhalten`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }
+        vm.onStartInput()
+        vm.onKey(FunctionKey(KeyAction.SHIFT)) // auto-SHIFTED → OFF
+        vm.onKey(FunctionKey(KeyAction.SHIFT)) // OFF → SHIFTED (manuell)
+        vm.onKey(FunctionKey(KeyAction.SHIFT)) // SHIFTED → CAPS
+        assertEquals(ShiftState.CAPS, vm.state.value.shift)
+        vm.applySettings(Settings(autoCapEnabled = false))
+        assertEquals(ShiftState.CAPS, vm.state.value.shift) // CAPS (autoCapArmed == false) unberührt
+    }
+
+    @Test
     fun `vorschlag-tap ersetzt nur das aktuelle Wort, nie fertigen Text`() {
         val fake = FakeIc()
         val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("welt") })

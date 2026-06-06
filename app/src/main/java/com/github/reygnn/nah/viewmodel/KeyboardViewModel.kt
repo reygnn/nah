@@ -116,6 +116,17 @@ class KeyboardViewModel(
 
     fun applySettings(newSettings: Settings) {
         settings = newSettings
+        // Auto-Cap gerade ausgeschaltet, während noch ein AUTO-armiertes SHIFTED steht: dieses eine
+        // armierte Zeichen sofort entwaffnen, statt es noch grossschreiben zu lassen. Bewusst nur
+        // dieser eine Übergang — ein MANUELL gesetztes SHIFTED oder CAPS hat autoCapArmed == false und
+        // bleibt unberührt, und es wird NICHTS neu armiert (anders als ein voller reconsiderAutoCap,
+        // der einen vom Nutzer bewusst entwaffneten Satzanfang wieder anwerfen würde — genau darum
+        // bleibt der Refresh unten reconsiderAutoCap = false). Der shift-Check ist redundant zur
+        // Invariante „autoCapArmed ⟹ SHIFTED", aber defensiv, falls die je bricht.
+        if (!newSettings.autoCapEnabled && autoCapArmed && _state.value.shift == ShiftState.SHIFTED) {
+            autoCapArmed = false
+            setShift(ShiftState.OFF)
+        }
         if (_state.value.colorHints != newSettings.letterColorHintsEnabled) {
             _state.value = _state.value.copy(colorHints = newSettings.letterColorHintsEnabled)
         }
