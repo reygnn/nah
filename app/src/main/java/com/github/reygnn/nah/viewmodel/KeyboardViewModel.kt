@@ -83,6 +83,17 @@ class KeyboardViewModel(
     private var selEnd = 0
     private val hasSelection get() = selStart != selEnd
 
+    // Einmal-Quittung gegen das redundante Selbst-Echo: nach einem eigenen Edit mit vorhersagbarer
+    // Länge die kollabierte Cursorposition, die der Editor per `onUpdateSelection` zurückmelden wird.
+    // [afterTextChanged] hat synchron (gegen den realen Post-Edit-Kontext, derselbe verlässliche Read,
+    // auf den sich der ViewModel ohnehin stützt) schon Shift/Vorschläge gerechnet — das passende Echo
+    // trägt nichts Neues und sein Recompute wird übersprungen. Ein NICHT passendes Echo ist eine
+    // externe Cursor-Bewegung und rechnet normal weiter. Die Vorhersage dient AUSSCHLIESSLICH diesem
+    // Dedup, nie dem Überspringen des synchronen Reads — eine falsche Vorhersage kann darum kein
+    // nötiges Recompute verlieren (sie fällt in den Recompute-Zweig). `null` = keine Quittung scharf
+    // (Pfade ohne sichere Längen-Vorhersage wie Backspace mit astralen Codepoints, oder Return).
+    private var pendingSelfEcho: Int? = null
+
     // Eigenschaften des aktuellen Eingabefelds (z. B. die gewünschte Return-Action),
     // vom Service in onStartInput gesetzt.
     private var field = FieldContext()
@@ -124,6 +135,9 @@ class KeyboardViewModel(
         this.field = field
         selStart = field.initialSelStart
         selEnd = field.initialSelEnd
+        // Eine offene Selbst-Echo-Quittung gehört nicht über eine Feld-/Restart-Grenze getragen —
+        // das initialSel*-getriebene Echo des neuen Feldes soll normal rechnen, nicht übersprungen werden.
+        pendingSelfEcho = null
         // Reihenfolge ist load-bearing: ein Telefonfeld ist BEIDES (field.phone UND field.numeric,
         // siehe FieldContext) — phone MUSS zuerst geprüft werden, sonst bekäme es das allgemeine
         // Zahlen-Pad statt des Wählfelds. Nicht umsortieren.
@@ -166,6 +180,13 @@ class KeyboardViewModel(
         if (newSelStart == selStart && newSelEnd == selEnd) return
         selStart = newSelStart
         selEnd = newSelEnd
+        // Unser eigener, gerade committeter Edit echot exakt die vorhergesagte (kollabierte)
+        // Position zurück; afterTextChanged hat dafür schon synchron gerechnet → die autoritative
+        // Position ist oben übernommen, der zweite Read wird gespart. Die Quittung gilt nur einmal
+        // (Einmal-Verbrauch), eine danach eintreffende externe Bewegung rechnet wieder normal.
+        val expected = pendingSelfEcho
+        pendingSelfEcho = null
+        if (expected != null && newSelStart == expected && newSelEnd == expected) return
         // Ein Cursor-/Auswahl-Sprung: Vorschläge und Auto-Cap aus einem Read, eine Emission.
         refreshForCursor(reconsiderAutoCap = true)
     }
@@ -204,7 +225,11 @@ class KeyboardViewModel(
         if (shift == ShiftState.SHIFTED && text.firstOrNull()?.isLetter() == true) {
             setShift(ShiftState.OFF)
         }
-        afterTextChanged()
+        // Vorhergesagte Cursorposition: commitText ersetzt [selStart, selEnd) durch [out], der Cursor
+        // landet kollabiert bei selStart + out.length — unabhängig davon, ob eine Auswahl bestand.
+        // `out.length` (nicht text.length), weil CAPS „qu"→„QU" usw.; applyTo ist für das de-CH-Alphabet
+        // längenerhaltend. Bei einer Reverse-Selektion träfe die Vorhersage nicht → sicherer Fallback.
+        afterTextChanged(predictedCursor = selStart + out.length)
     }
 
     private fun onFunction(action: KeyAction) {
@@ -225,13 +250,13 @@ class KeyboardViewModel(
                 }
                 afterTextChanged()
             }
-            KeyAction.SPACE -> { commit(" "); afterTextChanged() }
-            KeyAction.PERIOD -> { commit("."); afterTextChanged() }
-            KeyAction.COMMA -> { commit(","); afterTextChanged() }
+            KeyAction.SPACE -> commitLiteral(" ")
+            KeyAction.PERIOD -> commitLiteral(".")
+            KeyAction.COMMA -> commitLiteral(",")
             // Per Long-Press auf der Punkt-Taste (Buchstabenebene) erreichbar. Wie der Punkt:
             // committen das Zeichen wörtlich und armieren danach Auto-Cap (? und ! sind Satzenden).
-            KeyAction.QUESTION -> { commit("?"); afterTextChanged() }
-            KeyAction.EXCLAMATION -> { commit("!"); afterTextChanged() }
+            KeyAction.QUESTION -> commitLiteral("?")
+            KeyAction.EXCLAMATION -> commitLiteral("!")
             // Einfügen anfordern — der Service löst den Inhalt off-main auf und committet
             // ihn über commitClipboardText (kein UI-Thread-Block, siehe onPasteRequested).
             KeyAction.PASTE -> onPasteRequested()
@@ -301,7 +326,7 @@ class KeyboardViewModel(
     fun commitClipboardText(text: String?) {
         if (text.isNullOrEmpty()) return
         safeIc { it.commitText(text, 1) }
-        afterTextChanged()
+        afterTextChanged(predictedCursor = selStart + text.length)
     }
 
     /** Vorschlag angetippt: ersetzt NUR das aktuelle unfertige Präfix, nie fertigen Text. */
@@ -358,6 +383,10 @@ class KeyboardViewModel(
             }
         }
         selEnd = selStart // nach dem Eigen-Edit gibt es keine aktive Auswahl mehr
+        // Dieser Pfad sagt seine Position bewusst NICHT voraus (sein Echo soll wie bisher normal
+        // rechnen) — aber eine etwaige Alt-Quittung aus einem vorherigen Edit löschen, damit sie
+        // nicht zufällig das Echo dieses Vorschlag-Commits verschluckt.
+        pendingSelfEcho = null
         setShift(ShiftState.OFF)
         clearSuggestions()
         userDisarmedAutoCap = false // ein Vorschlag-Commit ist eine echte Aktion → Auto-Cap rechnet wieder
@@ -382,8 +411,13 @@ class KeyboardViewModel(
 
     // --- intern ---
 
-    private fun commit(text: String) {
+    /** Committet [text] wörtlich (kein Shift-Casing, kein Autocorrect) und frischt danach
+     *  Auto-Cap/Vorschläge auf. Sagt die kollabierte Cursorposition (selStart + Länge) voraus,
+     *  damit das eigene onUpdateSelection-Echo als redundant erkannt wird (siehe [afterTextChanged]
+     *  /[onSelectionChanged]). Genutzt für Space/Punkt/Komma/?/! — alle mit fester, bekannter Länge. */
+    private fun commitLiteral(text: String) {
         safeIc { it.commitText(text, 1) }
+        afterTextChanged(predictedCursor = selStart + text.length)
     }
 
     private fun cycleShift() {
@@ -408,7 +442,11 @@ class KeyboardViewModel(
         if (_state.value.shift != s) _state.value = _state.value.copy(shift = s)
     }
 
-    private fun afterTextChanged() {
+    private fun afterTextChanged(predictedCursor: Int? = null) {
+        // Quittung für das eigene onUpdateSelection-Echo scharf stellen (oder löschen, wenn der Pfad
+        // die neue Position nicht sicher vorhersagen kann → predictedCursor == null). Siehe
+        // [pendingSelfEcho]/[onSelectionChanged]: das passende Echo überspringt dann seinen Recompute.
+        pendingSelfEcho = predictedCursor
         // Ein Eigen-Edit kollabiert eine evtl. aktive Auswahl (Commit ersetzt sie,
         // Backspace löscht sie). Bis das `onUpdateSelection`-Echo die exakte Position
         // nachreicht, lokal als „keine Auswahl" markieren — sonst liefe ein sofort
