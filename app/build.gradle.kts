@@ -13,8 +13,8 @@ android {
         applicationId = "com.github.reygnn.nah"
         minSdk = 36
         targetSdk = 36
-        versionCode = 18
-        versionName = "0.7.8"
+        versionCode = 19
+        versionName = "0.7.9"
     }
 
     buildTypes {
