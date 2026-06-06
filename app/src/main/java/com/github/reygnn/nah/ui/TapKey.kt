@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -74,6 +76,16 @@ private val KEY_GAP = 5.dp
 private const val BACKSPACE_INITIAL_DELAY_MS = 400L
 /** … und der Abstand zwischen den Wiederhol-Löschungen danach. */
 private const val BACKSPACE_REPEAT_MS = 55L
+
+/**
+ * Marker (kleiner gefüllter Kreis, rechts oben) auf Tasten mit Long-Press-Menü: macht die
+ * sonst unsichtbaren Alternativen sichtbar (Discoverability — Anforderung 3), ohne das
+ * zentrierte Label anzutasten. Eine einzige Quelle für die Farbe → trivial umstellbar.
+ * [MARKER_INSET] hält den Punkt innerhalb des abgerundeten Tasten-Clips (8.dp-Ecke).
+ */
+private val MARKER_COLOR = Color(0xFFE53935)
+private val MARKER_SIZE = 7.dp
+private val MARKER_INSET = 4.dp
 
 /** Long-Press-Popup: Grösse eines Alternativ-Chips und Abstand über der Taste. */
 private val CHIP_WIDTH = 46.dp
@@ -366,6 +378,17 @@ fun TapKey(
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 softWrap = false,
+            )
+        }
+        // Sichtbarer Hinweis „diese Taste hat ein Long-Press-Menü". Dieselbe Bedingung wie die
+        // Geste oben (longPressItems) → der Marker erscheint exakt dann, wenn das Halten etwas tut.
+        if (longPressItems.isNotEmpty()) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(MARKER_INSET)
+                    .size(MARKER_SIZE)
+                    .background(MARKER_COLOR, CircleShape),
             )
         }
         if (popupOpen) {
