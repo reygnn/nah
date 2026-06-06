@@ -2,6 +2,7 @@ package com.github.reygnn.nah.viewmodel
 
 import android.util.Log
 import android.view.KeyEvent
+import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import com.github.reygnn.nah.data.suggestions.Suggester
 import com.github.reygnn.nah.layout.CharKey
@@ -291,6 +292,25 @@ class KeyboardViewModel(
     /** Vorschlag angetippt: ersetzt NUR das aktuelle unfertige Präfix, nie fertigen Text. */
     fun onSuggestionTap(word: String) {
         val prefix = currentWord()
+        // Schutz des obersten Gesetzes (fertiger Text wird NIE verändert) gegen eine Live-Auswahl,
+        // die der ViewModel noch nicht kennt (das onUpdateSelection-Echo ist unterwegs, der Vorschlag-
+        // Chip steht aber noch): der commitText unten würde die markierte Stelle ERSETZEN und damit
+        // fertigen Text zerstören. Zwei Abbruchgründe:
+        //  - leeres Präfix: ein gültiger Vorschlag hatte immer ein >= 2 Zeichen langes Präfix; ist es
+        //    jetzt leer, hat sich der Kontext geändert (eine Auswahl verdeckt den Wortanfang → wordBefore
+        //    liefert ""), also nichts anfassen.
+        //  - der Editor meldet eine real noch offene Auswahl (getExtractedText ist autoritativ und deckt
+        //    auch Auswahlen ab, die nicht am Wortanfang beginnen). Null = Editor unterstützt es nicht →
+        //    dann trägt der Präfix-Check oben.
+        if (prefix.isEmpty()) {
+            clearSuggestions()
+            return
+        }
+        val extracted = safeIc { it.getExtractedText(ExtractedTextRequest(), 0) }
+        if (extracted != null && extracted.selectionStart != extracted.selectionEnd) {
+            clearSuggestions()
+            return
+        }
         // Eigene Wörter (Namen/Adressen/E-Mails) wörtlich committen — ihre Schreibweise ist
         // massgeblich. Nur Wörterbuch-Vorschläge dem Präfix-Casing anpassen, damit ein am
         // Satzanfang gross begonnenes „De" nicht durch klein vorgeschlagenes „der" ersetzt

@@ -503,6 +503,27 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `vorschlag-tap bei noch nicht gemeldeter Live-Auswahl laesst fertigen Text unangetastet`() {
+        // Doppel-Edge (Fugen-Review): der VM glaubt an einen kollabierten Cursor, im Editor liegt
+        // aber bereits eine Auswahl ueber fertigem Text — das onUpdateSelection-Echo ist noch
+        // unterwegs. Ohne Schutz wuerde der commitText in onSuggestionTap die Auswahl ersetzen und
+        // fertigen Text zerstoeren (Bruch des obersten Gesetzes).
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo") })
+            .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
+        fake.buffer.append("WICHTIG ha") // „WICHTIG " ist fertig, „ha" das unfertige Praefix
+        fake.select(10, 10)
+        vm.onSelectionChanged(10, 10)
+        assertEquals(listOf("hallo"), vm.state.value.suggestions) // Vorschlag steht am Wortende
+        // Nutzer zieht eine Auswahl ueber den fertigen Text [0,10) — Echo aber noch nicht beim VM.
+        fake.select(0, 10)
+        // Vor dem Echo tippt der Nutzer den noch sichtbaren Vorschlag an.
+        vm.onSuggestionTap("hallo")
+        // Oberstes Gesetz: „WICHTIG " bleibt unangetastet; der Tap bricht ab (leeres Praefix erkannt).
+        assertEquals("WICHTIG ha", fake.buffer.toString())
+    }
+
+    @Test
     fun `ziffern-praefix loest vorschlaege aus, auch auf der Symbolebene`() {
         val fake = FakeIc()
         val vm = vm(fake, suggester = Suggester { prefix, _, _ ->

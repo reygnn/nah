@@ -50,11 +50,11 @@ class NahIme :
     private lateinit var settingsRepository: SettingsRepository
     private lateinit var userWordRepository: UserWordRepository
 
-    // Zählt jeden ECHTEN Feldwechsel hoch (nicht einen reinen Restart desselben Feldes). Ein
-    // asynchron aufgelöster Einfüge-Inhalt (requestPaste) merkt sich den Stand zur Geste und
-    // committet nur, wenn er beim Zurückkommen auf dem Main-Thread noch stimmt — sonst landete der
-    // (evtl. langsam über einen Content-URI aufgelöste) Text im inzwischen fokussierten FREMDEN
-    // Feld (Fehlcommit + Privacy-Leck).
+    // Zählt jeden ECHTEN Feldwechsel hoch (in onStartInput(!restarting) und onFinishInput, NICHT bei
+    // einem reinen Restart desselben Feldes). Ein asynchron aufgelöster Einfüge-Inhalt (requestPaste)
+    // merkt sich den Stand zur Geste und committet nur, wenn er beim Zurückkommen auf dem Main-Thread
+    // noch stimmt — sonst landete der (evtl. langsam über einen Content-URI aufgelöste) Text im
+    // inzwischen fokussierten FREMDEN Feld (Fehlcommit + Privacy-Leck).
     private var fieldEpoch = 0
 
     override fun onCreate() {
@@ -132,15 +132,31 @@ class NahIme :
         }
     }
 
+    /**
+     * Den Paste-Epoch HIER hochzählen (nicht in [onStartInputView]): [onStartInput] feuert synchron
+     * mit der `currentInputConnection`-Umschaltung des Frameworks — auch wenn das Eingabe-View gerade
+     * verborgen ist. [onStartInputView] ist dagegen an die View-Sichtbarkeit gekoppelt und liefe bei
+     * einem Feldwechsel mit kurz verstecktem Fenster ZU SPÄT: ein dazwischen landender, off-main
+     * aufgelöster Paste-Commit würde sonst gegen die schon umgeschaltete IC des FREMDEN Feldes laufen
+     * (Fehlcommit + Privacy-Leck). Nur ein ECHTER Feldwechsel (restarting == false) entwertet; ein
+     * reiner Restart desselben Feldes (Config-Change/Editor-restartInput) lässt einen in-flight Paste
+     * korrekt überleben.
+     */
+    override fun onStartInput(info: EditorInfo?, restarting: Boolean) {
+        super.onStartInput(info, restarting)
+        if (!restarting) fieldEpoch++
+    }
+
+    /** Das Feld endet → ein noch laufender Paste-Commit gehört in kein Feld mehr und wird entwertet
+     *  (er würde sonst gegen eine bereits umgeschaltete/ungültige IC committen). */
+    override fun onFinishInput() {
+        super.onFinishInput()
+        fieldEpoch++
+    }
+
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        // Nur ein ECHTER Feldwechsel (restarting == false) entwertet einen laufenden Paste-Commit.
-        // Ein reiner Restart desselben Feldes (Config-Change/Rotation, Editor-restartInput) ist
-        // dasselbe Feld — genauso behandelt es KeyboardViewModel.onStartInput (restarting wirft den
-        // Nutzerzustand nicht weg). Ein in-flight Paste gehört weiterhin dorthin und darf nicht still
-        // verworfen werden; jeder echte Feldwechsel kommt mit restarting == false (auch das neue Feld
-        // nach onFinishInput), der Fremdfeld-Schutz bleibt also voll erhalten.
-        if (!restarting) fieldEpoch++
+        // Epoch-Pflege liegt in onStartInput/onFinishInput (s. dort) — hier nur View/Settings.
         viewModel.onStartInput(
             field = info?.let {
                 FieldContext.fromEditorInfo(

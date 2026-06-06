@@ -7,18 +7,33 @@ Offene, bewusst zurückgestellte Punkte. Erledigtes/Verworfenes steht in
 
 ## Handoff-Stand (Stand dieser Review-Session)
 
-Drei flache adversarielle Review-Runden sind durch und **konvergiert**: 13 → 2 → 0
-bestätigte Defekte. Alle gefundenen echten Defekte sind gefixt (Korrektheit,
-IC-Robustheit, a11y, RTL, Font-Scale, Paste-Guard, DataStore-Resilienz).
+Drei flache adversarielle Review-Runden (13 → 2 → 0) plus ein **Fugen-Review**
+(Edge×Edge, Trace-Konstruktion) sind durch. Alle gefundenen echten Defekte sind
+gefixt und auf `main`: Korrektheit, IC-Robustheit, a11y, RTL, Font-Scale,
+Paste-Guard, DataStore-Resilienz — und die zwei Fugen-Funde (s. u.).
 
-**Offen / nicht gemergt:**
-- Branch **`fix/seal-followups`** (Commit `47c3a73`) trägt die letzten zwei Fixes
-  (Paste-Guard-Regression `if (!restarting)`, DataStore-Korruptions-Handler +
-  `.catch`). **Noch nicht nach `main` gemergt, nicht gepusht.** → mergen (ff) +
-  pushen, dann Branch löschen.
-- Ein **Fugen-Review-Workflow läuft noch** (Task `wh7db942v`, Script
-  `…/workflows/scripts/nah-seam-review-wf_66b74ab4-9b0.js`). Ergebnis landet unter
-  `…/tasks/wh7db942v.output`. Funde (falls vorhanden) noch einarbeiten.
+Der Fugen-Review (`wh7db942v`) fand genau die gesuchte Edge-of-Edge-Klasse:
+**1 bestätigten** Doppel-Edge (Paste-Epoch am falschen Lebenszyklus-Hook) **+ 1
+Kandidaten** (Vorschlag-Tap über noch nicht gemeldete Live-Auswahl). Beide
+verifiziert (letzterer per Negativ-Kontrolle) und gefixt.
+
+---
+
+## ✅ ERLEDIGT — die zwei Fugen-Funde (Branch `fix/seam-followups`)
+
+1. **Paste-Commit ins fremde Feld (high, I4).** `fieldEpoch++` saß am falschen Hook
+   (`onStartInputView`, fenster-gekoppelt), während `currentInputConnection` schon bei
+   `onStartInput` umschaltet → bei einem Feldwechsel mit kurz verstecktem Fenster konnte
+   ein langsamer Paste gegen die IC des **fremden** Feldes committen. **Fix:** Epoch in
+   `onStartInput(!restarting)` + `onFinishInput()` hochzählen statt in `onStartInputView`.
+   (Service-Logik → konventionsgemäss kein JVM-Test.)
+2. **Vorschlag-Tap über noch nicht gemeldete Live-Auswahl (I1).** `commitText` hätte die
+   Auswahl ersetzt und fertigen Text zerstört. **Fix:** `onSuggestionTap` bricht bei
+   leerem Präfix bzw. real offener Auswahl (`getExtractedText`) ab. **Per Negativ-Kontrolle
+   belegt** (Test rot ohne Guard, grün mit) und mit Regressionstest gepinnt.
+
+(Der frühere Scratch `ReproTest.kt` ist ersetzt durch den ordentlichen Test in
+`KeyboardViewModelTest`.)
 
 ---
 
