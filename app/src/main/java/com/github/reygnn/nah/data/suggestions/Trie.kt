@@ -59,6 +59,10 @@ class Trie {
      * vernachlässigbar — selbst der kürzeste erlaubte Präfix (2 Zeichen) spannt nur einen
      * kleinen Teilbaum auf. Erst ein um Grössenordnungen grösseres Wörterbuch würde Branch-and-
      * Bound lohnen (max. Teilbaum-Frequenz je Knoten cachen und nicht-konkurrenzfähige Äste kappen).
+     *
+     * Quantifiziert in `tools/trie_benchmark.md`: gemessen ~0,1–0,2 µs/Wort im Teilbaum; grün bis
+     * ~50k Wörter (<~1 ms/Tastendruck am Gerät), Branch-and-Bound lohnt erst ab ~100k–200k Wörtern.
+     * Heute (363 Wörter): ~1 µs — irrelevant.
      */
     private fun collectWords(node: TrieNode, results: MutableList<Pair<String, Int>>) {
         if (node.isWord) {
