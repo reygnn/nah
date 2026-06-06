@@ -17,6 +17,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.random.Random
 
 /**
  * Fake-InputConnection mit echtem Text-Puffer UND einer Cursor-/Auswahl-Position
@@ -34,6 +35,10 @@ private class FakeIc {
         selStart = start
         selEnd = end
     }
+
+    // Lesbare Cursor-/Auswahl-Position (für den Invarianten-Fuzzer, der das Erwartete vorab rechnet).
+    val selectionStart: Int get() = selStart
+    val selectionEnd: Int get() = selEnd
 
     val ic: InputConnection = mockk(relaxed = true) {
         every { commitText(any(), any()) } answers {
@@ -917,6 +922,113 @@ class KeyboardViewModelTest {
         vm.onKey(FunctionKey(KeyAction.BACKSPACE))
         // Das ganze Emoji ist weg, nur das „a" bleibt — keine verwaiste Surrogat-Hälfte.
         assertEquals("a", fake.buffer.toString())
+    }
+
+    /**
+     * Invarianten-Fuzzer: würfelt seed-reproduzierbare Operationssequenzen (Tippen, Backspace,
+     * Space/Punkt/Komma, Vorschlag-Tap, Cursor/Auswahl, Ebenenwechsel, Feld-Restart) inklusive der
+     * Echo-Naht (`onSelectionChanged` nach jeder Op, wie der Framework-Callback) und prüft nach JEDEM
+     * Schritt die harten Invarianten. Findet Doppel-Edge-Cases (Edge×Edge), die kein handgeschriebener
+     * Test enumeriert — die mechanische Ergänzung zum Fugen-Review. Bricht ein Lauf, nennt die Meldung
+     * Seed + Op-Index zur exakten Reproduktion.
+     *
+     * Invarianten:
+     *  - INV-A: Ein Tap (Buchstabe/Literal) fügt GENAU das committete Zeichen an der Cursor-/Auswahl-
+     *    stelle ein und lässt alles andere unverändert (kein Autocorrect, Angezeigtes == Getipptes).
+     *  - INV-B: Backspace entfernt genau ein Code-Point vor dem Cursor bzw. genau die Auswahl.
+     *  - INV-C: Ein Vorschlag-Tap ersetzt nur das aktuelle Präfix — fertiger Text davor UND hinter dem
+     *    Cursor bleibt unangetastet (oberstes Gesetz).
+     *  - Keine Operation/Echo-Reihenfolge wirft je eine Exception.
+     */
+    @Test
+    fun `invarianten-fuzzer - zufaellige Operationssequenzen brechen keine harte Invariante`() {
+        val letters = "abcdefghinorstuäöü".toList()
+        val seeds = 250
+        val opsPerSeed = 50
+        var total = 0
+        for (seed in 0 until seeds) {
+            val rng = Random(seed)
+            val fake = FakeIc()
+            val vm = vm(fake, suggester = Suggester { prefix, _, _ ->
+                if (prefix.length >= 2) listOf(prefix.lowercase() + "xy") else emptyList()
+            }).apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = seed % 2 == 0)) }
+            vm.onStartInput(FieldContext())
+
+            repeat(opsPerSeed) { op ->
+                val before = fake.buffer.toString()
+                val ss = fake.selectionStart
+                val se = fake.selectionEnd
+                val shift = vm.state.value.shift
+                val ctx = "seed=$seed op=$op vor='$before' ss=$ss se=$se shift=$shift"
+                when (rng.nextInt(10)) {
+                    0, 1, 2 -> { // Buchstabe tippen
+                        val c = letters[rng.nextInt(letters.size)]
+                        vm.onKey(CharKey(c))
+                        val expected = before.substring(0, ss) + shift.applyTo(c.toString()) + before.substring(se)
+                        assertEquals("INV-A Tippen | $ctx", expected, fake.buffer.toString())
+                    }
+                    3 -> { // Backspace
+                        vm.onKey(FunctionKey(KeyAction.BACKSPACE))
+                        val expected = when {
+                            ss != se -> before.substring(0, ss) + before.substring(se)
+                            ss == 0 -> before
+                            else -> {
+                                val from = if (ss >= 2 && Character.isSurrogatePair(before[ss - 2], before[ss - 1])) ss - 2 else ss - 1
+                                before.substring(0, from) + before.substring(ss)
+                            }
+                        }
+                        assertEquals("INV-B Backspace | $ctx", expected, fake.buffer.toString())
+                    }
+                    4 -> { // Space / Punkt / Komma (literal, kein Shift-Casing)
+                        val (action, lit) = listOf(
+                            KeyAction.SPACE to " ", KeyAction.PERIOD to ".", KeyAction.COMMA to ",",
+                        )[rng.nextInt(3)]
+                        vm.onKey(FunctionKey(action))
+                        val expected = before.substring(0, ss) + lit + before.substring(se)
+                        assertEquals("INV-A Literal '$lit' | $ctx", expected, fake.buffer.toString())
+                    }
+                    5 -> { // Vorschlag antippen (nur wenn einer steht)
+                        val suggestions = vm.state.value.suggestions
+                        if (suggestions.isNotEmpty()) {
+                            val prefixLen = before.substring(0, ss).takeLastWhile { it.isLetterOrDigit() }.length
+                            val wordStart = ss - prefixLen
+                            vm.onSuggestionTap(suggestions.first())
+                            val after = fake.buffer.toString()
+                            assertTrue("INV-C Vorschlag: fertiger Text VOR dem Wort bleibt | $ctx -> '$after'",
+                                after.startsWith(before.substring(0, wordStart)))
+                            assertTrue("INV-C Vorschlag: Text HINTER dem Cursor bleibt | $ctx -> '$after'",
+                                after.endsWith(before.substring(ss)))
+                        }
+                    }
+                    6 -> { // Cursor bewegen
+                        val p = rng.nextInt(before.length + 1)
+                        fake.select(p, p)
+                        vm.onSelectionChanged(p, p)
+                    }
+                    7 -> { // Auswahl setzen
+                        val a = rng.nextInt(before.length + 1)
+                        val b = a + rng.nextInt(before.length - a + 1)
+                        fake.select(a, b)
+                        vm.onSelectionChanged(a, b)
+                    }
+                    8 -> { // Ebenenwechsel
+                        val layer = listOf(KeyAction.SYMBOLS, KeyAction.ALPHA, KeyAction.NUMPAD, KeyAction.DIALPAD)[rng.nextInt(4)]
+                        vm.onKey(FunctionKey(layer))
+                    }
+                    9 -> { // Feld-Restart / -Wechsel (Anfangs-Auswahl = aktueller Stand, damit konsistent)
+                        vm.onStartInput(
+                            field = FieldContext(initialSelStart = fake.selectionStart, initialSelEnd = fake.selectionEnd),
+                            restarting = rng.nextBoolean(),
+                        )
+                    }
+                }
+                // Framework-Echo: den VM-Glauben über die Cursorposition mit der echten IC abgleichen
+                // (deckt die Reorder-/Verspätungs-Naht ab; bei Gleichstand ein No-op).
+                vm.onSelectionChanged(fake.selectionStart, fake.selectionEnd)
+                total++
+            }
+        }
+        println("Invarianten-Fuzzer: $total Operationen über $seeds Seeds ohne Invariantenbruch")
     }
 
     @Test

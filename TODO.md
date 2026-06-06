@@ -65,43 +65,17 @@ Restart×Shift-Erhalt×`pasteAvailable`.
 **Wieder ausführbar:** `Workflow({scriptPath:
 "…/workflows/scripts/nah-seam-review-wf_66b74ab4-9b0.js"})`.
 
-## (b) Invarianten-Fuzzer als permanentes Test-Harness
+## (b) Invarianten-Fuzzer — ✅ GEBAUT
 
-**Warum.** Die maschinelle Variante von (a): statt Traces von Hand zu enumerieren,
-**zufällige, seed-reproduzierbare Operationssequenzen** gegen `KeyboardViewModel` +
-`FakeIc` würfeln und nach *jedem* Schritt die harten Invarianten prüfen. Findet
-Doppel-Edges, die kein Mensch aufzählt, und **bleibt als Regressionswächter** bei
-jedem `./gradlew test`. Passt zum Test-Ethos (JVM-rein, kein Robolectric).
-
-**Scope.** `KeyboardViewModel`-State-Machine inkl. der Echo-Naht (`onSelectionChanged`
-als Framework-Echo nach jeder Edit-Op). Die reine Service-/Async-Naht bleibt (a)
-vorbehalten (nicht JVM-simulierbar).
-
-**Design (so umsetzbar):**
-- Neue Datei `app/src/test/java/.../viewmodel/KeyboardViewModelInvariantFuzzTest.kt`
-  (oder Methode in `KeyboardViewModelTest`, um `FakeIc` zu teilen).
-- `FakeIc` minimal erweitern: `selStart`/`selEnd` (bzw. `cursor`) als lesbare
-  Accessor exponieren — der Fuzzer braucht die Position vor jeder Op fürs Erwartete.
-- Seeded `kotlin.random.Random(seed)`, ~400 Seeds × ~60 Ops. Op-Menge: Tippen
-  (zufälliger CharKey aus dem deCh-Layout), Shift-Tap, Backspace, Space/Period/Comma,
-  Vorschlag-Tap (nur wenn `state.suggestions` nicht leer), Layer-Wechsel,
-  Cursor-Move (`fake.select(p,p)` + `onSelectionChanged`), Select (`a≤b`),
-  `onStartInput` (restarting zufällig; `initialSel` = aktuelle Fake-Position).
-  **Nach jeder Edit-Op das Framework-Echo treiben:** `onSelectionChanged(fake.selStart,
-  fake.selEnd)`.
-- Suggester deterministisch injizieren (z. B. `prefix + "x"` ab Länge 2).
-- Per-Op-Invarianten (Snapshot Puffer/Cursor/Shift VOR der Op):
-  - **INV-A (I1/I2 Tippen):** Puffer danach == `before[0,selStart) +
-    shiftBefore.applyTo(c) + before[selEnd,)` — sonst hat ein Tap mehr als das
-    getippte Zeichen verändert.
-  - **INV-B (I1 Backspace):** ohne Auswahl genau ein Code-Point vor dem Cursor
-    entfernt (BMP: 1 Zeichen); mit Auswahl genau `[selStart,selEnd)` entfernt; bei
-    Cursor 0 ohne Auswahl unverändert.
-  - **INV-C (I1 Vorschlag):** `after.startsWith(before[0, wortStart))` UND
-    `after.endsWith(before[cursor,))` — nur das aktuelle alnum-Präfix wurde ersetzt,
-    fertiger Text drumherum bleibt unangetastet (Casing der Mitte NICHT vorhersagen).
-  - **Generisch:** keine Exception bei irgendeiner Op/Echo-Reihenfolge.
-- Bei rotem Lauf den Seed + Op-Index loggen → exakte Reproduktion des Doppel-Edge.
+Permanentes Regressions-Harness, das die harten Invarianten mechanisch abklopft, statt
+sie einzeln per Review zu jagen. Umgesetzt als `invarianten-fuzzer …`-Test in
+`KeyboardViewModelTest` (teilt sich `FakeIc`; `selectionStart`/`selectionEnd`-Accessoren
+ergänzt). Würfelt seed-reproduzierbar (`Random(seed)`, 250 Seeds × 50 Ops = 12 500
+Operationen) Tippen/Backspace/Space-Punkt-Komma/Vorschlag-Tap/Cursor/Auswahl/Ebenenwechsel/
+Feld-Restart inkl. Echo-Naht (`onSelectionChanged` nach jeder Op) und prüft pro Schritt
+INV-A (Tippen), INV-B (Backspace), INV-C (Vorschlag ersetzt nur das Präfix) + „wirft nie".
+Deterministisch (fixe Seeds → kein flaky CI; tiefer suchen = Seed-Zahl erhöhen).
+**Aktueller Lauf: 12 500 Ops, 0 Invariantenbrüche.**
 
 ---
 
