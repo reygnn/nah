@@ -89,15 +89,17 @@ private val POPUP_GAP = 6.dp
 private class LongPressItem(val label: String, val onSelect: () -> Unit)
 
 /**
- * Schriftgrösse, die NICHT mit der System-Schriftskalierung mitwächst. Tastenbeschriftungen
- * (und Popup-Chips) sind feste Symbole in Containern mit fixer dp-Höhe; skalierte `sp` würde
- * bei grossem System-Font-Scale über die Tastenhöhe wachsen und das Label vertikal abschneiden —
- * ein Bruch der „sichtbare Labels"-Anforderung genau für die Nutzergruppe, die grosse Schrift
- * braucht. `dp.toSp()` im aktuellen Density-Kontext liefert eine fontScale-unabhängige Grösse, das
- * Label passt also deterministisch in die Taste. (Fliesstext anderswo skaliert weiterhin normal.)
+ * Schriftgrösse, die NICHT mit der System-Schriftskalierung mitwächst. Tastenbeschriftungen,
+ * Popup-Chips und die Vorschlagsleiste sind feste Symbole/Texte in Containern mit fixer dp-Höhe;
+ * skalierte `sp` würde bei grossem System-Font-Scale über die Container-Höhe wachsen und das Label
+ * vertikal abschneiden — ein Bruch der „sichtbare Labels"-Anforderung genau für die Nutzergruppe,
+ * die grosse Schrift braucht. `dp.toSp()` im aktuellen Density-Kontext liefert eine
+ * fontScale-unabhängige Grösse, das Label passt also deterministisch in den Container. (Fliesstext
+ * anderswo skaliert weiterhin normal.) `internal`, damit auch die `SuggestionBar` denselben Helfer
+ * nutzt statt die Logik zu duplizieren.
  */
 @Composable
-private fun nonScaledSp(size: Dp): TextUnit = with(LocalDensity.current) { size.toSp() }
+internal fun nonScaledSp(size: Dp): TextUnit = with(LocalDensity.current) { size.toSp() }
 
 /**
  * Eine grosse, deterministische Tipp-Taste. Ein Tap = genau diese [key]. Labels

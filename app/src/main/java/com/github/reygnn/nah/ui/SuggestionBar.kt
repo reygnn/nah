@@ -15,7 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
 /**
  * Nicht-eingreifende Vorschlagsleiste. Antippen eines Vorschlags ersetzt nur das aktuelle
@@ -53,7 +52,11 @@ fun SuggestionBar(
                 Text(
                     text = word,
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 16.sp,
+                    // Wie die Tasten bewusst NICHT mit der System-Schriftskalierung wachsend
+                    // (siehe nonScaledSp): die Leiste hat eine fixe Höhe (44.dp), skalierte `sp`
+                    // würde den Vorschlag bei grossem Font-Scale vertikal abschneiden. Das
+                    // horizontale Ellipsis fängt nur den Breiten-, nicht den Höhenüberlauf.
+                    fontSize = nonScaledSp(16.dp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
