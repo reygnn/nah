@@ -100,9 +100,18 @@ class OptimizedLayoutTravelTest {
     }
 
     @Test
-    fun `alle 29 Buchstaben sind im Layout vorhanden`() {
-        val chars = OptimizedLayout.deCh().letterPositions().keys
-        assertTrue(chars.containsAll("abcdefghijklmnopqrstuvwxyzäöü".toList()))
+    fun `die 26 Grundbuchstaben sind Tasten, die Umlaute liegen auf Long-Press`() {
+        val layout = OptimizedLayout.deCh()
+        val chars = layout.letterPositions().keys
+        // Alle 26 Grundbuchstaben sind eigene Tasten (q sitzt auf der qu-Digraph-Taste).
+        assertTrue("alle 26 Grundbuchstaben als Tasten", chars.containsAll("abcdefghijklmnopqrstuvwxyz".toList()))
+        // Die Umlaute haben KEINE eigene Taste mehr (Fat-Finger: weniger, breitere Tasten) …
+        assertTrue("keine Umlaut-Tasten im Layout", "äöü".none { it in chars })
+        // … sondern sind als ERSTE Long-Press-Alternative auf ihrem Grundvokal erreichbar.
+        val charKeys = layout.rows.flatten().filterIsInstance<CharKey>()
+        assertEquals("ä", charKeys.first { it.char == 'a' }.alternatives.first())
+        assertEquals("ö", charKeys.first { it.char == 'o' }.alternatives.first())
+        assertEquals("ü", charKeys.first { it.char == 'u' }.alternatives.first())
     }
 
     @Test(expected = IllegalStateException::class)

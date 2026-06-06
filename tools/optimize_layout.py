@@ -8,9 +8,10 @@ boundaries and the Shift key for capitalised words. (Backspace is deliberately
 NOT modelled — which letters precede a correction is layout-dependent and we
 have no error data.)
 
-Supports PINNING letters to fixed cells: e.g. grouping ä/ö/ü on the right outer
-column is a learnability win (predictable place) at a tiny travel cost, since
-the umlauts are rare. The script reports that trade-off.
+The umlauts ä/ö/ü are NOT modelled: they have no key of their own in the app —
+they live on a long-press of their base vowel (a→ä, o→ö, u→ü). A long-press is a
+hold on an existing key, not finger travel, so the umlauts are excluded from both
+LETTERS and the bigram set; the travel model covers the 26 base-letter keys only.
 
 Corpus: vuot's frequency-weighted de-CH word list. Run: python3 tools/optimize_layout.py
 """
@@ -20,7 +21,7 @@ CORPUS = (
     "/home/user/AndroidStudio_Projects/nah/app/src/main/java/"
     "com/github/reygnn/nah/data/suggestions/GermanWordList.kt"
 )
-LETTERS = list("abcdefghijklmnopqrstuvwxyzäöü")  # 29
+LETTERS = list("abcdefghijklmnopqrstuvwxyz")  # 26 — umlauts are long-press, see module docstring
 SPACE, SHIFT = " ", "^"
 SYM = set(LETTERS) | {SPACE, SHIFT}
 
@@ -28,15 +29,12 @@ VWEIGHT = 1.1        # vertical distance penalty (1.0 = isotropic)
 CAP_WEIGHT = 1.0     # weight of the Shift->initial path per capitalised word
 N_SEEDS = 16
 ITERS = 120_000
-SHAPE = [8, 8, 8, 5]
-
-# Group ä/ö/ü on the right outer column (col 7 of the 8-wide rows = x 3.5).
-PIN_UMLAUTS = {"ä": (3.5, 0.0), "ö": (3.5, 1.0), "ü": (3.5, 2.0)}
+SHAPE = [7, 7, 7, 5]
 
 # Current committed nah layout, row-major over SHAPE. Vowels pinned to a central
 # cluster (learnability), consonants optimised around them. The q cell is the "qu"
 # digraph key in the app, but stays 'q' here for the travel model.
-CURRENT_ROWS = "xqkopjyä" + "vchualfö" + "zmsierbü" + "wtndg"
+CURRENT_ROWS = "xqkopjy" + "vchualf" + "zmsierb" + "wtndg"
 
 
 def load_words():
@@ -135,7 +133,9 @@ def current_pos():
 
 
 def qwertz_pos():
-    rows = [("qwertzuiopü", 0.0, 0.0), ("asdfghjklöä", 1.0, 0.25), ("yxcvbnm", 2.0, 0.75)]
+    # Umlauts are dropped from the bigram set, so their QWERTZ cells never get
+    # looked up — listing the 26 base letters is enough for the reference layout.
+    rows = [("qwertzuiop", 0.0, 0.0), ("asdfghjkl", 1.0, 0.25), ("yxcvbnm", 2.0, 0.75)]
     pos = {}
     for chars, y, xoff in rows:
         for i, ch in enumerate(chars):
@@ -151,36 +151,20 @@ def main():
 
     q = travel(qwertz_pos(), bg, {SPACE: (5.0, 3.0), SHIFT: (-1.0, 2.0)})
     cur = travel(current_pos(), bg, fixed)
-    free_best, _ = best_of_seeds(SHAPE, bg)
-    pin_best, pin_pos = best_of_seeds(SHAPE, bg, PIN_UMLAUTS)
+    free_best, free_pos = best_of_seeds(SHAPE, bg)
 
     print(f"corpus: {len(words)} words, {len(bg)} transitions  (VWEIGHT={VWEIGHT})\n")
     print(f"QWERTZ-CH (Ref):            {q:.4f}")
     print(f"nah AKTUELL:                {cur:.4f}  ({100*cur/q:.0f}% QWERTZ)")
     print(f"frei optimiert (best):      {free_best:.4f}  ({100*free_best/q:.0f}% QWERTZ)")
-    print(f"äöü rechts gepinnt (best):  {pin_best:.4f}  ({100*pin_best/q:.0f}% QWERTZ)")
-    print(f"  → Kosten des Gruppierens ggü. frei: {100*(pin_best/free_best-1):.1f}%")
-    print(f"  → ggü. aktuellem Layout:            {100*(pin_best/cur-1):+.1f}%\n")
+    print(f"  → Vokal-Cluster kostet ggü. frei: {100*(cur/free_best-1):+.1f}%\n")
 
-    # Minimal-invasive Variante: nur ä/ü an die rechte Spalte, die verdrängten
-    # (seltenen) j/y nach innen; ö liegt schon rechts. Sonst alles wie aktuell.
-    minswap_rows = "qjcobfyä" + "pvhurakö" + "xzsieglü" + "wtndm"
-    slots, _, _ = make_slots(SHAPE)
-    minswap_pos = dict(zip(minswap_rows, slots))
-    ms = travel(minswap_pos, bg, fixed)
-
-    print("VOLL re-optimiert, äöü rechts gepinnt:")
-    print(render(pin_pos, SHAPE))
+    print("FREI re-optimiert (Referenz, NICHT committet — kostet Umlernen):")
+    print(render(free_pos, SHAPE))
     cur_p = current_pos()
-    same_pin = sum(1 for ch in LETTERS if cur_p[ch] == pin_pos[ch])
-    print(f"  Reise {pin_best:.4f} ({100*(pin_best/cur-1):+.1f}% ggü. aktuell), "
-          f"{29 - same_pin}/29 Buchstaben wandern.\n")
-
-    print("MINIMAL: nur Umlaute rechts gestapelt, Rest wie aktuell:")
-    print(render(minswap_pos, SHAPE))
-    same_ms = sum(1 for ch in LETTERS if cur_p[ch] == minswap_pos[ch])
-    print(f"  Reise {ms:.4f} ({100*(ms/cur-1):+.1f}% ggü. aktuell), "
-          f"{29 - same_ms}/29 Buchstaben wandern.")
+    same = sum(1 for ch in LETTERS if cur_p[ch] == free_pos[ch])
+    print(f"  Reise {free_best:.4f} ({100*(free_best/cur-1):+.1f}% ggü. aktuell), "
+          f"{len(LETTERS) - same}/{len(LETTERS)} Buchstaben würden wandern.")
 
 
 if __name__ == "__main__":

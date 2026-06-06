@@ -4,17 +4,22 @@ package com.github.reygnn.nah.layout
  * Das travel-optimierte de-CH-Layout.
  *
  * Die **Vokale sind bewusst zentral gebündelt** (o/u/i in der Mitte-links-Spalte,
- * a/e daneben; ä/ö/ü rechts gestapelt) — eine Lernbarkeits-Entscheidung: ein
- * zusammenhängender Vokal-Block ist leichter zu merken und lässt sich als Lern-Farbe
- * sauber einfärben. Die **Konsonanten** hat dann der Optimizer (`tools/optimize_layout.py`,
- * Simulated Annealing über de-CH-Bigramme inkl. Space-/Shift-Übergänge) rund um diesen
- * fixen Vokal-Block optimal gesetzt. Ergebnis: **~36 % weniger Fingerreise als QWERTZ-CH**
- * — praktisch gleich wie das frei optimierte Optimum, der Vokal-Cluster kostet also so
- * gut wie nichts. Vier Buchstabenreihen → breite Tasten mit Totzonen ringsum.
+ * a/e daneben) — eine Lernbarkeits-Entscheidung: ein zusammenhängender Vokal-Block ist
+ * leichter zu merken und lässt sich als Lern-Farbe sauber einfärben. Die **Konsonanten**
+ * hat dann der Optimizer (`tools/optimize_layout.py`, Simulated Annealing über de-CH-
+ * Bigramme inkl. Space-/Shift-Übergänge) rund um diesen fixen Vokal-Block optimal gesetzt.
+ * Ergebnis: **~36 % weniger Fingerreise als QWERTZ-CH** — praktisch gleich wie das frei
+ * optimierte Optimum, der Vokal-Cluster kostet also so gut wie nichts. Vier Buchstaben-
+ * reihen → breite Tasten mit Totzonen ringsum.
  *
- *   x  qu k  o  p  j  y  ä
- *   v  c  h  u  a  l  f  ö
- *   z  m  s  i  e  r  b  ü
+ * Die **Umlaute ä/ö/ü** haben keine eigene Taste: sie liegen per Long-Press auf ihrem
+ * Grundvokal (a→ä, o→ö, u→ü, siehe [KeyAlternatives]). Das spart die rechte Spalte und
+ * macht jede Taste breiter (Fat-Finger), ohne den optimierten Rest zu verschieben — die
+ * Umlaute waren ohnehin in der äussersten Spalte gepinnt.
+ *
+ *   x  qu k  o  p  j  y
+ *   v  c  h  u  a  l  f
+ *   z  m  s  i  e  r  b
  *      w  t  n  d  g          (Shift davor, Backspace danach)
  *
  * Die „q"-Taste **committet `qu`**: q steht im Deutschen praktisch immer vor u, also
@@ -24,9 +29,9 @@ package com.github.reygnn.nah.layout
  */
 object OptimizedLayout {
 
-    private const val ROW0 = "xqkopjyä"
-    private const val ROW1 = "vchualfö"
-    private const val ROW2 = "zmsierbü"
+    private const val ROW0 = "xqkopjy"
+    private const val ROW1 = "vchualf"
+    private const val ROW2 = "zmsierb"
     private const val ROW3 = "wtndg"
 
     fun deCh(): KeyboardLayout = KeyboardLayout(
