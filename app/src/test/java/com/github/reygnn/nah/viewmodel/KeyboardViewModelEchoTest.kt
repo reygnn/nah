@@ -113,4 +113,58 @@ class KeyboardViewModelEchoTest {
         assertEquals(2, fake.beforeReads)
         assertEquals(1, fake.afterReads)
     }
+
+    /**
+     * Pinnt die zentrale Korrektheits-Invariante der Echo-Optimierung: **die Cursor-Vorhersage
+     * ([KeyboardViewModel.pendingSelfEcho]) ist reine Dedup-Optimierung, der synchrone Read in
+     * `afterTextChanged` trägt die Korrektheit.** Zwei Commits hintereinander, BEVOR das erste
+     * `onUpdateSelection`-Echo eintrifft, halten `selStart` stale → die zweite Vorhersage ist
+     * falsch. Trotzdem muss der State nach „ha" korrekt sein (synchroner Read gegen die reale IC),
+     * und die verspäteten Echos dürfen ihn nicht verfälschen. Schützt gegen eine künftige
+     * „Optimierung", die den synchronen Recompute per Vorhersage überspringen wollte.
+     */
+    @Test
+    fun `zwei schnelle Commits ohne zwischengeschaltetes Echo halten den State korrekt`() {
+        val fake = CountingIc()
+        val vm = vm(fake) { prefix, _, _ -> listOf(prefix) } // gibt das Präfix selbst zurück
+        vm.onStartInput(FieldContext())
+        vm.applySettings(Settings(suggestionsEnabled = true))
+
+        // Beide Commits, bevor irgendein Echo zurückkommt → pendingSelfEcho wird mit einer aus
+        // dem stale selStart abgeleiteten, FALSCHEN Position überschrieben.
+        vm.onKey(CharKey('h'))
+        vm.onKey(CharKey('a'))
+        // Korrekt trotz Fehlvorhersage: der synchrone Read sah die reale IC ("ha").
+        assertEquals(listOf("ha"), vm.state.value.suggestions)
+
+        // Jetzt treffen die verspäteten Echos ein. Das erste passt zufällig auf die (falsche)
+        // Quittung und wird übersprungen, das zweite recomputet — der State bleibt korrekt.
+        vm.onSelectionChanged(1, 1) // verspätetes Echo von 'h'
+        vm.onSelectionChanged(2, 2) // Echo von 'a'
+        assertEquals(listOf("ha"), vm.state.value.suggestions)
+    }
+
+    /**
+     * Pinnt den Fix gegen die über einen No-Op-Callback hinweg scharf gebliebene Quittung: ein
+     * redundanter `onUpdateSelection` ohne echte Bewegung muss eine offene Selbst-Echo-Quittung
+     * verfallen lassen. Sonst würde ein danach kommendes echtes Cursor-Ereignis, das zufällig auf
+     * der alten Vorhersage landet, fälschlich entdoppelt und sein nötiges Recompute übersprungen.
+     */
+    @Test
+    fun `ein No-Op-Callback entschaerft die offene Selbst-Echo-Quittung`() {
+        val fake = CountingIc()
+        val vm = vm(fake)
+        vm.onStartInput(FieldContext())
+        vm.onKey(CharKey('a')) // Quittung = 1 scharf, real Cursor bei 1, VM-selStart noch 0
+
+        // Redundanter Callback ohne Bewegung (== aktueller VM-Stand 0,0): muss die Quittung löschen.
+        vm.onSelectionChanged(0, 0)
+
+        fake.beforeReads = 0
+        // Echtes Cursor-Ereignis auf Position 1 (= die alte, nun entschärfte Vorhersage). Ohne den
+        // Fix griffe die stale Quittung und überspränge das Recompute (beforeReads bliebe 0).
+        vm.onSelectionChanged(1, 1)
+
+        assertEquals(1, fake.beforeReads)
+    }
 }

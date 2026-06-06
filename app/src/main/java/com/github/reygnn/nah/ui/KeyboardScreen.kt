@@ -3,9 +3,12 @@ package com.github.reygnn.nah.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import android.content.res.Configuration
 import androidx.compose.material3.MaterialTheme
@@ -22,17 +25,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.reygnn.nah.viewmodel.KeyboardUiState
 import com.github.reygnn.nah.viewmodel.KeyboardViewModel
 
-/** Abstand der Tasten zur Bildschirmunterkante (über die Gestenzone). Tunebar —
- *  am Pixel 9a einstellen: zu wenig = Kollision mit der Wischleiste, zu viel =
- *  unnötig hoher dunkler Streifen unten. Im Querformat deutlich kleiner, sonst frisst
- *  die fünfreihige Tastatur zu viel der knappen Höhe.
+/** **Untergrenze** für den Abstand der Tasten zur Bildschirmunterkante (über die Gestenzone).
+ *  Auf das Pixel 9a (Gestennavigation) getunt: zu wenig = Kollision mit der Wischleiste, zu viel =
+ *  unnötig hoher dunkler Streifen unten. Im Querformat deutlich kleiner, sonst frisst die
+ *  fünfreihige Tastatur zu viel der knappen Höhe.
  *
- *  **Bewusst ein fester Wert statt echter `WindowInsets`:** der Wert ist auf die
- *  Pixel-9a-Gestennavigation getunt. `navigationBarsPadding()` in der IME-ComposeView
- *  liess die Höhe auf den Inset kollabieren (leere Tastatur) — darum nicht verwendet.
- *  Konsequenz: bei 3-Knopf-Navigation oder einem anderen Gerät stimmt der Abstand nicht
- *  exakt; das ist akzeptiert (nah ist eine Single-Device-Privat-App). Ein robusteres
- *  Insets-Handling wäre nur mit echtem Gerätetest gefahrlos umzustellen. */
+ *  Der tatsächlich verwendete Abstand ist `max(diese Untergrenze, realer Navigationsleisten-Inset)`
+ *  (siehe [KeyboardContent]). Der reale Inset wird dabei nur als **Wert** gelesen — NICHT über den
+ *  `navigationBarsPadding()`-Modifier, der in der IME-ComposeView die Höhe auf den Inset kollabieren
+ *  liess (leere Tastatur). Am Zielgerät dominiert die Untergrenze (Gesten-Inset < Untergrenze), das
+ *  Verhalten bleibt also unverändert; auf einem Gerät mit höherer Leiste (3-Knopf-Navigation) trägt
+ *  der reale Inset und die unterste Reihe kollidiert nicht mehr. Schlimmstenfalls ein No-op gleich
+ *  dem alten festen Wert — nie schlechter. */
 private val BOTTOM_INSET_PORTRAIT: Dp = 48.dp
 private val BOTTOM_INSET_LANDSCAPE: Dp = 8.dp
 
@@ -64,7 +68,12 @@ fun KeyboardContent(
     onSuggestion: (String) -> Unit,
 ) {
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-    val bottomInset = if (landscape) BOTTOM_INSET_LANDSCAPE else BOTTOM_INSET_PORTRAIT
+    // Den realen Navigationsleisten-Inset NUR als Wert lesen (nicht via navigationBarsPadding(),
+    // das die IME-Höhe kollabieren liess). Untergrenze ODER realer Inset, je nachdem was grösser
+    // ist: am Pixel 9a dominiert die Untergrenze (unverändert), auf höheren Leisten der Inset.
+    val systemNavBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val floor = if (landscape) BOTTOM_INSET_LANDSCAPE else BOTTOM_INSET_PORTRAIT
+    val bottomInset = maxOf(floor, systemNavBottom)
     val rowHeight = if (landscape) ROW_HEIGHT_LANDSCAPE else ROW_HEIGHT_PORTRAIT
     // Die Tastenanordnung ist optimizer-generiert und in LTR definiert; sie darf NIE von der
     // System-Locale gespiegelt werden. Eine RTL-Systemsprache (Arabisch/Hebräisch/…) würde sonst

@@ -180,7 +180,14 @@ class KeyboardViewModel(
     fun onSelectionChanged(newSelStart: Int, newSelEnd: Int) {
         // Unveränderter Callback (Editoren melden `onUpdateSelection` auch mal ohne echte
         // Bewegung, z. B. beim Aktualisieren der Kandidatenregion) → nichts neu zu rechnen.
-        if (newSelStart == selStart && newSelEnd == selEnd) return
+        // Eine etwaige Selbst-Echo-Quittung dabei trotzdem verfallen lassen: sie gehörte zu
+        // unserem letzten Edit; bliebe sie über diesen Callback hinweg scharf, könnte ein
+        // späteres externes Ereignis, das zufällig auf der alten Vorhersage landet, fälschlich
+        // als eigenes Echo entdoppelt und sein nötiges Recompute übersprungen werden.
+        if (newSelStart == selStart && newSelEnd == selEnd) {
+            pendingSelfEcho = null
+            return
+        }
         selStart = newSelStart
         selEnd = newSelEnd
         // Unser eigener, gerade committeter Edit echot exakt die vorhergesagte (kollabierte)
