@@ -23,14 +23,13 @@ data class KeyboardLayout(
      * das; der Optimizer (`tools/optimize_layout.py`) nutzt dasselbe Modell, ist also in sich
      * konsistent.
      *
-     * **Spalten-Caveat:** Die Metrik setzt je Reihe gleich breite, zentrierte Spalten an
-     * (`colIdx`), ignoriert also die [KeyboardKey.weight]e. In der untersten Buchstabenreihe
-     * flankieren Shift (1.5) und Backspace (1.5) fünf Buchstaben in einer 8-Einheiten-Reihe,
-     * während die oberen Reihen sieben gleich breite Tasten haben — die fünf unteren Buchstaben
-     * sitzen am Schirm darum geringfügig versetzt zu den Spalten darüber (nur die mittige Taste
-     * bleibt exakt zentriert; max. ~3-4 % der Breite an den Enden). Das ist eine bewusste
-     * Ergonomie-Wahl (grössere Shift/Backspace) und für den relativen Reise-Vergleich
-     * vernachlässigbar; die Metrik modelliert diese Verschiebung schlicht nicht.
+     * **Spalten-Hinweis:** Die Metrik setzt je Reihe gleich breite, zentrierte Spalten an
+     * (`colIdx`) und ignoriert die [KeyboardKey.weight]e. Das deckt sich mit dem tatsächlichen
+     * Bild, weil alle Buchstabenreihen — auch die unterste — dasselbe gleichmässige 7-Spalten-
+     * Raster benutzen: Shift und Backspace haben dort bewusst `weight = 1f`, die Reihe hat also
+     * genau 7 Tasten wie die Reihen darüber, und w/t/n/d/g fluchten exakt unter den Spalten
+     * darüber (siehe `OptimizedLayout.deCh`). Nur die Funktionsreihe nutzt absichtlich breitere
+     * Tasten — deren Tasten sind aber keine [CharKey]s und gehen nicht in die Metrik ein.
      */
     fun letterPositions(): Map<Char, Pair<Float, Float>> {
         val out = mutableMapOf<Char, Pair<Float, Float>>()

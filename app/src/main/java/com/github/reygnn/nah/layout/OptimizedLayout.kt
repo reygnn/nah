@@ -39,10 +39,16 @@ object OptimizedLayout {
             charRow(ROW0).withQu(),
             charRow(ROW1),
             charRow(ROW2),
+            // Shift/Backspace bewusst weight 1f (NICHT breiter): so hat diese Reihe genau 7 Tasten
+            // wie die drei Buchstabenreihen darüber → alle vier Reihen teilen dasselbe gleichmässige
+            // 7-Spalten-Raster. w/t/n/d/g sitzen exakt unter den Spalten darüber (saubere Flucht,
+            // Muskelgedächtnis), und die spaltenbasierte Reise-Metrik (letterPositions) deckt sich
+            // mit dem tatsächlichen Bild. Breitere Shift/Backspace (1.5f) würden die Reihe auf
+            // Gesamtgewicht 8 bringen und die Buchstaben schmaler + versetzt rendern.
             buildList {
-                add(FunctionKey(KeyAction.SHIFT, weight = 1.5f))
+                add(FunctionKey(KeyAction.SHIFT))
                 addAll(charRow(ROW3))
-                add(FunctionKey(KeyAction.BACKSPACE, weight = 1.5f))
+                add(FunctionKey(KeyAction.BACKSPACE))
             },
             functionRow(KeyAction.SYMBOLS),
         ),
@@ -58,9 +64,11 @@ object OptimizedLayout {
             charRow("1234567890"),
             charRow("@#€$%&*-+="),
             charRow("()[]{}<>/\\"),
+            // Backspace weight 1f → 9 Symbole + Backspace = 10 Tasten wie die Reihen darüber,
+            // gleiche Spaltenbreite, kein Versatz (gleiche Logik wie die Buchstabenebene).
             buildList {
                 addAll(charRow("!?:;'\"_~|"))
-                add(FunctionKey(KeyAction.BACKSPACE, weight = 1.5f))
+                add(FunctionKey(KeyAction.BACKSPACE))
             },
             functionRow(KeyAction.ALPHA),
         ),
