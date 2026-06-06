@@ -143,7 +143,14 @@ private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge)
+        // weight(1f): das Label nimmt die Restbreite und umbricht bei Bedarf zweizeilig, statt
+        // den Switch zu verdrängen (das längste Label „Lern-Farben (Vokale & häufige Konsonanten)"
+        // passt einzeilig nicht). end-Padding hält Text und Switch auseinander.
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f).padding(end = 12.dp),
+        )
         Switch(checked = checked, onCheckedChange = onChange)
     }
 }
