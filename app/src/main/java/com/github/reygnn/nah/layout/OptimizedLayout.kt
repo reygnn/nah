@@ -160,20 +160,24 @@ object OptimizedLayout {
         } else {
             FunctionKey(toggle, weight = 1.5f)
         },
-        FunctionKey(KeyAction.COMMA, weight = 1f),
+        // Komma/Punkt bewusst weight 1.5f (nicht 1f): in der von der breiten Leertaste (4f)
+        // dominierten Funktionsreihe rendert weight 1f nur ~10.5 % breit — schmaler als eine
+        // Buchstabentaste. 1.5f bringt sie auf ≈ Buchstabentastenbreite und damit fat-finger-
+        // tauglich (leichter zu treffen).
+        FunctionKey(KeyAction.COMMA, weight = 1.5f),
         FunctionKey(KeyAction.SPACE, weight = 4f),
         // Auf der Buchstabenebene (toggle == SYMBOLS) bietet die Punkt-Taste ? und ! per
         // Long-Press an — so braucht es für ein Frage-/Ausrufezeichen keinen Wechsel auf die
         // Symbolebene. Auf der Symbolebene selbst liegen ? und ! ohnehin offen → dort kein
-        // (redundantes) Long-Press, also auch kein Eck-Marker.
+        // (redundantes) Long-Press, also auch kein Eck-Marker. Breite wie das Komma (1.5f).
         if (toggle == KeyAction.SYMBOLS) {
             FunctionKey(
                 KeyAction.PERIOD,
-                weight = 1f,
+                weight = 1.5f,
                 longPressActions = listOf(KeyAction.QUESTION, KeyAction.EXCLAMATION),
             )
         } else {
-            FunctionKey(KeyAction.PERIOD, weight = 1f)
+            FunctionKey(KeyAction.PERIOD, weight = 1.5f)
         },
         FunctionKey(KeyAction.RETURN, weight = 1.5f),
     )
