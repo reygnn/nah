@@ -115,7 +115,7 @@ private fun nonScaledSp(size: Dp): TextUnit = with(LocalDensity.current) { size.
  * Tasten mit Long-Press-Einträgen zeigen beim **Gedrückthalten** ein sichtbares Popup, das
  * **vertikal nach oben** aufklappt. Zwei Quellen, gleiche Geste: [CharKey.alternatives]
  * committen ein Zeichen (z. B. `a` → ä/à/â, qu-Taste → einzelnes `q`),
- * [FunctionKey.longPressActions] lösen eine Aktion aus (die ?123-Taste → Ziffern-Pad/Wählfeld).
+ * [FunctionKey.longPressActions] lösen eine Aktion aus (die Umschalttaste → andere Ebenen + Einstellungen).
  * Auswahl: **Halten und loslassen** committet das **erste** Item (z. B. ä) — der Finger muss
  * sich nicht bewegen; für weitere Items den Finger nach **oben** schieben, zum Abbrechen nach
  * **unten** unter die Taste ziehen. Ein normaler **Tap** committet immer das Basiszeichen.
@@ -140,7 +140,7 @@ fun TapKey(
 
     // Lokalisierte TalkBack-Beschreibung pro Funktionstaste statt der rohen Glyphe/des
     // Symbol-Strings: Icon-Tasten (Backspace/Shift/Return/Paste) trügen sonst nur ihr
-    // Unicode-Symbol, die Layer-Toggles (?123/ABC) nur ihren Symbol-String — beides
+    // Unicode-Symbol, die Layer-Toggles (SYM/ABC) nur ihren kurzen Label-String — beides
     // buchstabiert ein Screenreader sinnlos. CharKeys und ,/. sind selbsterklärend (sichtbarer
     // Text genügt) → null. Eine Quelle für Icon-contentDescription UND die Box-Semantik unten.
     val functionCd: String? = (key as? FunctionKey)?.let {
@@ -212,7 +212,7 @@ fun TapKey(
 
     val isBackspace = key is FunctionKey && key.action == KeyAction.BACKSPACE
     // Vereinheitlichte Long-Press-Einträge: CharKey-Alternativen committen einen String, die
-    // Shortcuts der ?123-Taste lösen eine KeyAction aus — beide über dieselbe sichtbare Geste.
+    // Shortcuts der Umschalttaste lösen eine KeyAction aus — beide über dieselbe sichtbare Geste.
     val longPressItems: List<LongPressItem> = when (key) {
         is CharKey -> key.alternatives.map { alt -> LongPressItem(alt) { onAlternative(alt) } }
         is FunctionKey -> key.longPressActions.map { act -> LongPressItem(act.label) { onKey(FunctionKey(act)) } }
@@ -221,7 +221,7 @@ fun TapKey(
     // erreichbar, die TalkBack nicht synthetisieren kann — es gibt KEINE semantics-CustomActions
     // dafür. Akzeptiert, weil Long-Press eine sehende Komfortgeste ist und JEDE Funktion auch per
     // Tap erreichbar bleibt (einzelnes q über die qu-Alternative ist Komfort; Ziffern voll über
-    // die ?123-Ebene, Akzente notfalls per Symbolebene). Vollständige TalkBack-Bedienung ist für
+    // die SYM-Ebene, Akzente notfalls per Symbolebene). Vollständige TalkBack-Bedienung ist für
     // diese Einfinger-Sicht-Tastatur kein Ziel (siehe Basis-Labels oben).
 
     // Long-Press-Popup-Zustand (nur für Tasten mit Long-Press-Einträgen).
@@ -352,7 +352,7 @@ fun TapKey(
                 },
             )
             .then(
-                // Text-gerenderte Funktionstasten (Space/?123/ABC) trügen sonst nur ihren
+                // Text-gerenderte Funktionstasten (Space/SYM/ABC) trügen sonst nur ihren
                 // sichtbaren String; die lokalisierte contentDescription macht daraus eine
                 // gesprochene Funktion. Icon-Tasten beschreibt das Icon selbst (unten).
                 if (icon == null && functionCd != null) {
@@ -406,7 +406,7 @@ fun TapKey(
         }
         if (popupOpen) {
             // shift.applyTo (im Popup) wirkt nur auf die Buchstaben-Alternativen; die
-            // Aktions-Labels der ?123-Taste („123"/„*#+") tragen keine Buchstaben → No-op.
+            // Aktions-Labels der Umschalttaste („NUM"/„TEL"/„OPT") tragen keine Buchstaben → No-op.
             AlternativesPopup(
                 alternatives = longPressItems.map { it.label },
                 shift = shift,

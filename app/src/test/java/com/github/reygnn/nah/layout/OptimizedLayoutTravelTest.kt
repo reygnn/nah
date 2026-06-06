@@ -130,19 +130,47 @@ class OptimizedLayoutTravelTest {
     }
 
     @Test
-    fun `die Symboltaste bietet per Long-Press das Ziffern-Pad und das Waehlfeld`() {
-        val toggle = OptimizedLayout.deCh().rows.flatten()
-            .filterIsInstance<FunctionKey>().first { it.action == KeyAction.SYMBOLS }
-        // Beide Grosstasten-Pads sind über den Long-Press erreichbar (löst Punkt 1).
-        assertEquals(listOf(KeyAction.NUMPAD, KeyAction.DIALPAD), toggle.longPressActions)
+    fun `die Umschalttaste jeder Ebene traegt die fehlenden Ebenen plus Einstellungen (Reihenfolge)`() {
+        // Exakte Listen inkl. Reihenfolge: SETTINGS steht überall ZULETZT, also wechselt
+        // Halten-Loslassen (Item 0) eine Ebene statt die Einstellungen zu öffnen.
+        fun toggle(layout: com.github.reygnn.nah.layout.KeyboardLayout, tap: KeyAction) =
+            layout.rows.flatten().filterIsInstance<FunctionKey>().first { it.action == tap }
+        assertEquals(
+            listOf(KeyAction.NUMPAD, KeyAction.DIALPAD, KeyAction.SETTINGS),
+            toggle(OptimizedLayout.deCh(), KeyAction.SYMBOLS).longPressActions,
+        )
+        assertEquals(
+            listOf(KeyAction.NUMPAD, KeyAction.DIALPAD, KeyAction.SETTINGS),
+            toggle(OptimizedLayout.symbols(), KeyAction.ALPHA).longPressActions,
+        )
+        assertEquals(
+            listOf(KeyAction.SYMBOLS, KeyAction.DIALPAD, KeyAction.SETTINGS),
+            toggle(OptimizedLayout.number(), KeyAction.ALPHA).longPressActions,
+        )
+        assertEquals(
+            listOf(KeyAction.SYMBOLS, KeyAction.NUMPAD, KeyAction.SETTINGS),
+            toggle(OptimizedLayout.phone(), KeyAction.ALPHA).longPressActions,
+        )
     }
 
     @Test
-    fun `die ABC-Taste der Symbolebene traegt keine Long-Press-Shortcuts`() {
-        // Nur ?123 bekommt die Pad-Shortcuts; ein „ABC mit 123-Popup" wäre semantisch schief.
-        val toggle = OptimizedLayout.symbols().rows.flatten()
-            .filterIsInstance<FunctionKey>().first { it.action == KeyAction.ALPHA }
-        assertTrue(toggle.longPressActions.isEmpty())
+    fun `von jeder Ebene sind alle anderen Ebenen und die Einstellungen erreichbar`() {
+        // Die invariante Forderung: Tap + Long-Press der Umschalttaste decken von JEDER Ebene alle
+        // drei anderen Ebenen ab (Voll-Mesh), und SETTINGS ist überall dabei. (Layout, Aktion dieser
+        // Ebene, Tap-Aktion ihrer Umschalttaste.)
+        val layerActions = setOf(KeyAction.ALPHA, KeyAction.SYMBOLS, KeyAction.NUMPAD, KeyAction.DIALPAD)
+        val cases = listOf(
+            Triple(OptimizedLayout.deCh(), KeyAction.ALPHA, KeyAction.SYMBOLS), // Alpha: Tap → Symbol
+            Triple(OptimizedLayout.symbols(), KeyAction.SYMBOLS, KeyAction.ALPHA),
+            Triple(OptimizedLayout.number(), KeyAction.NUMPAD, KeyAction.ALPHA),
+            Triple(OptimizedLayout.phone(), KeyAction.DIALPAD, KeyAction.ALPHA),
+        )
+        cases.forEach { (layout, selfLayer, tapAction) ->
+            val toggle = layout.rows.flatten().filterIsInstance<FunctionKey>().first { it.action == tapAction }
+            val reachable = (toggle.longPressActions + tapAction).filter { it in layerActions }.toSet()
+            assertEquals(layerActions - selfLayer, reachable) // alle ANDEREN Ebenen erreichbar
+            assertTrue(KeyAction.SETTINGS in toggle.longPressActions) // Einstellungen überall dabei
+        }
     }
 
     @Test

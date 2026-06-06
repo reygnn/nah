@@ -18,7 +18,7 @@ data class FieldContext(
     /**
      * Das Feld erwartet primär Ziffern (Zahl/Telefon/Datum) → direkt auf einer
      * ziffern­zentrierten Ebene starten, statt den Nutzer für eine PLZ/PIN/Betrag erst
-     * `?123` drücken zu lassen. Das volle Alphabet bleibt einen Tap entfernt (`ABC`).
+     * `SYM` drücken zu lassen. Das volle Alphabet bleibt einen Tap entfernt (`ABC`).
      */
     val numeric: Boolean = false,
     /**

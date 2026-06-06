@@ -73,6 +73,7 @@ class NahIme :
             inputConnectionProvider = { currentInputConnection },
             suggester = suggester,
             onPasteRequested = ::requestPaste,
+            onSettingsRequested = ::openSettings,
         )
 
         var builtInWarmStarted = false
@@ -110,7 +111,7 @@ class NahIme :
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
 
         val composeView = ComposeView(this).apply {
-            setContent { KeyboardScreen(viewModel = viewModel, onOpenSettings = ::openSettings) }
+            setContent { KeyboardScreen(viewModel = viewModel) }
         }
 
         // Bei einer IME ist die rootView des Fensters NICHT unsere ComposeView,

@@ -69,6 +69,9 @@ class KeyboardViewModel(
      *  Einfüge-Tap nie den Main-Thread (kein ANR). Inhalt-Zugriff weiterhin NUR bei dieser
      *  expliziten Nutzeraktion, nicht laufend. */
     private val onPasteRequested: () -> Unit = {},
+    /** Öffnet die App-Einstellungen (per Long-Press auf der Ebenen-Umschalttaste, siehe
+     *  [KeyAction.SETTINGS]). Der Service startet die Activity; der ViewModel kennt kein Android. */
+    private val onSettingsRequested: () -> Unit = {},
 ) {
 
     private val _state = MutableStateFlow(KeyboardUiState(layout = alphaLayout))
@@ -214,7 +217,7 @@ class KeyboardViewModel(
         val out = shift.applyTo(text)
         safeIc { it.commitText(out, 1) }
         // SHIFTED gilt „nur für den nächsten Buchstaben". Eine Ziffer/ein Symbol (etwa auf
-        // der ?123-Ebene) wird von applyTo ohnehin nicht verändert und darf ein armiertes
+        // der SYM-Ebene) wird von applyTo ohnehin nicht verändert und darf ein armiertes
         // SHIFTED NICHT verbrauchen — so überlebt ein MANUELL gesetztes Shift eine
         // dazwischengetippte Ziffer und schreibt den darauffolgenden Buchstaben noch gross
         // („5" dann „h" → „5H"). Genau das ist der Sinn dieses Guards. Ein AUTO-armiertes
@@ -287,8 +290,8 @@ class KeyboardViewModel(
                 _state.value = _state.value.copy(layout = alphaLayout)
                 refreshForCursor(reconsiderAutoCap = false)
             }
-            // Per Long-Press auf ?123 erreichbar (siehe OptimizedLayout.functionRow): zurück
-            // aufs Grosstasten-Pad. Löst die Einbahnstrasse — aus einem Zahl-/Telefonfeld führt
+            // Per Long-Press auf der Umschalttaste erreichbar (siehe OptimizedLayout.functionRow):
+            // zurück aufs Grosstasten-Pad. Teil des Voll-Mesh — aus einem Zahl-/Telefonfeld führt
             // ABC ins Alphabet, von dort kommt man so wieder aufs grosse Pad statt nur auf die
             // schmale Symbol-Ziffernreihe. Wie die übrigen Ebenenwechsel bewegt das den Cursor
             // nicht → kein Auto-Cap-Recompute.
@@ -300,6 +303,10 @@ class KeyboardViewModel(
                 _state.value = _state.value.copy(layout = phoneLayout)
                 refreshForCursor(reconsiderAutoCap = false)
             }
+            // Per Long-Press auf der Umschalttaste jeder Ebene erreichbar — öffnet die Einstellungen
+            // über den Service-Callback (kein Android-Wissen im ViewModel). Berührt weder Text noch
+            // Cursor: kein Commit, kein Auto-Cap-Recompute.
+            KeyAction.SETTINGS -> onSettingsRequested()
         }
     }
 

@@ -55,9 +55,9 @@ object OptimizedLayout {
     )
 
     // Symbol/Zahlen-Layer: 5 Reihen wie der Buchstaben-Layer, damit die Tastatur
-    // beim Wechsel ?123 ↔ ABC NICHT in der Höhe springt. Funktionsreihe identisch
+    // beim Wechsel SYM ↔ ABC NICHT in der Höhe springt. Funktionsreihe identisch
     // zum Buchstaben-Layer ( , / Space / . / ⏎ an denselben Positionen), nur der
-    // Toggle links zeigt ABC statt ?123. Darum sind , und . NICHT in den
+    // Toggle links zeigt ABC statt SYM. Darum sind , und . NICHT in den
     // Inhaltsreihen — sie leben in der Funktionsreihe.
     fun symbols(): KeyboardLayout = KeyboardLayout(
         rows = listOf(
@@ -80,7 +80,7 @@ object OptimizedLayout {
      * Nur der **Startview** für Telefonfelder (`TYPE_CLASS_PHONE`); reine Zahlen-/Datumsfelder
      * bleiben auf der allgemeinen Symbolebene. Alle Tasten sichtbar beschriftet (keine Lernwand):
      * `+`, `*`, `#` liegen offen, kein verstecktes Long-Press. Über `ABC` geht es zum vollen
-     * Alphabet (z. B. Vanity-Nummern, Durchwahl-Buchstaben), `?123` von dort zur Symbolebene.
+     * Alphabet (z. B. Vanity-Nummern, Durchwahl-Buchstaben), `SYM` von dort zur Symbolebene.
      *
      * Die **Einfügen-Taste sitzt sichtbar ganz links** (wie auf der Alpha-/Symbolebene), damit
      * sich eine kopierte Nummer direkt einfügen lässt, ohne erst über `ABC` auszuweichen — sie
@@ -100,7 +100,12 @@ object OptimizedLayout {
             charRow("*0#"),
             listOf(
                 FunctionKey(KeyAction.PASTE, weight = 1f),
-                FunctionKey(KeyAction.ALPHA, weight = 1.5f),
+                // Voll-Mesh: Tap → Alpha; Long-Press → die übrigen Ebenen (Symbol + Ziffernpad) + ⚙.
+                FunctionKey(
+                    KeyAction.ALPHA,
+                    weight = 1.5f,
+                    longPressActions = listOf(KeyAction.SYMBOLS, KeyAction.NUMPAD, KeyAction.SETTINGS),
+                ),
                 CharKey('+'),
                 FunctionKey(KeyAction.BACKSPACE, weight = 1.5f),
                 FunctionKey(KeyAction.RETURN, weight = 1.5f),
@@ -115,7 +120,7 @@ object OptimizedLayout {
      * Datumsfelder (`numeric`, aber NICHT `phone`) — eine PIN oder ein Betrag wird so auf
      * den grossen Tasten getippt, nicht auf der zehn-Tasten-breiten Symbolreihe (die ein
      * Number-Feld bisher bekam und die der Fat-Finger-Anforderung widerspricht). de-CH-
-     * Datum „31.12." nutzt den Punkt; `:` / `/` (Zeit, Bruch) liegen einen `ABC`→`?123`-Hop
+     * Datum „31.12." nutzt den Punkt; `:` / `/` (Zeit, Bruch) liegen einen `ABC`→`SYM`-Hop
      * entfernt. Alle Tasten sichtbar beschriftet (kein verstecktes Long-Press, wie das
      * Wählfeld). Fünf Reihen wie überall → keine Höhensprünge.
      *
@@ -137,7 +142,12 @@ object OptimizedLayout {
             charRow(",0."),
             listOf(
                 FunctionKey(KeyAction.PASTE, weight = 1f),
-                FunctionKey(KeyAction.ALPHA, weight = 1.5f),
+                // Voll-Mesh: Tap → Alpha; Long-Press → die übrigen Ebenen (Symbol + Wählfeld) + ⚙.
+                FunctionKey(
+                    KeyAction.ALPHA,
+                    weight = 1.5f,
+                    longPressActions = listOf(KeyAction.SYMBOLS, KeyAction.DIALPAD, KeyAction.SETTINGS),
+                ),
                 CharKey('-'),
                 FunctionKey(KeyAction.BACKSPACE, weight = 1.5f),
                 FunctionKey(KeyAction.RETURN, weight = 1.5f),
@@ -146,25 +156,29 @@ object OptimizedLayout {
     )
 
     /** Untere Funktionsreihe, auf beiden Ebenen identisch (nur der Toggle links
-     *  unterscheidet sich: ?123 vs ABC). Einfügen-Taste ganz links — immer sichtbar.
+     *  unterscheidet sich: SYM vs ABC). Einfügen-Taste ganz links — immer sichtbar.
      *
-     *  Die ?123-Taste (nur sie, nicht das ABC der Symbolebene) bietet per Long-Press die
-     *  Grosstasten-Pads an: so kommt man aus dem Alphabet (wo man nach einem ABC-Tap in
-     *  einem Zahl-/Telefonfeld landet) wieder aufs grosse Ziffern-Pad bzw. Wählfeld zurück,
-     *  statt nur auf die schmale Symbol-Ziffernreihe — ohne dafür eine sichtbare Taste zu
-     *  opfern. Tap bleibt unverändert (→ Symbolebene); der Pad-Zugang ist rein additiv. */
+     *  Die Umschalttaste bietet per Long-Press die jeweils per Tap NICHT erreichbaren Ebenen
+     *  (Grosstasten-Pads bzw. Symbolebene) plus die Einstellungen (OPT) an — so erreicht man von
+     *  jeder Ebene jede andere (Voll-Mesh), ohne dafür eine sichtbare Taste zu opfern. Der Tap
+     *  bleibt unverändert (SYM → Symbolebene, ABC → Alphabet); der Mehr-Zugang ist rein additiv. */
     private fun functionRow(toggle: KeyAction): List<KeyboardKey> = listOf(
         // Gesamtgewicht der Reihe = 7 (fünf Tasten je 1 Spalte + Leertaste 2 Spalten), genau wie
         // die Buchstabenreihen darüber → jede Funktionstaste fluchtet exakt unter einer Spalte
-        // (Paste↔⇧, ?123↔w, ,↔t, Space↔n+d, .↔g, ⏎↔⌫). Damit sind , und . zugleich genau eine
+        // (Paste↔⇧, SYM↔w, ,↔t, Space↔n+d, .↔g, ⏎↔⌫). Damit sind , und . zugleich genau eine
         // Buchstabentastenbreite (fat-finger-tauglich); der Preis ist eine etwas schmalere
         // Leertaste (2/7 statt der früheren ~36 %), die aber die mit Abstand breiteste Taste bleibt.
         FunctionKey(KeyAction.PASTE, weight = 1f),
-        if (toggle == KeyAction.SYMBOLS) {
-            FunctionKey(toggle, weight = 1f, longPressActions = listOf(KeyAction.NUMPAD, KeyAction.DIALPAD))
-        } else {
-            FunctionKey(toggle, weight = 1f)
-        },
+        // Long-Press der Umschalttaste erreicht alle per Tap NICHT erreichbaren Ebenen plus die
+        // Einstellungen → zusammen mit dem Tap kommt man von jeder Ebene auf jede andere (Voll-Mesh).
+        // Auf Alpha (Tap → Symbol) wie auf der Symbolebene (Tap → Alpha) sind die fehlenden Ebenen
+        // dieselben zwei Grosstasten-Pads. SETTINGS bewusst ZULETZT, damit Halten-Loslassen ohne
+        // Schieben eine Ebene wechselt (Default), nicht die Einstellungen öffnet.
+        FunctionKey(
+            toggle,
+            weight = 1f,
+            longPressActions = listOf(KeyAction.NUMPAD, KeyAction.DIALPAD, KeyAction.SETTINGS),
+        ),
         FunctionKey(KeyAction.COMMA, weight = 1f),
         FunctionKey(KeyAction.SPACE, weight = 2f),
         // Auf der Buchstabenebene (toggle == SYMBOLS) bietet die Punkt-Taste ? und ! per

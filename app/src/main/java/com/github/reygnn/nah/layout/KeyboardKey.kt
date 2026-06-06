@@ -35,8 +35,9 @@ data class FunctionKey(
     override val weight: Float = 1f,
     /** Per Long-Press erreichbare Alternativ-Aktionen (sichtbares Popup, schieben+loslassen
      *  — dieselbe Geste wie [CharKey.alternatives], nur löst ein Chip eine [KeyAction] aus
-     *  statt ein Zeichen zu committen). Genutzt von der ?123-Taste, um die Grosstasten-Pads
-     *  ([KeyAction.NUMPAD]/[KeyAction.DIALPAD]) erreichbar zu machen. Leer = nur Tap. */
+     *  statt ein Zeichen zu committen). Genutzt von den Ebenen-Umschalttasten (SYM/ABC), um die
+     *  anderen Ebenen ([KeyAction.NUMPAD]/[KeyAction.DIALPAD]/[KeyAction.SYMBOLS]) und die
+     *  Einstellungen ([KeyAction.SETTINGS]) erreichbar zu machen. Leer = nur Tap. */
     val longPressActions: List<KeyAction> = emptyList(),
 ) : KeyboardKey {
     override val label: String get() = action.label
@@ -47,19 +48,26 @@ enum class KeyAction(val label: String) {
     BACKSPACE("⌫"),
     SPACE(" "),
     RETURN("⏎"),
-    SYMBOLS("?123"),
+    // Einheitliches 3-Buchstaben-Schema für die Ebenen (ABC/SYM/TEL/NUM): „SYM" (statt des
+    // mehrdeutigen „?123") = die Symbol-/Zeichenebene. So kollidiert kein Label mehr mit „NUM".
+    SYMBOLS("SYM"),
     ALPHA("ABC"),
     PERIOD("."),
     COMMA(","),
     PASTE("Insert"), // clipboard paste (icon key; the spoken label comes from R.string.key_paste_cd)
-    // Nur als Long-Press-Ziel der ?123-Taste verwendet (nie als eigene Tastenfläche) — der
-    // [label] dient zugleich als Chip-Text im Popup. NUMPAD = grosses Ziffern-Pad (, . -),
-    // DIALPAD = Wählfeld (* # +).
-    NUMPAD("123"),
-    DIALPAD("*#+"),
+    // Long-Press-Ziele der Ebenen-Umschalttaste (nie eigene Tastenfläche) — der [label] ist zugleich
+    // der Chip-Text. Einheitliches 3-Buchstaben-Schema: NUM = grosses Ziffern-Pad (, . -),
+    // TEL = Wählfeld (* # +). Zusammen mit SYM/ABC erreicht man so von jeder Ebene jede andere.
+    NUMPAD("NUM"),
+    DIALPAD("TEL"),
     // Nur als Long-Press-Ziel der Punkt-Taste (Buchstabenebene) verwendet, nie als eigene
     // Tastenfläche — der [label] ist zugleich der Chip-Text. So setzt man ein Frage-/Ausrufe-
     // zeichen, ohne erst auf die Symbolebene zu wechseln.
     QUESTION("?"),
     EXCLAMATION("!"),
+    // Nur als Long-Press-Ziel der Ebenen-Umschalttaste verwendet, nie als eigene Tastenfläche — der
+    // [label] „OPT" (Optionen, passt ins 3-Buchstaben-Schema) ist zugleich der Chip-Text. Öffnet die
+    // App-Einstellungen und ist damit von JEDER Ebene erreichbar, auch wenn die Vorschlagsleiste
+    // (samt früherem Hamburger) ausgeblendet ist. Der Service verdrahtet die Aktion über onSettingsRequested.
+    SETTINGS("OPT"),
 }

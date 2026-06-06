@@ -118,6 +118,25 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `SETTINGS-Aktion oeffnet die Einstellungen ohne Text anzufassen`() {
+        val fake = FakeIc()
+        var settingsOpened = 0
+        val vm = KeyboardViewModel(
+            alphaLayout = alpha,
+            symbolsLayout = symbols,
+            numberLayout = number,
+            phoneLayout = phone,
+            inputConnectionProvider = { fake.ic },
+            onSettingsRequested = { settingsOpened++ },
+        )
+        vm.onStartInput(FieldContext())
+        // Per Long-Press auf der Umschalttaste committet TapKey FunctionKey(SETTINGS) über onKey.
+        vm.onKey(FunctionKey(KeyAction.SETTINGS))
+        assertEquals(1, settingsOpened)
+        assertEquals("", fake.buffer.toString()) // kein Commit, kein Eingriff in den Text
+    }
+
+    @Test
     fun `qu-taste committet beide Zeichen`() {
         val fake = FakeIc()
         val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }

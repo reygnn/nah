@@ -43,7 +43,7 @@ private val ROW_HEIGHT_LANDSCAPE: Dp = 42.dp
 
 /** Einstiegspunkt, der den IME-Service mit dem ViewModel verbindet. */
 @Composable
-fun KeyboardScreen(viewModel: KeyboardViewModel, onOpenSettings: () -> Unit) {
+fun KeyboardScreen(viewModel: KeyboardViewModel) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     NahTheme {
         KeyboardContent(
@@ -51,7 +51,6 @@ fun KeyboardScreen(viewModel: KeyboardViewModel, onOpenSettings: () -> Unit) {
             onKey = viewModel::onKey,
             onAlternative = viewModel::onAlternative,
             onSuggestion = viewModel::onSuggestionTap,
-            onOpenSettings = onOpenSettings,
         )
     }
 }
@@ -63,7 +62,6 @@ fun KeyboardContent(
     onKey: (com.github.reygnn.nah.layout.KeyboardKey) -> Unit,
     onAlternative: (String) -> Unit,
     onSuggestion: (String) -> Unit,
-    onOpenSettings: () -> Unit,
 ) {
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val bottomInset = if (landscape) BOTTOM_INSET_LANDSCAPE else BOTTOM_INSET_PORTRAIT
@@ -94,7 +92,6 @@ fun KeyboardContent(
                 SuggestionBar(
                     suggestions = state.suggestions,
                     onSuggestion = onSuggestion,
-                    onOpenSettings = onOpenSettings,
                 )
             }
             state.layout.rows.forEach { row ->
