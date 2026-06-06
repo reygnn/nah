@@ -105,6 +105,13 @@ class OptimizedLayoutTravelTest {
         assertTrue(chars.containsAll("abcdefghijklmnopqrstuvwxyzäöü".toList()))
     }
 
+    @Test(expected = IllegalStateException::class)
+    fun `letterPositions faellt bei einem doppelten Buchstaben hart aus statt still zu ueberschreiben`() {
+        // Schützt die Reise-Metrik: eine versehentliche Buchstaben-Dublette in einem künftigen
+        // Layout darf nicht still eine falsche Koordinate liefern, sondern muss auffliegen.
+        KeyboardLayout(rows = listOf(listOf(CharKey('a'), CharKey('a')))).letterPositions()
+    }
+
     @Test
     fun `die q-Taste ist die qu-Digraph-Taste mit einzelnem q als Alternative`() {
         val q = OptimizedLayout.deCh().rows.flatten()

@@ -16,6 +16,7 @@
 
     <!-- Keyboard keys (accessibility) -->
     <string name="key_space_cd">Space</string>
+    <string name="key_paste_cd">Insert from clipboard</string>
 
     <!-- User words -->
     <string name="user_words_title">Your own words</string>

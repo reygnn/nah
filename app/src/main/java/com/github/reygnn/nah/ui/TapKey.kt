@@ -118,6 +118,15 @@ fun TapKey(
         null
     }
 
+    // Die Einfügen-Taste rendert nur ein Icon; ihr von TalkBack vorgelesenes Label kommt aus
+    // den Resourcen (lokalisiert) statt aus dem englischen Enum-Fallback — gleiches Muster wie
+    // spaceCd, konsistent mit der „UI-Strings in strings.xml"-Konvention.
+    val pasteCd = if (key is FunctionKey && key.action == KeyAction.PASTE) {
+        stringResource(R.string.key_paste_cd)
+    } else {
+        null
+    }
+
     // Backspace, Shift und Return zeigen ein Material-Vektor-Icon statt der
     // Unicode-Glyphe; alle anderen Tasten bleiben Text.
     val icon: ImageVector? = when {
@@ -280,7 +289,7 @@ fun TapKey(
         if (icon != null) {
             Icon(
                 imageVector = icon,
-                contentDescription = label,
+                contentDescription = pasteCd ?: label,
                 tint = fg,
                 modifier = Modifier.size(24.dp),
             )

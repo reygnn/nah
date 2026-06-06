@@ -14,6 +14,7 @@
 
     <!-- Tastatur-Tasten (Barrierefreiheit) -->
     <string name="key_space_cd">Leertaste</string>
+    <string name="key_paste_cd">Aus Zwischenablage einfügen</string>
 
     <!-- Eigene Wörter -->
     <string name="user_words_title">Eigene Wörter</string>

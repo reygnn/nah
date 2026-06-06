@@ -469,6 +469,14 @@ class KeyboardViewModel(
         // nicht eine Editor-Action.
         val meaningful = before.trimEnd { (it.isWhitespace() && it != '\n') || it in TRANSPARENT_PUNCT }
         val last = meaningful.lastOrNull()
+        // Bekannte Grenze dieser bewusst einfachen Heuristik: eine Abkürzung wie „z. B.", „usw."
+        // oder „Nr." endet ebenfalls auf einem SENTENCE_ENDER und armiert darum fälschlich die
+        // Grossschreibung des nächsten Zeichens. In Kauf genommen — die Alternative (ein
+        // Abkürzungs-Wörterbuch) wäre genau das „Raten", das nah ablehnt, und nie vollständig.
+        // Folgenlos genug: es armiert nur EIN Zeichen (kein fertiger Text wird angefasst), und
+        // ein einzelner Shift-Tap entwaffnet das auto-armierte SHIFTED sofort wieder (siehe
+        // cycleShift/autoCapArmed). Genau wie „3.14" NICHT armiert (Ziffer ist kein Satzende),
+        // ist dies die andere Seite derselben simplen, deterministischen Regel.
         val shouldCap = last == null || last == '\n' || last in SENTENCE_ENDERS
         return if (shouldCap) ShiftState.SHIFTED else ShiftState.OFF
     }

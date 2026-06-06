@@ -30,6 +30,12 @@ data class KeyboardLayout(
             val n = chars.size
             chars.forEachIndexed { colIdx, key ->
                 val x = colIdx - (n - 1) / 2f
+                // A duplicate letter would silently overwrite the earlier coordinate and yield a
+                // WRONG travel metric that the regression test could not catch. Fail hard instead:
+                // every letter must sit at exactly one coordinate for the metric to mean anything.
+                check(key.char !in out) {
+                    "Doppelter Buchstabe '${key.char}' im Layout — letterPositions ist mehrdeutig"
+                }
                 out[key.char] = x to rowIdx.toFloat()
             }
         }

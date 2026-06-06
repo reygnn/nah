@@ -51,7 +51,7 @@ enum class KeyAction(val label: String) {
     ALPHA("ABC"),
     PERIOD("."),
     COMMA(","),
-    PASTE("Einfügen"), // Zwischenablage einfügen (Icon-Taste)
+    PASTE("Insert"), // clipboard paste (icon key; the spoken label comes from R.string.key_paste_cd)
     // Nur als Long-Press-Ziel der ?123-Taste verwendet (nie als eigene Tastenfläche) — der
     // [label] dient zugleich als Chip-Text im Popup. NUMPAD = grosses Ziffern-Pad (, . -),
     // DIALPAD = Wählfeld (* # +).
