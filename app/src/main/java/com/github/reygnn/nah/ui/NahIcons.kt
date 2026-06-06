@@ -7,10 +7,10 @@ import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.unit.dp
 
 /**
- * Die drei Funktionstasten-Icons, inline aus Material-Symbols-Pfaddaten gebaut.
+ * Die Funktionstasten-Icons, inline aus Material-Symbols-Pfaddaten gebaut.
  *
  * Bewusst KEINE `material-icons-extended`-Dependency: die zieht tausende
- * ungenutzte Icons rein. Hier brauchen wir genau Backspace, Shift und Return,
+ * ungenutzte Icons rein. Hier brauchen wir nur die paar Funktionstasten-Symbole,
  * also parsen wir die SVG-Pfade direkt in [ImageVector]s — `compose-ui-graphics`
  * ([PathParser]) ist ohnehin schon auf dem Classpath.
  *
@@ -37,6 +37,13 @@ object NahIcons {
     val Menu: ImageVector = materialIcon(
         "Menu",
         "M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z",
+    )
+
+    /** ⎵ — Leertaste (Material `space_bar`, gefüllt): macht die sonst leere Space-Taste sichtbar
+     *  und ihren Mittelpunkt erkennbar. */
+    val Space: ImageVector = materialIcon(
+        "Space",
+        "M18 9v4H6V9H4v6h16V9z",
     )
 
     /** 📋 — Einfügen (Material `content_paste`, gefüllt). */

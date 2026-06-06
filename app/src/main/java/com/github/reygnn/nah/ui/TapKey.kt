@@ -176,6 +176,7 @@ fun TapKey(
         key.action == KeyAction.BACKSPACE -> NahIcons.Backspace
         key.action == KeyAction.PASTE -> NahIcons.Paste
         key.action == KeyAction.RETURN -> NahIcons.Return
+        key.action == KeyAction.SPACE -> NahIcons.Space
         key.action == KeyAction.SHIFT -> when (shift) {
             ShiftState.CAPS -> NahIcons.ShiftCaps
             ShiftState.SHIFTED -> NahIcons.Shift
