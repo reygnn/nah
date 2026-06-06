@@ -11,14 +11,16 @@ together — hence the name: *nah* (German for "near").
 Standard QWERTZ was designed to *scatter* frequent letters — an anti-jam
 measure for ten-finger typewriters. For someone typing with a **single index
 finger** that is exactly wrong: it maximises how far the finger travels. Nah
-flips that. The 29 de-CH letters (`a–z` + `ä ö ü`) are arranged with the **vowels
-clustered centrally** (a learnability win — easy to remember, cleanly colourable)
-and the **consonants placed by a travel-optimiser** around that fixed vowel block:
+flips that. The 26 base letters `a–z` are the keys; the umlauts `ä ö ü` live on a
+**long-press of their base vowel** (a→ä, o→ö, u→ü), which keeps every row down to a
+few big, wide keys. The **vowels are clustered centrally** (a learnability win —
+easy to remember, cleanly colourable) and the **consonants placed by a
+travel-optimiser** around that fixed vowel block:
 
 ```
-x qu k o p j y ä
-v  c  h u a l f ö      ← vowels o/u/i · a/e centre, ä/ö/ü right
-z  m  s i e r b ü
+x qu k o p j y
+v  c  h u a l f      ← vowels o/u/i · a/e centre (ä/ö/ü on long-press)
+z  m  s i e r b
 ⇧  w  t n d g ⌫
 ⎀ ?123 , ␣ . ⏎        ← ⎀ paste (always visible, left of ?123)
 ```
@@ -58,6 +60,8 @@ Concretely:
    **never** altered. This is the top rule.
 3. **No learning wall.** Labels are always visible — usable from day one by
    hunt-and-peck; only the letter *positions* are new, not the keyboard shape.
+   The few long-press extras (umlauts on their base vowel, consonant clusters)
+   are flagged by a small corner dot.
 4. **Daily driver**, de-CH only (no ß — "ss").
 
 ## Features
@@ -68,10 +72,13 @@ Concretely:
   double-tap for Caps Lock, toggleable auto-capitalisation after sentence ends
   (an auto-armed Shift clears with a single tap, not via Caps).
 - **`qu` digraph key** — commits `qu`, honestly labelled (no autocorrect).
-- **Long-press alternatives** — holding a key shows a *visible* popup (slide to a
-  chip, release to commit); the inverse colour makes it stand out. Pre-seeded:
-  lone `q`, `c` → ch/ck, `s` → sch, vowels → accents. Freely extendable via a
-  small table. (vuot's data idea, but visible — not its invisible swipes.)
+- **Long-press alternatives** — holding a key opens a *visible* **vertical** popup:
+  **hold and release commits the first item** (no sliding needed), slide up for the
+  rest, drag below the key to cancel. Keys that carry a menu show a small corner
+  dot. Pre-seeded: vowels → their umlaut then accents (`a` → ä/à/â, `o` → ö/ô/ò,
+  `u` → ü/û/ù), lone `q`, `c` → ch/ck, `s` → sch/st/sp, `p` → pf/ph. Freely
+  extendable via a small table. (vuot's data idea, but visible — not its invisible
+  swipes.)
 - **Training-wheel colours** (optional, off by default) — tint vowels and the
   highest-frequency consonants in fixed colours, and dim the rarely-used `x`/`y`,
   while muscle memory settles.
