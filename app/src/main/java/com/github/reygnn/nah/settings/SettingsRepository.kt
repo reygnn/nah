@@ -2,14 +2,24 @@ package com.github.reygnn.nah.settings
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStore
+import java.io.IOException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "nah_settings")
+// Eine korrupte Preferences-Datei (z. B. ein beim Force-Stop/Akku-leer abgebrochener Schreibvorgang)
+// würde sonst bei JEDEM Lesen eine CorruptionException werfen — der Handler ersetzt sie einmalig durch
+// Defaults, statt die Tastatur dauerhaft lahmzulegen.
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "nah_settings",
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+)
 
 class SettingsRepository(private val context: Context) {
 
@@ -20,7 +30,11 @@ class SettingsRepository(private val context: Context) {
         val letterColorHintsEnabled = booleanPreferencesKey("letter_color_hints_enabled")
     }
 
-    val settings: Flow<Settings> = context.dataStore.data.map { it.toSettings() }
+    val settings: Flow<Settings> = context.dataStore.data
+        // Transiente Lese-IOExceptions nicht den Collector (IME-Service / Settings-Composition)
+        // töten lassen — auf Defaults zurückfallen; der Korruptionsfall ist oben schon abgedeckt.
+        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        .map { it.toSettings() }
 
     suspend fun update(transform: (Settings) -> Settings) {
         context.dataStore.edit { prefs ->

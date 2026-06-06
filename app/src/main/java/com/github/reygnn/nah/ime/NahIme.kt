@@ -50,10 +50,11 @@ class NahIme :
     private lateinit var settingsRepository: SettingsRepository
     private lateinit var userWordRepository: UserWordRepository
 
-    // Zählt jeden Feldstart hoch. Ein asynchron aufgelöster Einfüge-Inhalt (requestPaste) merkt
-    // sich den Stand zur Geste und committet nur, wenn er beim Zurückkommen auf dem Main-Thread
-    // noch stimmt — sonst landete der (evtl. langsam über einen Content-URI aufgelöste) Text im
-    // inzwischen fokussierten FREMDEN Feld (Fehlcommit + Privacy-Leck).
+    // Zählt jeden ECHTEN Feldwechsel hoch (nicht einen reinen Restart desselben Feldes). Ein
+    // asynchron aufgelöster Einfüge-Inhalt (requestPaste) merkt sich den Stand zur Geste und
+    // committet nur, wenn er beim Zurückkommen auf dem Main-Thread noch stimmt — sonst landete der
+    // (evtl. langsam über einen Content-URI aufgelöste) Text im inzwischen fokussierten FREMDEN
+    // Feld (Fehlcommit + Privacy-Leck).
     private var fieldEpoch = 0
 
     override fun onCreate() {
@@ -133,7 +134,13 @@ class NahIme :
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        fieldEpoch++ // neuer (oder neu gestarteter) Feld-Kontext → ein laufender Paste-Commit gilt nicht mehr
+        // Nur ein ECHTER Feldwechsel (restarting == false) entwertet einen laufenden Paste-Commit.
+        // Ein reiner Restart desselben Feldes (Config-Change/Rotation, Editor-restartInput) ist
+        // dasselbe Feld — genauso behandelt es KeyboardViewModel.onStartInput (restarting wirft den
+        // Nutzerzustand nicht weg). Ein in-flight Paste gehört weiterhin dorthin und darf nicht still
+        // verworfen werden; jeder echte Feldwechsel kommt mit restarting == false (auch das neue Feld
+        // nach onFinishInput), der Fremdfeld-Schutz bleibt also voll erhalten.
+        if (!restarting) fieldEpoch++
         viewModel.onStartInput(
             field = info?.let {
                 FieldContext.fromEditorInfo(

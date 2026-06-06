@@ -2,15 +2,24 @@ package com.github.reygnn.nah.data.suggestions
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import java.io.IOException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 
+// Korrupte Datei einmalig durch Defaults (leere Liste) ersetzen statt bei jedem Lesen zu werfen —
+// die kuratierte Wortliste ginge dann zwar verloren, aber Tastatur/Einstellungen bleiben benutzbar.
 private val Context.userWordsDataStore: DataStore<Preferences> by
-    preferencesDataStore(name = "nah_user_words")
+    preferencesDataStore(
+        name = "nah_user_words",
+        corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+    )
 
 /**
  * Benutzerdefinierte Wörter, persistiert als String-Set in DataStore (kein Room —
@@ -21,7 +30,10 @@ private val Context.userWordsDataStore: DataStore<Preferences> by
 class UserWordRepository(private val context: Context) {
 
     val words: Flow<Set<String>> =
-        context.userWordsDataStore.data.map { it[KEY] ?: emptySet() }
+        context.userWordsDataStore.data
+            // Transiente Lese-IOException → leere Liste statt den Collector zu töten (s. Handler oben).
+            .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+            .map { it[KEY] ?: emptySet() }
 
     /**
      * Fügt ein Wort hinzu. `null` = erfolgreich, sonst der Ablehnungsgrund. Die
