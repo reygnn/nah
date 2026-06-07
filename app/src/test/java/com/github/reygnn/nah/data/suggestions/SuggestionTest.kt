@@ -38,6 +38,17 @@ class TrieTest {
     }
 
     @Test
+    fun `Gleichstand sortiert case-insensitiv, nicht ASCIIbetisch`() {
+        val t = Trie().apply {
+            insert("Birne", 500)
+            insert("apfel", 500)
+        }
+        // Case-insensitiv: apfel < birne. Ein roher String-Vergleich wäre ASCIIbetisch und
+        // stellte „Birne" voran ('B' = 66 < 'a' = 97) — genau das, was wir NICHT wollen.
+        assertEquals(listOf("apfel", "Birne"), t.getSuggestions("", limit = 5).map { it.first })
+    }
+
+    @Test
     fun `case-Kollision behaelt die hoehere Frequenz, unabhaengig von der Einfuegereihenfolge`() {
         // „morgen"/„Morgen" landen auf demselben kleingeschriebenen Pfad. Die höhere Frequenz muss
         // gewinnen — egal welche Schreibweise zuletzt eingefügt wird (sonst stille Fehlschreibung).

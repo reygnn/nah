@@ -66,9 +66,16 @@ class SuggestionRepository : Suggester {
         if (includeUser) userTrie?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
         if (includeBuiltIn) builtInTrie?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
 
-        // Sekundär alphabetisch → deterministische Reihenfolge bei gleicher Frequenz.
+        // Sekundär alphabetisch (case-insensitiv) → deterministische Reihenfolge bei gleicher
+        // Frequenz; roher String-Vergleich wäre ASCIIbetisch (siehe Trie.getSuggestions). Die
+        // Einträge sind hier bereits nach kleingeschriebenem Schlüssel dedupliziert, die finale
+        // Stufe auf der Originalform ist also nur Vollständigkeit.
         return merged.values
-            .sortedWith(compareByDescending<Pair<String, Int>> { it.second }.thenBy { it.first })
+            .sortedWith(
+                compareByDescending<Pair<String, Int>> { it.second }
+                    .thenBy { it.first.lowercase() }
+                    .thenBy { it.first },
+            )
             .take(MAX_SUGGESTIONS)
             .map { it.first }
     }

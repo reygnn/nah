@@ -23,6 +23,15 @@ class Trie {
         // stumm die häufigere und der Vorschlag käme falsch gecast heraus (klein getipptes „morge"
         // → „Morgen") — genau die stille Fehlschreibung, die nah ablehnt. Gleichstand behält den
         // ersten Eintrag (deterministisch).
+        //
+        // BEWUSSTE GRENZE, kein gelöstes Problem: das löst nur die *Schreibvarianten-*Kollision
+        // desselben Wortes. Echte Homographen, die sich NUR in der Gross-/Kleinschreibung
+        // unterscheiden und Verschiedenes bedeuten (Verb „essen" vs. Stadt „Essen", „sie"/„Sie"),
+        // teilen sich denselben Pfad — der seltenere Eintrag verschwindet hier ebenfalls stumm.
+        // Für einen case-insensitiven Präfix-Index ist das der akzeptierte Preis; die Vorschläge
+        // sind nicht-eingreifend und ein verlorener Eigenname kostet höchstens einen Vorschlag,
+        // nie ein falsch ersetztes Wort. Eine case-erhaltende Variante (zwei Knoten pro Pfad) wäre
+        // die Lösung, lohnt beim aktuellen Nutzen aber nicht.
         if (!node.isWord || frequency > node.frequency) {
             node.isWord = true
             node.frequency = frequency
@@ -37,9 +46,18 @@ class Trie {
         }
         val results = mutableListOf<Pair<String, Int>>()
         collectWords(node, results)
-        // Sekundär alphabetisch: bei Frequenz-Gleichstand sonst HashMap-abhängig und
-        // damit nicht reproduzierbar (passt nicht zum Determinismus-Anspruch).
-        return results.sortedWith(compareByDescending<Pair<String, Int>> { it.second }.thenBy { it.first })
+        // Sekundär alphabetisch (case-insensitiv): bei Frequenz-Gleichstand sonst HashMap-abhängig
+        // und damit nicht reproduzierbar (passt nicht zum Determinismus-Anspruch). Bewusst über
+        // `lowercase()` verglichen — ein roher String-Vergleich ist ASCIIbetisch (Grossbuchstaben
+        // vor Kleinbuchstaben, Umlaute hinter „z") und stellte „Zürich" vor „apfel". Die finale
+        // Gleichstand-Stufe auf der Originalform hält die Ordnung total (im Teilbaum ohnehin nie nötig,
+        // da die kleingeschriebenen Pfade kollabieren, aber bulletproof gegen künftige Aufrufer).
+        return results
+            .sortedWith(
+                compareByDescending<Pair<String, Int>> { it.second }
+                    .thenBy { it.first.lowercase() }
+                    .thenBy { it.first },
+            )
             .take(limit)
     }
 
