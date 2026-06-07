@@ -16,6 +16,7 @@
     <string name="dojo_title">Tipp-Training</string>
     <string name="dojo_score">Punkte: %1$d</string>
     <string name="dojo_streak">Serie: %1$d</string>
+    <string name="dojo_best">Best: %1$d · Serie %2$d</string>
     <string name="dojo_level_vowels">Vokale</string>
     <string name="dojo_level_consonants">Konsonanten</string>
     <string name="dojo_level_alphabet">Alphabet</string>

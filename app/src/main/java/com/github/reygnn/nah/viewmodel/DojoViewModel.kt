@@ -54,6 +54,11 @@ data class DojoState(
     val typed: String = "",
     val lastResult: Boolean? = null,
     val gameOver: Boolean = false,
+    // Bester Score / beste Serie global über alle Stufen und Modi — der einzige Zustand, der einen
+    // Reset (und, von der Activity persistiert, das Verlassen des Dojos) überlebt. Der laufende
+    // Spielstand bleibt absichtlich flüchtig.
+    val bestScore: Int = 0,
+    val bestStreak: Int = 0,
 ) {
     companion object {
         const val MAX_LIVES = 5
@@ -133,6 +138,20 @@ class DojoViewModel(
      *  Long-Press auf ihrem Grundvokal). */
     fun onAlternative(text: String) = onInput(text)
 
+    /** Lädt den persistierten Bestwert ins Spiel — von der Activity beim Beobachten von
+     *  `DojoStatsRepository` aufgerufen (analog zu `KeyboardViewModel.applySettings`: Persistenz
+     *  fliesst durch eine Methode, nicht durch den Konstruktor, damit der ViewModel rein bleibt).
+     *  Hebt den Bestwert nur an, senkt ihn nie — so kann ein verspätetes Lade-Echo einen bereits
+     *  in dieser Sitzung erspielten höheren Wert nicht überschreiben. */
+    fun setBest(bestScore: Int, bestStreak: Int) {
+        _state.update {
+            it.copy(
+                bestScore = maxOf(it.bestScore, bestScore),
+                bestStreak = maxOf(it.bestStreak, bestStreak),
+            )
+        }
+    }
+
     // --- interne Logik ---
 
     private fun onInput(text: String) {
@@ -185,9 +204,14 @@ class DojoViewModel(
 
     private fun registerCorrect() {
         _state.update {
+            val newScore = it.score + POINTS_PER_HIT + it.streak * STREAK_BONUS
+            val newStreak = it.streak + 1
             it.copy(
-                score = it.score + POINTS_PER_HIT + it.streak * STREAK_BONUS,
-                streak = it.streak + 1,
+                score = newScore,
+                streak = newStreak,
+                // Bestwert monoton mitführen; resetGame lässt diese Felder bewusst stehen.
+                bestScore = maxOf(it.bestScore, newScore),
+                bestStreak = maxOf(it.bestStreak, newStreak),
                 lastResult = true,
             )
         }
@@ -228,10 +252,22 @@ class DojoViewModel(
             return
         }
         val target = when (_state.value.mode) {
-            DojoMode.RANDOM -> pool[random.nextInt(pool.size)]
+            DojoMode.RANDOM -> randomTarget(pool, avoid = _state.value.target)
             DojoMode.GUIDED -> pool[guidedIndex % pool.size].also { guidedIndex++ }
         }
         _state.update { it.copy(target = target, typed = "") }
+    }
+
+    /** Zieht ein Zufallsziel, aber nicht zweimal dasselbe direkt hintereinander — bei kleinen Pools
+     *  (z. B. den fünf Vokalen) wirkte eine sofortige Wiederholung sonst wie ein Hänger statt wie
+     *  Zufall. Die Pools sind per Konstruktion duplikatfrei, die Schleife terminiert also; bei
+     *  Pool-Grösse 1 ist die Wiederholung unvermeidlich und wird oben abgekürzt. [avoid] ist beim
+     *  ersten Zug nach einem Reset leer und passt dann auf nichts. */
+    private fun randomTarget(pool: List<String>, avoid: String): String {
+        if (pool.size <= 1) return pool[0]
+        var pick = pool[random.nextInt(pool.size)]
+        while (pick == avoid) pick = pool[random.nextInt(pool.size)]
+        return pick
     }
 
     private fun poolFor(level: DojoLevel): List<String> = when (level) {

@@ -18,6 +18,7 @@
     <string name="dojo_title">Typing dojo</string>
     <string name="dojo_score">Score: %1$d</string>
     <string name="dojo_streak">Streak: %1$d</string>
+    <string name="dojo_best">Best: %1$d · streak %2$d</string>
     <string name="dojo_level_vowels">Vowels</string>
     <string name="dojo_level_consonants">Consonants</string>
     <string name="dojo_level_alphabet">Alphabet</string>

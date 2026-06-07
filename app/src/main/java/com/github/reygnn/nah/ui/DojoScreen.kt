@@ -84,27 +84,36 @@ fun DojoScreen(viewModel: DojoViewModel) {
 
 @Composable
 private fun Scoreboard(state: DojoState) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(R.string.dojo_score, state.score),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                stringResource(R.string.dojo_streak, state.streak),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            // Leben als Herzchen: gefüllt für verbleibende, leer für verbrauchte.
+            Text(
+                buildString {
+                    repeat(state.lives) { append("♥") }
+                    repeat(DojoState.MAX_LIVES - state.lives) { append("♡") }
+                },
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
+        // Persistierter Bestwert (Score · Serie) — der Anreiz, wiederzukommen. Gedämpft, damit er
+        // den laufenden Punktestand nicht konkurrenziert.
         Text(
-            stringResource(R.string.dojo_score, state.score),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Text(
-            stringResource(R.string.dojo_streak, state.streak),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        // Leben als Herzchen: gefüllt für verbleibende, leer für verbrauchte.
-        Text(
-            buildString {
-                repeat(state.lives) { append("♥") }
-                repeat(DojoState.MAX_LIVES - state.lives) { append("♡") }
-            },
-            color = MaterialTheme.colorScheme.error,
-            style = MaterialTheme.typography.titleMedium,
+            stringResource(R.string.dojo_best, state.bestScore, state.bestStreak),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

@@ -3,26 +3,52 @@ package com.github.reygnn.nah.settings
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.reygnn.nah.ui.DojoScreen
 import com.github.reygnn.nah.ui.NahTheme
 import com.github.reygnn.nah.viewmodel.DojoViewModel
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 
 /**
  * Hostet das Tipp-Training ([DojoScreen]). Reiner Glue wie [UserWordsActivity]: der
  * [DojoViewModel] hält den ganzen Spielzustand, hängt aber an keiner InputConnection —
  * das Dojo committet keinen Text, es prüft nur Taps gegen ein Ziel.
+ *
+ * Persistenz (Bestwert) läuft bewusst hier, nicht im ViewModel: der ViewModel bleibt rein und
+ * JVM-testbar, der DataStore-Zugriff hängt an der lebenden Composition. Dadurch gibt es auch keinen
+ * an einen toten Activity-Scope gebundenen Callback nach einem Config-Change — die laufende
+ * Composition seedet den Bestwert und persistiert jede echte Verbesserung.
  */
 class DojoActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val stats = DojoStatsRepository(applicationContext)
         setContent {
             NahTheme {
                 // viewModel() bindet den DojoViewModel an den ViewModelStore der Activity → der
                 // Spielstand (Punkte/Serie/Leben/Ziel) überlebt einen Config-Change (Drehung),
                 // statt bei jeder Drehung neu zu starten.
                 val viewModel: DojoViewModel = viewModel()
+
+                // Persistierten Bestwert einmalig ins Spiel laden (setBest hebt nur an, senkt nie —
+                // ein bereits in dieser Sitzung erspielter höherer Wert bleibt also erhalten).
+                LaunchedEffect(viewModel) {
+                    val best = stats.best.first()
+                    viewModel.setBest(best.score, best.streak)
+                }
+                // Jede echte Bestwert-Verbesserung wegschreiben. distinctUntilChanged → ein Schreiben
+                // nur, wenn sich Score- oder Serien-Bestwert ändert (selten), nicht pro Tastendruck.
+                LaunchedEffect(viewModel) {
+                    viewModel.state
+                        .map { it.bestScore to it.bestStreak }
+                        .distinctUntilChanged()
+                        .collect { (score, streak) -> stats.recordBest(score, streak) }
+                }
+
                 DojoScreen(viewModel = viewModel)
             }
         }
