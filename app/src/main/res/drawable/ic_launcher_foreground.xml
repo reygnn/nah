@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Adaptive-Icon-Vordergrund: das Wortmarken-„n" (für „nah"), als fetter, gestrichener
+  Pfad mit runden Enden/Ecken — kleingeschrieben passend zur App-Ästhetik. Liegt komplett
+  in der zentralen 66dp-Sicherheitszone (Radius 33 um 54,54), wird also von keiner
+  Launcher-Maske (Kreis/Squircle/…) angeschnitten. Reiner Vektor; dient zugleich als
+  <monochrome>-Layer (das System tintet ihn für Themed Icons, Android 13+).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#EAF7FC"
+        android:strokeWidth="12"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M38,74 L38,52 C38,44 44,40 54,40 C64,40 70,44 70,52 L70,74" />
+</vector>
