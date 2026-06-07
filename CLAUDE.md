@@ -82,10 +82,20 @@ tools/         optimize_layout.py — der Layout-Optimierer (Wegwerf, reproduzie
 4. **Settings fliessen durch `KeyboardViewModel.applySettings(...)`**, nicht über
    Konstruktor-Defaults. Neues Tunable → `SettingsRepository.toSettings()` UND
    `applySettings()` verdrahten.
-5. **Die Buchstaben-Anordnung ist optimizer-generiert.** Sie änderst du über
-   `tools/optimize_layout.py` und encodest das Ergebnis in `OptimizedLayout`.
-   `KeyboardLayout.letterPositions()` ist die einzige Koordinatenquelle (für den
-   Reise-Test). **Eine Layout-Änderung kostet Umlernen** — nicht leichtfertig.
+5. **Das Layout ist EINGEFROREN. Es wird NUR auf ausdrücklichen Befehl des
+   Nutzers geändert.** Die aktuelle Buchstaben-Anordnung (`OptimizedLayout` /
+   `CURRENT_ROWS` in `tools/optimize_layout.py`) gefällt dem Nutzer und sitzt im
+   Muskelgedächtnis — **eine Änderung kostet Umlernen**. Darum:
+   - **`optimize_layout.py` NIE eigenmächtig laufen lassen** und das Ergebnis NIE
+     eigenmächtig nach `OptimizedLayout` übernehmen — auch nicht, wenn das Korpus
+     (`GermanWordList`) wächst und ein „besseres" Layout möglich wäre. Das Korpus
+     ist Suggestion-Quelle UND Optimizer-Input; es darf wachsen, ohne dass das
+     Layout angefasst wird.
+   - Eine Neu-Optimierung ist ein **separater, ausdrücklich vom Nutzer
+     angeforderter** Schritt. Niemals als Nebeneffekt einer anderen Aufgabe,
+     niemals „weil es sich anbietet", niemals ohne explizite Ansage.
+   - `KeyboardLayout.letterPositions()` bleibt die einzige Koordinatenquelle
+     (für den Reise-Test).
 
 ## Fast-Follow (bewusst nicht in v1)
 
