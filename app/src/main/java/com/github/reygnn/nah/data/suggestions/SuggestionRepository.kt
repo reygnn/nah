@@ -68,13 +68,12 @@ class SuggestionRepository : Suggester {
 
         // Sekundär alphabetisch (case-insensitiv) → deterministische Reihenfolge bei gleicher
         // Frequenz; roher String-Vergleich wäre ASCIIbetisch (siehe Trie.getSuggestions). Die
-        // Einträge sind hier bereits nach kleingeschriebenem Schlüssel dedupliziert, die finale
-        // Stufe auf der Originalform ist also nur Vollständigkeit.
+        // Einträge sind hier bereits nach kleingeschriebenem Schlüssel dedupliziert, ein weiterer
+        // Tie-Break auf der Originalform wäre also nie wirksam.
         return merged.values
             .sortedWith(
                 compareByDescending<Pair<String, Int>> { it.second }
-                    .thenBy { it.first.lowercase() }
-                    .thenBy { it.first },
+                    .thenBy { it.first.lowercase() },
             )
             .take(MAX_SUGGESTIONS)
             .map { it.first }

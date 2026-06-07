@@ -12,7 +12,7 @@ package com.github.reygnn.nah.data.suggestions
 class Trie {
     private val root = TrieNode()
 
-    fun insert(word: String, frequency: Int = 1) {
+    fun insert(word: String, frequency: Int) {
         var node = root
         for (char in word.lowercase()) {
             node = node.children.getOrPut(char) { TrieNode() }
@@ -49,14 +49,13 @@ class Trie {
         // Sekundär alphabetisch (case-insensitiv): bei Frequenz-Gleichstand sonst HashMap-abhängig
         // und damit nicht reproduzierbar (passt nicht zum Determinismus-Anspruch). Bewusst über
         // `lowercase()` verglichen — ein roher String-Vergleich ist ASCIIbetisch (Grossbuchstaben
-        // vor Kleinbuchstaben, Umlaute hinter „z") und stellte „Zürich" vor „apfel". Die finale
-        // Gleichstand-Stufe auf der Originalform hält die Ordnung total (im Teilbaum ohnehin nie nötig,
-        // da die kleingeschriebenen Pfade kollabieren, aber bulletproof gegen künftige Aufrufer).
+        // vor Kleinbuchstaben, Umlaute hinter „z") und stellte „Zürich" vor „apfel". Eine weitere
+        // Tie-Break-Stufe braucht es nicht: im Teilbaum kollabieren die kleingeschriebenen Pfade,
+        // zwei verschiedene Ergebnisse haben also nie denselben kleingeschriebenen Schlüssel.
         return results
             .sortedWith(
                 compareByDescending<Pair<String, Int>> { it.second }
-                    .thenBy { it.first.lowercase() }
-                    .thenBy { it.first },
+                    .thenBy { it.first.lowercase() },
             )
             .take(limit)
     }
