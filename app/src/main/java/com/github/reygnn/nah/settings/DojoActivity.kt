@@ -5,10 +5,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.reygnn.nah.NahApplication
 import com.github.reygnn.nah.ui.DojoScreen
 import com.github.reygnn.nah.ui.NahTheme
 import com.github.reygnn.nah.viewmodel.DojoViewModel
@@ -32,13 +32,15 @@ class DojoActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val stats = DojoStatsRepository(applicationContext)
+        // Prozessweiter Scope für den ON_STOP-Write (überlebt das Abreissen der Composition bei einem
+        // Config-Change, anders als ein rememberCoroutineScope). Siehe NahApplication.
+        val appScope = (application as NahApplication).applicationScope
         setContent {
             NahTheme {
                 // viewModel() bindet den DojoViewModel an den ViewModelStore der Activity → der
                 // Spielstand (Punkte/Serie/Leben/Ziel) überlebt einen Config-Change (Drehung),
                 // statt bei jeder Drehung neu zu starten.
                 val viewModel: DojoViewModel = viewModel()
-                val scope = rememberCoroutineScope()
 
                 // Die WANN-schreiben-Entscheidung lebt in DojoBestPersistence (testbar, ohne Compose);
                 // hier bleibt nur die Erkennung der Auslöser. Der laufende state.bestScore/bestStreak
@@ -57,11 +59,12 @@ class DojoActivity : ComponentActivity() {
                 }
 
                 // Mitten im Lauf verlassen (noch kein Game Over) darf einen frischen Rekord nicht verlieren →
-                // bei ON_STOP ebenfalls persistieren. Die Composition lebt bei ON_STOP noch (erst ON_DESTROY
-                // reisst sie ab), der rememberCoroutineScope ist also aktiv und der kurze recordBest läuft durch.
+                // bei ON_STOP ebenfalls persistieren. Bewusst auf dem prozessweiten appScope, NICHT auf einem
+                // rememberCoroutineScope: ein Config-Change löst ON_STOP aus und reisst zugleich die Composition
+                // (und deren Scope) ab — der noch nicht angelaufene DataStore-Write ginge sonst verloren.
                 LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
                     val best = viewModel.state.value.let { DojoBest(it.bestScore, it.bestStreak) }
-                    scope.launch { persistence.persistIfBetter(best) }
+                    appScope.launch { persistence.persistIfBetter(best) }
                 }
 
                 DojoScreen(viewModel = viewModel)
