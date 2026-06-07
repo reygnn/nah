@@ -223,17 +223,15 @@ class DojoViewModel(
     }
 
     private fun onFunction(action: KeyAction) {
+        val s = _state.value
         // Funktionstasten starten bei Game Over BEWUSST nicht neu — nur ein Buchstaben-Tap
         // (onInput) tut das. Sonst riss ein versehentlich gestreiftes Shift/Space/Backspace die
         // gerade erspielte Runde sofort weg, bevor man den Endstand überhaupt anschauen konnte.
-        if (_state.value.gameOver) return
+        if (s.gameOver) return
         // In der Wort-Stufe nimmt Backspace den letzten getippten Buchstaben zurück (Korrektur-
         // hilfe, keine Strafe). Alle anderen Funktionstasten (Shift, Space, Ebenenwechsel, …)
         // sind im Drill neutral — sie sind kein Tipp-Versuch und kosten kein Leben.
-        if (action == KeyAction.BACKSPACE &&
-            _state.value.level == DojoLevel.WORDS &&
-            _state.value.typed.isNotEmpty()
-        ) {
+        if (action == KeyAction.BACKSPACE && s.level == DojoLevel.WORDS && s.typed.isNotEmpty()) {
             _state.update { it.copy(typed = it.typed.dropLast(1), lastResult = null) }
         }
     }
