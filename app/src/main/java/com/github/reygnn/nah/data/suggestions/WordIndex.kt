@@ -21,8 +21,13 @@ internal val SUGGESTION_ORDER: Comparator<Pair<String, Int>> =
  * `insert` mehr, also wird dieselbe Instanz nie nebenläufig mutiert *und* gelesen. Die
  * `@Volatile`-Veröffentlichung etabliert die happens-before-Kante, über die der per [build]
  * geschriebene (nicht-volatile) `sorted`-Cache für alle Leser sichtbar wird.
+ *
+ * `internal`: ein reines Implementierungsdetail von [SuggestionRepository] (das als einziger
+ * Produktiv-Aufrufer die Mindestpräfix-Policy setzt), nicht Teil der App-API. So kann kein
+ * künftiger Fremdaufrufer [getSuggestions] mit leerem Präfix gegen den unbegrenzten
+ * Treffer-Linearscan laufen lassen. Der Unit-Test im selben Modul sieht `internal` weiterhin.
  */
-class WordIndex {
+internal class WordIndex {
     /**
      * Kleingeschriebener Pfad → zu committende Originalform + Frequenz. Die Map dient zugleich
      * [contains] (O(1)) und ist die Quelle für das sortierte Array. Case-insensitive

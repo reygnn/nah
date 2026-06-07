@@ -607,6 +607,29 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `vorschlag-tap auf einem Ziffern-Praefix ersetzt nur die getippten Ziffern`() {
+        val fake = FakeIc()
+        // Ergaenzt den Test darueber (der nur das ERSCHEINEN prueft) um den COMMIT: ein eigenes
+        // Wort (z. B. eine PLZ) wird per Ziffern-Praefix vorgeschlagen und woertlich eingefuegt.
+        // Pinnt, dass deleteSurroundingText genau das Ziffern-Praefix entfernt — kein Casing, kein
+        // Anfassen fertigen Texts. (Dictionary-Woerter sind alphabetisch und treffen ein Ziffern-
+        // Praefix nie, eine Ziffern-Ersetzung ist also stets ein woertliches Eigenwort.)
+        val suggester = object : Suggester {
+            override fun suggest(prefix: String, includeBuiltIn: Boolean, includeUser: Boolean) =
+                if (includeUser && prefix == "80") listOf("8050") else emptyList()
+            override fun isUserWord(word: String) = word == "8050"
+        }
+        val vm = vm(fake, suggester = suggester)
+            .apply { applySettings(Settings(userWordsEnabled = true, autoCapEnabled = false)) }
+        vm.onKey(FunctionKey(KeyAction.SYMBOLS)) // Ziffern liegen auf der Symbolebene
+        vm.type("80")
+        assertEquals(listOf("8050"), vm.state.value.suggestions)
+        vm.onSuggestionTap("8050")
+        // Nur die getippten „80" ersetzt, die volle PLZ verbatim eingefuegt (Standard-Leerzeichen).
+        assertEquals("8050 ", fake.buffer.toString())
+    }
+
+    @Test
     fun `phrase-vorschlag fuegt die ganze Phrase ein, ersetzt nur das getippte Wort`() {
         val fake = FakeIc()
         val vm = vm(fake, suggester = Suggester { prefix, _, _ ->
