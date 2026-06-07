@@ -229,16 +229,21 @@ class DojoViewModelTest {
     }
 
     @Test
-    fun `Stufenwechsel setzt Punktestand und Leben zurueck`() {
+    fun `Stufenwechsel laesst den Spielstand stehen und tauscht nur den Pool`() {
         val vm = vm()
         vm.setMode(DojoMode.GUIDED)
-        vm.onKey(CharKey('o')) // etwas Punktestand aufbauen
+        vm.onKey(CharKey('o')) // korrekt → 10 Punkte
+        vm.onKey(CharKey('x')) // Fehltipp → ein Leben weg
         assertEquals(10, vm.state.value.score)
+        assertEquals(DojoState.MAX_LIVES - 1, vm.state.value.lives)
         vm.setLevel(DojoLevel.CONSONANTS)
         val s = vm.state.value
-        assertEquals(0, s.score)
-        assertEquals(DojoState.MAX_LIVES, s.lives)
-        // Erster Konsonant im Pool (Layout-Reihenfolge h, s, r, t, n, d).
+        // Spielstand bleibt erhalten — ein Stufenwechsel ist keine Strafe.
+        assertEquals(10, s.score)
+        assertEquals(DojoState.MAX_LIVES - 1, s.lives)
+        // Nur Pool/Ziel wechseln: erster Konsonant in Layout-Reihenfolge (h, s, r, t, n, d).
         assertEquals("h", s.target)
+        assertEquals("", s.typed)
+        assertEquals(null, s.lastResult) // stehengebliebenes Aufblitzen verworfen
     }
 }

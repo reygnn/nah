@@ -115,13 +115,13 @@ class DojoViewModel(
     fun setMode(mode: DojoMode) {
         if (_state.value.mode == mode) return
         _state.update { it.copy(mode = mode) }
-        resetGame()
+        switchPool()
     }
 
     fun setLevel(level: DojoLevel) {
         if (_state.value.level == level) return
         _state.update { it.copy(level = level) }
-        resetGame()
+        switchPool()
     }
 
     /** Tap auf eine Taste der gerenderten Tastatur. Buchstaben sind ein Versuch; Funktionstasten
@@ -242,6 +242,19 @@ class DojoViewModel(
                 gameOver = false,
             )
         }
+        nextChallenge()
+    }
+
+    /**
+     * Wechselt Pool/Ziel bei einem Stufen- oder Moduswechsel, **ohne** den laufenden Spielstand
+     * anzutasten: Score, Serie und Leben bleiben stehen — ein Wechsel ist keine Strafe (anders als
+     * [resetGame], das nur beim Neustart nach Game Over greift). Nur der Guided-Cursor springt auf
+     * den Anfang des neuen Pools und es wird ein frisches Ziel gezogen; ein etwaiger Wort-Fortschritt
+     * und ein stehengebliebenes Treffer/Fehler-Aufblitzen werden verworfen.
+     */
+    private fun switchPool() {
+        guidedIndex = 0
+        _state.update { it.copy(typed = "", lastResult = null) }
         nextChallenge()
     }
 

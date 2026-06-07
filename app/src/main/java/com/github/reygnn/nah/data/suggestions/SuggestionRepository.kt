@@ -34,7 +34,13 @@ class SuggestionRepository : Suggester {
      * Aktualisiert die benutzerdefinierten Wörter (vom IME beim Beobachten von
      * [UserWordRepository] aufgerufen). Eigener Trie → unabhängig von der
      * eingebauten Liste zu- und abschaltbar.
+     *
+     * `@Synchronized` wie [warmUpBuiltIn] — gleiches Muster: beide bauen einen Trie und
+     * veröffentlichen ihn atomar über das `@Volatile`-Feld. Die Annotation serialisiert
+     * konkurrierende Aufrufe, damit „letzter gewinnt" wohldefiniert ist statt eines Wettlaufs
+     * zweier sich überlappender Setzungen.
      */
+    @Synchronized
     fun setUserWords(words: Set<String>) {
         userTrie = if (words.isEmpty()) {
             null
