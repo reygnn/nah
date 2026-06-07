@@ -108,10 +108,11 @@ private fun Scoreboard(state: DojoState) {
                 style = MaterialTheme.typography.titleMedium,
             )
         }
-        // Persistierter Bestwert (Score · Serie) — der Anreiz, wiederzukommen. Gedämpft, damit er
-        // den laufenden Punktestand nicht konkurrenziert.
+        // Persistierter Rekord der GEWÄHLTEN Stufe (Score · Serie) — der Anreiz, wiederzukommen.
+        // Wechselt mit dem Stufen-Chip; gedämpft, damit er den laufenden Punktestand nicht konkurrenziert.
+        val best = state.bestFor(state.level)
         Text(
-            stringResource(R.string.dojo_best, state.bestScore, state.bestStreak),
+            stringResource(R.string.dojo_best, best.score, best.streak),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

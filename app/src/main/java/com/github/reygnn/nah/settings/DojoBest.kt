@@ -1,10 +1,19 @@
 package com.github.reygnn.nah.settings
 
+import com.github.reygnn.nah.viewmodel.DojoLevel
+import com.github.reygnn.nah.viewmodel.LevelBest
+
 /**
- * Bestwerte des Tipp-Trainings — bester Score und beste Serie, **unabhängig** über alle Stufen/Modi.
- * Die beiden Felder sind getrennte Höchststände: `score` ist der höchste je erreichte Punktestand,
- * `streak` die längste je erreichte Serie — sie müssen nicht aus demselben Lauf stammen (eine lange
- * Serie zählt als Rekord, auch wenn der Punkt-Bestlauf eine kürzere hatte). Der einzige Dojo-Zustand,
- * der das Verlassen überlebt; der laufende Spielstand absichtlich nicht.
+ * Persistierte Dojo-Rekorde — **pro Stufe** (Modi zusammengefasst), je Stufe ein [LevelBest] aus zwei
+ * unabhängigen Höchstständen (Score und Serie müssen nicht aus demselben Lauf stammen). Per Stufe statt
+ * global, weil das längen-skalierte Wort-Scoring einen einzigen globalen Rekord sonst auf den
+ * leichtesten Pool (Vokale) reduzierte. Der einzige Dojo-Zustand, der das Verlassen überlebt; der
+ * laufende Spielstand absichtlich nicht.
+ *
+ * Eine fehlende Stufe in [byLevel] zählt als Nullrekord (siehe [forLevel]) — so bleibt ein um eine
+ * Stufe erweitertes Enum abwärtskompatibel, ohne dass eine alte gespeicherte Datei migriert werden muss.
  */
-data class DojoBest(val score: Int = 0, val streak: Int = 0)
+data class DojoBest(val byLevel: Map<DojoLevel, LevelBest> = emptyMap()) {
+    /** Der Rekord der gegebenen Stufe, Default-Nullrekord, solange die Stufe noch keinen hat. */
+    fun forLevel(level: DojoLevel): LevelBest = byLevel[level] ?: LevelBest()
+}

@@ -44,6 +44,12 @@ enum class DojoLevel {
 }
 
 /**
+ * Ein Stufen-Rekord: höchster Score und längste Serie — zwei UNABHÄNGIGE Maxima (nicht ein Paar), die
+ * aus verschiedenen Läufen stammen dürfen. Pro [DojoLevel] einer; siehe [DojoState.bests].
+ */
+data class LevelBest(val score: Int = 0, val streak: Int = 0)
+
+/**
  * Spielzustand des Dojos. [target] ist immer kleingeschrieben (der Drill geht um Positionen,
  * nicht um Gross-/Kleinschreibung — verglichen wird case-insensitiv). [typed] ist der bereits
  * korrekt getippte Anfang des Ziels (nur in der Wort-Stufe relevant; bei Buchstaben-Stufen
@@ -59,15 +65,19 @@ data class DojoState(
     val typed: String = "",
     val lastResult: Boolean? = null,
     val gameOver: Boolean = false,
-    // Bester Score / beste Serie global über alle Stufen und Modi — zwei UNABHÄNGIGE Höchststände
-    // (nicht ein Paar): bestScore ist der höchste je erreichte Punktestand, bestStreak die längste je
-    // erreichte Serie, auch wenn sie aus verschiedenen Läufen stammen. Das ist der ANZEIGE-Wert fürs
-    // Scoreboard: beide klettern live im Lauf mit und überleben einen Reset. Bewusst NICHT die
-    // Persistenzquelle pro Frame — den dauerhaften Record schreibt die Activity event-gesteuert an
-    // Run-Grenzen (Lauf zu Ende / Verlassen), nicht bei jedem Treffer (siehe DojoActivity).
-    val bestScore: Int = 0,
-    val bestStreak: Int = 0,
+    // Rekorde PRO STUFE (Modi zusammengefasst) — je Stufe zwei unabhängige Maxima (siehe [LevelBest]).
+    // Bewusst per-Stufe statt global: weil das WORT-Scoring nach Wortlänge skaliert und kurze Pools wie
+    // die Vokale am leichtesten lange Serien tragen, wäre EIN globaler Rekord faktisch nur „wie lange
+    // hast du Vokale gedrückt". Pro Stufe bleibt jeder Rekord für sich aussagekräftig. Das ist der
+    // ANZEIGE-Wert fürs Scoreboard (die jeweils gewählte Stufe, siehe [bestFor]): klettert live im Lauf
+    // mit und überlebt einen Reset. Bewusst NICHT die Persistenzquelle pro Frame — den dauerhaften
+    // Record schreibt die Activity event-gesteuert an Run-Grenzen (Lauf zu Ende / Verlassen), nicht bei
+    // jedem Treffer (siehe DojoActivity).
+    val bests: Map<DojoLevel, LevelBest> = emptyMap(),
 ) {
+    /** Der Rekord der gegebenen Stufe (Default-Nullrekord, solange die Stufe noch keinen hat). */
+    fun bestFor(level: DojoLevel): LevelBest = bests[level] ?: LevelBest()
+
     companion object {
         const val MAX_LIVES = 5
     }
@@ -152,16 +162,14 @@ class DojoViewModel(
     }
 
     /**
-     * Nach einem Stufen-/Moduswechsel das Ziel neu ziehen. Bei laufendem Spiel über [switchPool]
-     * (Spielstand bleibt stehen — ein Wechsel ist keine Strafe). Steht das Spiel aber auf Game Over,
-     * wird voll zurückgesetzt: sonst hinge ein neues Ziel im Zustand, während `gameOver` noch true
-     * ist — ein widersprüchlicher Zwischenzustand, der nur deshalb nicht auffiel, weil die UI bei
-     * Game Over das Ziel ausblendet. Ein Chip-Tap am Game-Over-Bildschirm startet jetzt sauber eine
-     * frische Runde auf dem gewählten Pool.
+     * Jeder Stufen- oder Moduswechsel startet einen **frischen Lauf** für den gewählten Pool (Score,
+     * Serie und Leben zurück auf Anfang) — die persistierten Stufen-Rekorde ([DojoState.bests]) bleiben.
+     * Das ist die Konsequenz aus per-Stufe-Rekorden: ein Lauf gehört zu genau einer Stufe, also darf eine
+     * auf der leichten Vokal-Stufe aufgebaute Serie/Score beim Wechsel nicht in den Rekord einer anderen
+     * Stufe lecken (sonst wäre die Bestenliste wieder von der leichtesten Stufe dominierbar). Deckt
+     * zugleich den Game-Over-Fall sauber ab: kein widersprüchlicher target-gesetzt-aber-gameOver-Zustand.
      */
-    private fun rebuildAfterPoolChange() {
-        if (_state.value.gameOver) resetGame() else switchPool()
-    }
+    private fun rebuildAfterPoolChange() = resetGame()
 
     /** Tap auf eine Taste der gerenderten Tastatur. Buchstaben sind ein Versuch; Funktionstasten
      *  sind im Drill neutral (nur Backspace nimmt in der Wort-Stufe den letzten Buchstaben zurück). */
@@ -177,17 +185,20 @@ class DojoViewModel(
      *  Long-Press auf ihrem Grundvokal). */
     fun onAlternative(text: String) = onInput(text)
 
-    /** Lädt den persistierten Bestwert ins Spiel — von der Activity beim Beobachten von
+    /** Lädt die persistierten Rekorde ins Spiel — von der Activity beim Beobachten von
      *  `DojoStatsRepository` aufgerufen (analog zu `KeyboardViewModel.applySettings`: Persistenz
      *  fliesst durch eine Methode, nicht durch den Konstruktor, damit der ViewModel rein bleibt).
-     *  Hebt jedes Feld nur an, nie ab (feldweises Maximum) — so kann ein verspätetes Lade-Echo einen
-     *  in dieser Sitzung bereits erspielten höheren Score oder eine längere Serie nicht überschreiben. */
-    fun setBest(bestScore: Int, bestStreak: Int) {
-        _state.update {
-            it.copy(
-                bestScore = maxOf(it.bestScore, bestScore),
-                bestStreak = maxOf(it.bestStreak, bestStreak),
-            )
+     *  Hebt jedes Feld jeder Stufe nur an, nie ab (feldweises Maximum pro Stufe) — so kann ein
+     *  verspätetes Lade-Echo einen in dieser Sitzung bereits erspielten höheren Score oder eine
+     *  längere Serie nicht überschreiben. */
+    fun setBests(loaded: Map<DojoLevel, LevelBest>) {
+        _state.update { state ->
+            val merged = state.bests.toMutableMap()
+            for ((level, best) in loaded) {
+                val cur = merged[level] ?: LevelBest()
+                merged[level] = LevelBest(maxOf(cur.score, best.score), maxOf(cur.streak, best.streak))
+            }
+            state.copy(bests = merged)
         }
     }
 
@@ -240,17 +251,23 @@ class DojoViewModel(
     }
 
     private fun registerCorrect() {
-        val s = _state.value
-        val newScore = s.score + POINTS_PER_HIT + s.streak * STREAK_BONUS
-        val newStreak = s.streak + 1
-        // Bestwerte als zwei unabhängige Maxima mitführen: jedes Feld klettert für sich, ohne dass
-        // Score und Serie aus demselben Lauf stammen müssen. resetGame lässt die Best-Felder stehen.
+        // Aus _state.value heraus rechnen (einmal lesen, wie onFunction): kein separater Snapshot.
         _state.update {
+            // Buchstaben-Stufen: ein Tap = fixe Grundpunkte. WORT-Stufe: nach Wortlänge skaliert, damit
+            // ein vollständiges Wort proportional zum Aufwand (Anzahl Taps) zählt — sonst wäre ein
+            // 12-Zeichen-Wort so viel wert wie ein einzelner Vokal-Tap und das Punkte-Grinden liefe
+            // immer über den leichtesten Pool. (Die qu-Taste der Alphabet-Stufe bleibt ein Tap = fix.)
+            val base = if (it.level == DojoLevel.WORDS) POINTS_PER_HIT * it.target.length else POINTS_PER_HIT
+            val newScore = it.score + base + it.streak * STREAK_BONUS
+            val newStreak = it.streak + 1
+            // Stufen-Rekord als zwei unabhängige Maxima mitführen: jedes Feld klettert für sich, ohne
+            // dass Score und Serie aus demselben Lauf stammen müssen. resetGame lässt die Rekorde stehen.
+            val cur = it.bestFor(it.level)
+            val updatedBest = LevelBest(maxOf(cur.score, newScore), maxOf(cur.streak, newStreak))
             it.copy(
                 score = newScore,
                 streak = newStreak,
-                bestScore = maxOf(it.bestScore, newScore),
-                bestStreak = maxOf(it.bestStreak, newStreak),
+                bests = it.bests + (it.level to updatedBest),
                 lastResult = true,
             )
         }
@@ -281,19 +298,6 @@ class DojoViewModel(
                 gameOver = false,
             )
         }
-        nextChallenge()
-    }
-
-    /**
-     * Wechselt Pool/Ziel bei einem Stufen- oder Moduswechsel, **ohne** den laufenden Spielstand
-     * anzutasten: Score, Serie und Leben bleiben stehen — ein Wechsel ist keine Strafe (anders als
-     * [resetGame], das nur beim Neustart nach Game Over greift). Nur der Guided-Cursor springt auf
-     * den Anfang des neuen Pools und es wird ein frisches Ziel gezogen; ein etwaiger Wort-Fortschritt
-     * und ein stehengebliebenes Treffer/Fehler-Aufblitzen werden verworfen.
-     */
-    private fun switchPool() {
-        guidedIndex = 0
-        _state.update { it.copy(typed = "", lastResult = null) }
         nextChallenge()
     }
 

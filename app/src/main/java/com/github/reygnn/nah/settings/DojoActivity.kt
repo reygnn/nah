@@ -4,9 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.reygnn.nah.NahApplication
 import com.github.reygnn.nah.ui.DojoScreen
@@ -41,23 +43,33 @@ class DojoActivity : ComponentActivity() {
                 val viewModel: DojoViewModel = viewModel()
 
                 // Die WANN-schreiben-Entscheidung lebt in DojoBestPersistence (testbar, ohne Compose);
-                // hier bleibt nur die Erkennung des Auslösers. Der laufende state.bestScore/bestStreak
-                // klettert weiter live fürs Scoreboard, treibt den Disk-Write aber NICHT (früher: ein
-                // Write pro neuem Höchststand). `remember`t → ein persisted-Spiegel je Bildschirm.
+                // hier bleibt nur die Erkennung der Auslöser. Die laufenden state.bests klettern weiter
+                // live fürs Scoreboard, treiben den Disk-Write aber NICHT (früher: ein Write pro neuem
+                // Höchststand). `remember`t → ein persisted-Spiegel je Bildschirm.
                 val persistence = remember { DojoBestPersistence(stats) }
+                val state by viewModel.state.collectAsStateWithLifecycle()
 
                 LaunchedEffect(viewModel) { persistence.seed(viewModel) }
 
-                // EINZIGER Schreib-Auslöser: ON_STOP deckt jedes reale Verlassen ab (Home/Recents/Back/
-                // Screen-off, auch den Config-Change). Eine separate gameOver-Kante gab es früher als
-                // Hosenträger gegen Prozesstod *im Vordergrund ohne ON_STOP* (= Crash) — für einen
-                // persönlichen Bestwert die Pipeline nicht wert. Bewusst auf dem prozessweiten appScope,
-                // NICHT auf einem rememberCoroutineScope: ein Config-Change löst ON_STOP aus und reisst
-                // zugleich die Composition (und deren Scope) ab — der noch nicht angelaufene
-                // DataStore-Write ginge sonst verloren.
+                // ZWEI Schreib-Auslöser, beide bewusst auf dem prozessweiten appScope (NICHT einem
+                // rememberCoroutineScope): ein noch nicht angelaufener DataStore-Write soll das Abreissen
+                // der Composition überleben.
+                //
+                // (1) ON_STOP deckt jedes reale Verlassen ab (Home/Recents/Back/Screen-off, auch den
+                //     Config-Change, der die Composition und ihren Scope zugleich abreisst).
+                // (2) Die Game-Over-Kante deckt die Lücke, die ON_STOP offen lässt: ein Prozesstod *im
+                //     Vordergrund* (Crash) nach einem beendeten Lauf. Game Over ist eine echte Run-Grenze
+                //     und der Moment, in dem ein Rekord am ehesten final ist — nur ein Crash MITTEN im
+                //     noch laufenden Lauf verliert dann etwas, und ein nicht zu Ende gespielter Lauf ist
+                //     weit verschmerzbarer als ein abgeschlossener. persistIfBetter ist idempotent, ein
+                //     anschliessendes ON_STOP schreibt also nicht doppelt.
                 LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
-                    val best = viewModel.state.value.let { DojoBest(it.bestScore, it.bestStreak) }
-                    appScope.launch { persistence.persistIfBetter(best) }
+                    appScope.launch { persistence.persistIfBetter(DojoBest(viewModel.state.value.bests)) }
+                }
+                LaunchedEffect(state.gameOver) {
+                    if (state.gameOver) {
+                        appScope.launch { persistence.persistIfBetter(DojoBest(viewModel.state.value.bests)) }
+                    }
                 }
 
                 DojoScreen(viewModel = viewModel)

@@ -162,11 +162,26 @@ class DojoViewModelTest {
             assertEquals(0, vm.state.value.score)
             assertEquals(DojoState.MAX_LIVES, vm.state.value.lives)
         }
-        // Letztes Zeichen vervollständigt das Wort → Punkte, neues Ziel, typed zurückgesetzt.
+        // Letztes Zeichen vervollständigt das Wort → Punkte (nach Wortlänge skaliert: 10 je Zeichen),
+        // neues Ziel, typed zurückgesetzt.
         vm.type(word.last().toString())
-        assertEquals(10, vm.state.value.score)
+        assertEquals(10 * word.length, vm.state.value.score)
         assertEquals("", vm.state.value.typed)
         assertTrue(vm.state.value.target.isNotEmpty())
+    }
+
+    @Test
+    fun `Wort-Treffer skaliert mit der Wortlaenge und zaehlt auf den Wort-Rekord, nicht den Vokal-Rekord`() {
+        val vm = vm()
+        vm.setMode(DojoMode.GUIDED)
+        vm.setLevel(DojoLevel.WORDS)
+        val word = vm.state.value.target
+        word.forEach { vm.tapChar(it) } // ganzes Wort über echte Einzel-Taps vollenden
+        // Erster Treffer (Serie 0) → reine Grundpunkte, aber nach Wortlänge skaliert (10 je Zeichen).
+        assertEquals(10 * word.length, vm.state.value.score)
+        assertEquals(10 * word.length, vm.state.value.bestFor(DojoLevel.WORDS).score)
+        // Der Rekord landet auf der WORT-Stufe; eine Buchstaben-Stufe bleibt unberührt (getrennt).
+        assertEquals(0, vm.state.value.bestFor(DojoLevel.VOWELS).score)
     }
 
     @Test
@@ -246,7 +261,7 @@ class DojoViewModelTest {
         vm.onKey(CharKey('o')) // 10 Punkte, Serie 1
         repeat(DojoState.MAX_LIVES) { vm.onKey(CharKey('z')) } // 'z' kein Vokal → Game Over
         assertTrue(vm.state.value.gameOver)
-        val bestBefore = vm.state.value.bestScore // 10 — muss den Reset überleben
+        val vowelsBest = vm.state.value.bestFor(DojoLevel.VOWELS).score // 10 — muss den Reset überleben
         vm.setLevel(DojoLevel.CONSONANTS)
         val s = vm.state.value
         // Voll zurückgesetzt (kein widersprüchlicher target-gesetzt-aber-gameOver-Zustand) …
@@ -255,8 +270,8 @@ class DojoViewModelTest {
         assertEquals(DojoState.MAX_LIVES, s.lives)
         // … und das frische Ziel kommt aus dem NEUEN Pool (erster Konsonant in Layout-Reihenfolge).
         assertEquals("h", s.target)
-        // Der Bestwert bleibt selbstverständlich erhalten.
-        assertEquals(bestBefore, s.bestScore)
+        // Der Stufen-Rekord der Vokal-Stufe bleibt selbstverständlich erhalten.
+        assertEquals(vowelsBest, s.bestFor(DojoLevel.VOWELS).score)
     }
 
     @Test
@@ -293,37 +308,40 @@ class DojoViewModelTest {
         vm.setMode(DojoMode.GUIDED)
         vm.onKey(CharKey('o')) // +10, Serie 1
         vm.onKey(CharKey('u')) // +12 → 22, Serie 2
-        assertEquals(22, vm.state.value.bestScore)
-        assertEquals(2, vm.state.value.bestStreak)
+        assertEquals(22, vm.state.value.bestFor(DojoLevel.VOWELS).score)
+        assertEquals(2, vm.state.value.bestFor(DojoLevel.VOWELS).streak)
         // Fünf Fehltipper → Game Over, danach ein Tap → Neustart (frischer Spielstand).
         repeat(DojoState.MAX_LIVES) { vm.onKey(CharKey('z')) } // 'z' ist kein Vokal → falsch
         assertTrue(vm.state.value.gameOver)
         vm.onKey(CharKey('o')) // startet neu
         assertEquals(0, vm.state.value.score)
-        // Bestwert bleibt über den Reset hinweg erhalten.
-        assertEquals(22, vm.state.value.bestScore)
-        assertEquals(2, vm.state.value.bestStreak)
+        // Stufen-Rekord bleibt über den Reset hinweg erhalten.
+        assertEquals(22, vm.state.value.bestFor(DojoLevel.VOWELS).score)
+        assertEquals(2, vm.state.value.bestFor(DojoLevel.VOWELS).streak)
     }
 
     @Test
-    fun `setBest hebt Score und Serie unabhaengig an und senkt nie`() {
+    fun `setBests hebt Score und Serie pro Stufe unabhaengig an und senkt nie`() {
         val vm = vm()
-        vm.setBest(100, 5)
-        assertEquals(100, vm.state.value.bestScore)
-        assertEquals(5, vm.state.value.bestStreak)
+        fun vowels() = vm.state.value.bestFor(DojoLevel.VOWELS)
+        vm.setBests(mapOf(DojoLevel.VOWELS to LevelBest(100, 5)))
+        assertEquals(100, vowels().score)
+        assertEquals(5, vowels().streak)
         // Höhere Serie, niedrigerer Score → die Serie steigt unabhängig auf 20, der Score bleibt 100
         // (jedes Feld ist ein eigenes Maximum, kein Paar).
-        vm.setBest(80, 20)
-        assertEquals(100, vm.state.value.bestScore)
-        assertEquals(20, vm.state.value.bestStreak)
+        vm.setBests(mapOf(DojoLevel.VOWELS to LevelBest(80, 20)))
+        assertEquals(100, vowels().score)
+        assertEquals(20, vowels().streak)
         // Höherer Score, kürzere Serie → der Score steigt auf 120, die Serie bleibt bei 20.
-        vm.setBest(120, 2)
-        assertEquals(120, vm.state.value.bestScore)
-        assertEquals(20, vm.state.value.bestStreak)
+        vm.setBests(mapOf(DojoLevel.VOWELS to LevelBest(120, 2)))
+        assertEquals(120, vowels().score)
+        assertEquals(20, vowels().streak)
         // In beiden Feldern schlechter → nichts ändert sich (senkt nie).
-        vm.setBest(50, 1)
-        assertEquals(120, vm.state.value.bestScore)
-        assertEquals(20, vm.state.value.bestStreak)
+        vm.setBests(mapOf(DojoLevel.VOWELS to LevelBest(50, 1)))
+        assertEquals(120, vowels().score)
+        assertEquals(20, vowels().streak)
+        // Eine andere Stufe bleibt davon unberührt (Rekorde sind pro Stufe getrennt).
+        assertEquals(0, vm.state.value.bestFor(DojoLevel.CONSONANTS).score)
     }
 
     @Test
@@ -332,8 +350,8 @@ class DojoViewModelTest {
         vm.setMode(DojoMode.GUIDED) // VOWELS, Ziele o, u, a, i, e
         // Lauf A: fünf Treffer in Folge → Score 70 bei Serie 5.
         repeat(5) { vm.onKey(CharKey(vm.state.value.target.first())) }
-        assertEquals(70, vm.state.value.bestScore)
-        assertEquals(5, vm.state.value.bestStreak)
+        assertEquals(70, vm.state.value.bestFor(DojoLevel.VOWELS).score)
+        assertEquals(5, vm.state.value.bestFor(DojoLevel.VOWELS).streak)
         // … dann Game Over.
         repeat(DojoState.MAX_LIVES) { vm.onKey(CharKey('x')) }
         assertTrue(vm.state.value.gameOver)
@@ -342,10 +360,10 @@ class DojoViewModelTest {
         repeat(4) { vm.onKey(CharKey(vm.state.value.target.first())) } // Serie auf 4
         vm.onKey(CharKey('x')) // Fehltipp: Serie bricht, Lauf läuft mit 4 Leben weiter
         repeat(4) { vm.onKey(CharKey(vm.state.value.target.first())) } // weiter punkten, Serie nur bis 4
-        // Unabhängige Maxima: Score 104 aus Lauf B schlägt 70 → bestScore 104. Die längste Serie bleibt
-        // die 5 aus Lauf A — sie überlebt getrennt vom Score-Bestlauf (kein Paar).
-        assertEquals(104, vm.state.value.bestScore)
-        assertEquals(5, vm.state.value.bestStreak)
+        // Unabhängige Maxima (innerhalb der Vokal-Stufe): Score 104 aus Lauf B schlägt 70 → Score 104.
+        // Die längste Serie bleibt die 5 aus Lauf A — sie überlebt getrennt vom Score-Bestlauf (kein Paar).
+        assertEquals(104, vm.state.value.bestFor(DojoLevel.VOWELS).score)
+        assertEquals(5, vm.state.value.bestFor(DojoLevel.VOWELS).streak)
     }
 
     @Test
@@ -409,21 +427,26 @@ class DojoViewModelTest {
     }
 
     @Test
-    fun `Stufenwechsel laesst den Spielstand stehen und tauscht nur den Pool`() {
+    fun `Stufenwechsel startet einen frischen Lauf, die Stufen-Rekorde bleiben`() {
         val vm = vm()
         vm.setMode(DojoMode.GUIDED)
-        vm.onKey(CharKey('o')) // korrekt → 10 Punkte
+        vm.onKey(CharKey('o')) // korrekt → 10 Punkte auf der Vokal-Stufe (Rekord)
         vm.onKey(CharKey('x')) // Fehltipp → ein Leben weg
         assertEquals(10, vm.state.value.score)
         assertEquals(DojoState.MAX_LIVES - 1, vm.state.value.lives)
         vm.setLevel(DojoLevel.CONSONANTS)
         val s = vm.state.value
-        // Spielstand bleibt erhalten — ein Stufenwechsel ist keine Strafe.
-        assertEquals(10, s.score)
-        assertEquals(DojoState.MAX_LIVES - 1, s.lives)
-        // Nur Pool/Ziel wechseln: erster Konsonant in Layout-Reihenfolge (h, s, r, t, n, d).
+        // Frischer Lauf für die neue Stufe: Score/Serie/Leben zurück auf Anfang (ein Lauf gehört zu
+        // genau einer Stufe → kein Leck in den Rekord der neuen Stufe).
+        assertEquals(0, s.score)
+        assertEquals(0, s.streak)
+        assertEquals(DojoState.MAX_LIVES, s.lives)
+        // Erster Konsonant in Layout-Reihenfolge (h, s, r, t, n, d), kein Fortschritt/Aufblitzen.
         assertEquals("h", s.target)
         assertEquals("", s.typed)
-        assertEquals(null, s.lastResult) // stehengebliebenes Aufblitzen verworfen
+        assertEquals(null, s.lastResult)
+        // Der Vokal-Stufen-Rekord aus dem vorigen Lauf bleibt; die neue Stufe startet bei null.
+        assertEquals(10, s.bestFor(DojoLevel.VOWELS).score)
+        assertEquals(0, s.bestFor(DojoLevel.CONSONANTS).score)
     }
 }

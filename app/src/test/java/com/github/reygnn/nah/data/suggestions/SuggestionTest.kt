@@ -30,6 +30,9 @@ class WordIndexTest {
 
     @Test
     fun `gleiche Frequenz wird alphabetisch sortiert (deterministisch)`() {
+        // Das leere Präfix ist die dokumentierte „globale Top-limit"-Abfrage (siehe
+        // WordIndex.getSuggestions): hier genutzt, um die Tie-Break-Ordnung quer über Anfangsbuchstaben
+        // zu prüfen. Die Mindestpräfixlänge ist Aufrufer-Policy (SuggestionRepository), kein Index-Belang.
         val t = WordIndex().apply {
             insert("birne", 500)
             insert("apfel", 500)

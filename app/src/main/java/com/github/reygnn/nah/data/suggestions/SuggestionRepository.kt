@@ -27,6 +27,7 @@ class SuggestionRepository : Suggester {
         if (builtInIndex != null) return
         builtInIndex = WordIndex().apply {
             GermanWordList.words.forEach { (word, frequency) -> insert(word, frequency) }
+            build() // fertig materialisieren, bevor das @Volatile-Feld die Instanz veröffentlicht
         }
     }
 
@@ -46,7 +47,10 @@ class SuggestionRepository : Suggester {
             // sorted() vor dem Einfügen: stünden zwei Eigenwörter auf demselben Key mit gleicher
             // Frequenz (z. B. „Müller"/„müller"), entschiede sonst die undefinierte Set-Reihenfolge, welches
             // Casing gewinnt. Welches genau, ist egal — nur stabil muss es sein.
-            WordIndex().apply { words.sorted().forEach { insert(it, USER_WORD_FREQUENCY) } }
+            WordIndex().apply {
+                words.sorted().forEach { insert(it, USER_WORD_FREQUENCY) }
+                build() // fertig materialisieren vor der @Volatile-Veröffentlichung
+            }
         }
     }
 
@@ -67,13 +71,11 @@ class SuggestionRepository : Suggester {
         if (includeUser) userIndex?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
         if (includeBuiltIn) builtInIndex?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
 
-        // Sekundär case-insensitiv alphabetisch → deterministisch bei Frequenz-Gleichstand (wie
-        // WordIndex.getSuggestions).
+        // Geteilte Ordnung mit WordIndex.getSuggestions (SUGGESTION_ORDER): höchste Frequenz zuerst,
+        // bei Gleichstand case-insensitiv alphabetisch. Jeder Index hat bereits seine Top-N
+        // vorsortiert; nach dem Merge zweier solcher Listen (≤ 2·MAX) gilt dieselbe Regel erneut.
         return merged.values
-            .sortedWith(
-                compareByDescending<Pair<String, Int>> { it.second }
-                    .thenBy(String.CASE_INSENSITIVE_ORDER) { it.first },
-            )
+            .sortedWith(SUGGESTION_ORDER)
             .take(MAX_SUGGESTIONS)
             .map { it.first }
     }
