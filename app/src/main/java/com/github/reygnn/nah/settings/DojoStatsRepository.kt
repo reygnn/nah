@@ -38,14 +38,19 @@ class DojoStatsRepository(private val context: Context) {
         .map { DojoBest(it[Keys.bestScore] ?: 0, it[Keys.bestStreak] ?: 0) }
 
     /**
-     * Hält [score]/[streak] als Bestwerte fest — **monoton**, also nie unter den gespeicherten Wert.
-     * Damit ist der Aufruf idempotent: der ViewModel führt seinen Bestwert ohnehin schon als Maximum,
-     * und ein Schreiben mit demselben oder niedrigeren Wert ändert nichts.
+     * Hält [score]/[streak] als **Run-Paar** fest: ein besserer Lauf gewinnt — höherer Score zuerst,
+     * bei Score-Gleichstand die längere Serie — und ersetzt dann Score UND Serie gemeinsam. So bleibt
+     * der gespeicherte Wert ein echter Lauf, nicht zwei unabhängige Maxima aus verschiedenen Läufen.
+     * Der Aufruf ist idempotent: ein gleich gutes oder schlechteres Paar ändert nichts.
      */
     suspend fun recordBest(score: Int, streak: Int) {
         context.dojoStatsDataStore.edit { prefs ->
-            prefs[Keys.bestScore] = maxOf(prefs[Keys.bestScore] ?: 0, score)
-            prefs[Keys.bestStreak] = maxOf(prefs[Keys.bestStreak] ?: 0, streak)
+            val curScore = prefs[Keys.bestScore] ?: 0
+            val curStreak = prefs[Keys.bestStreak] ?: 0
+            if (score > curScore || (score == curScore && streak > curStreak)) {
+                prefs[Keys.bestScore] = score
+                prefs[Keys.bestStreak] = streak
+            }
         }
     }
 

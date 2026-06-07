@@ -40,13 +40,13 @@ class DojoActivity : ComponentActivity() {
                 // Vorher zwei Effekte mit blossem distinctUntilChanged: das schrieb bei JEDEM Öffnen
                 // mindestens einmal auf die Platte, obwohl sich nichts geändert hatte — der Collector
                 // emittiert beim Start den aktuellen Wert (anfangs (0,0)), und DataStore.edit{} schreibt
-                // immer, auch wenn maxOf den Wert nicht anhebt. Jetzt gleicht der Collector gegen die
-                // geladene Basis ab und ruft recordBest nur bei einem tatsächlich höheren Wert auf
-                // (recordBest bleibt zusätzlich monoton als Sicherung).
+                // immer, auch wenn der Wert sich nicht anhebt. Jetzt gleicht der Collector gegen die
+                // geladene Basis ab und ruft recordBest nur bei einem tatsächlich besseren Lauf auf
+                // (Run-Paar-Ordnung; recordBest setzt dieselbe Regel persistenzseitig als Sicherung durch).
                 LaunchedEffect(viewModel) {
                     val best = stats.best.first()
-                    // setBest hebt nur an, senkt nie — ein vor dem Laden bereits erspielter höherer
-                    // Wert (das first() suspendiert kurz) überlebt also.
+                    // setBest übernimmt nur ein besseres Run-Paar — ein vor dem Laden bereits erspielter
+                    // besserer Lauf (das first() suspendiert kurz) überlebt also.
                     viewModel.setBest(best.score, best.streak)
                     var persistedScore = best.score
                     var persistedStreak = best.streak
@@ -54,10 +54,12 @@ class DojoActivity : ComponentActivity() {
                         .map { it.bestScore to it.bestStreak }
                         .distinctUntilChanged()
                         .collect { (score, streak) ->
-                            if (score > persistedScore || streak > persistedStreak) {
+                            // Run-Paar-Ordnung: höherer Score, bei Gleichstand längere Serie. Score und
+                            // Serie werden als EIN Paar fortgeschrieben, nicht je für sich maximiert.
+                            if (score > persistedScore || (score == persistedScore && streak > persistedStreak)) {
                                 stats.recordBest(score, streak)
-                                persistedScore = maxOf(persistedScore, score)
-                                persistedStreak = maxOf(persistedStreak, streak)
+                                persistedScore = score
+                                persistedStreak = streak
                             }
                         }
                 }

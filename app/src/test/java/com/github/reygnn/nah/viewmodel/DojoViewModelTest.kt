@@ -3,6 +3,7 @@ package com.github.reygnn.nah.viewmodel
 import com.github.reygnn.nah.layout.CharKey
 import com.github.reygnn.nah.layout.FunctionKey
 import com.github.reygnn.nah.layout.KeyAction
+import com.github.reygnn.nah.layout.OptimizedLayout
 import kotlin.random.Random
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -265,14 +266,75 @@ class DojoViewModelTest {
     }
 
     @Test
-    fun `setBest hebt den Bestwert an, senkt ihn aber nie`() {
+    fun `setBest uebernimmt nur ein besseres Run-Paar - Score zuerst, dann Serie`() {
         val vm = vm()
-        vm.setBest(100, 7)
+        vm.setBest(100, 5)
         assertEquals(100, vm.state.value.bestScore)
-        assertEquals(7, vm.state.value.bestStreak)
-        vm.setBest(50, 3) // niedriger → ignoriert
+        assertEquals(5, vm.state.value.bestStreak)
+        // Höhere Serie, aber niedrigerer Score → KEIN besserer Lauf: die Serie wird NICHT auf 20 gehoben
+        // (kein unabhängiges Maximum — Score und Serie bleiben EIN Paar).
+        vm.setBest(80, 20)
         assertEquals(100, vm.state.value.bestScore)
-        assertEquals(7, vm.state.value.bestStreak)
+        assertEquals(5, vm.state.value.bestStreak)
+        // Gleicher Score, längere Serie → besserer Lauf.
+        vm.setBest(100, 8)
+        assertEquals(100, vm.state.value.bestScore)
+        assertEquals(8, vm.state.value.bestStreak)
+        // Höherer Score gewinnt und nimmt seine (kürzere) Serie mit.
+        vm.setBest(120, 2)
+        assertEquals(120, vm.state.value.bestScore)
+        assertEquals(2, vm.state.value.bestStreak)
+    }
+
+    @Test
+    fun `Bestwert ist ein Run-Paar - der hoechste Score traegt die Serie SEINES Laufs`() {
+        val vm = vm()
+        vm.setMode(DojoMode.GUIDED) // VOWELS, Ziele o, u, a, i, e
+        // Lauf A: fünf Treffer in Folge → Score 70 bei Serie 5.
+        repeat(5) { vm.onKey(CharKey(vm.state.value.target.first())) }
+        assertEquals(70, vm.state.value.bestScore)
+        assertEquals(5, vm.state.value.bestStreak)
+        // … dann Game Over.
+        repeat(DojoState.MAX_LIVES) { vm.onKey(CharKey('x')) }
+        assertTrue(vm.state.value.gameOver)
+        // Lauf B: mehr Treffer (höherer Score), aber die Serie wird unterbrochen → Lauf-Maximum nur 4.
+        vm.onKey(CharKey(vm.state.value.target.first())) // Game-Over-Tap startet neu (zählt nicht)
+        repeat(4) { vm.onKey(CharKey(vm.state.value.target.first())) } // Serie auf 4
+        vm.onKey(CharKey('x')) // Fehltipp: Serie bricht, Lauf läuft mit 4 Leben weiter
+        repeat(4) { vm.onKey(CharKey(vm.state.value.target.first())) } // weiter punkten, Serie nur bis 4
+        // Run-Paar: Score 104 schlägt 70 → der Bestwert trägt die Serie VON Lauf B (4), nicht die global
+        // höchste (5 aus Lauf A). Zwei unabhängige Maxima ergäben fälschlich (104, 5).
+        assertEquals(104, vm.state.value.bestScore)
+        assertEquals(4, vm.state.value.bestStreak)
+    }
+
+    @Test
+    fun `jedes Ziel der Wort-Stufe ist mit der echten Tastatur tippbar`() {
+        val vm = vm()
+        vm.setMode(DojoMode.GUIDED)
+        vm.setLevel(DojoLevel.WORDS)
+        // Den ganzen Wort-Pool einmal durchlaufen (Guided ist zyklisch): jedes Ziel komplett in EINER
+        // Eingabe tippen → Treffer → nächstes Ziel, bis sich das erste Ziel wiederholt.
+        val pool = linkedSetOf<String>()
+        while (true) {
+            val t = vm.state.value.target
+            if (!pool.add(t)) break
+            vm.onAlternative(t)
+        }
+        assertTrue("Wort-Pool darf nicht leer sein", pool.isNotEmpty())
+        // Produzierbare Zeichen = Vereinigung aller CharKey-Outputs UND ihrer Long-Press-Alternativen.
+        val producible = OptimizedLayout.deCh().rows.flatten()
+            .filterIsInstance<CharKey>()
+            .flatMap { listOf(it.output) + it.alternatives }
+            .joinToString("")
+            .lowercase()
+            .toSet()
+        // Genau die Zeichen, an denen der Drill ohne Filter hängenbliebe, dürfen NICHT produzierbar sein …
+        assertFalse("Leerzeichen darf nicht tippbar sein (Phrasen-Schutz)", ' ' in producible)
+        assertFalse("ß ist nicht im Layout (de-CH: ss)", 'ß' in producible)
+        // … und jedes gedrillte Ziel besteht ausschliesslich aus produzierbaren Zeichen. Dieser Test ist
+        // zugleich die Regression gegen ein wachsendes Korpus: ein untippbares Wort fiele hier sofort auf.
+        pool.forEach { w -> assertTrue("untippbares Ziel im Wort-Drill: $w", w.all { it in producible }) }
     }
 
     @Test

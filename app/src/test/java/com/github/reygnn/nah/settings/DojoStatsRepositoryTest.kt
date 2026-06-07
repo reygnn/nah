@@ -42,13 +42,20 @@ class DojoStatsRepositoryTest {
     }
 
     @Test
-    fun `recordBest hebt nur an, senkt nie und zieht Score und Serie unabhaengig nach`() = runTest {
+    fun `recordBest speichert das beste Run-Paar - Score zuerst, dann Serie`() = runTest {
         repo.recordBest(120, 9)
-        repo.recordBest(50, 3) // beides niedriger → ignoriert
+        repo.recordBest(50, 3) // schlechterer Lauf → ignoriert
         assertEquals(DojoBest(120, 9), repo.best.first())
-        // Höherer Score bei niedrigerer Serie hebt nur den Score — die Felder sind unabhängig.
+        // Höhere Serie, aber niedrigerer Score → KEIN besserer Lauf, nichts ändert sich.
+        repo.recordBest(80, 20)
+        assertEquals(DojoBest(120, 9), repo.best.first())
+        // Höherer Score gewinnt und nimmt die Serie SEINES Laufs mit — auch wenn sie kürzer ist (Paar,
+        // nicht zwei unabhängige Maxima): die 9 wird NICHT gehalten.
         repo.recordBest(200, 1)
-        assertEquals(DojoBest(200, 9), repo.best.first())
+        assertEquals(DojoBest(200, 1), repo.best.first())
+        // Gleicher Score, längere Serie → besserer Lauf.
+        repo.recordBest(200, 4)
+        assertEquals(DojoBest(200, 4), repo.best.first())
     }
 
     @Test

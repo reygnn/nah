@@ -97,19 +97,41 @@ class DojoViewModel(
     // Tastatur nie auseinanderlaufen. Nur gelesen.
     private val charKeys = OptimizedLayout.deCh().rows.flatten().filterIsInstance<CharKey>()
 
+    // Jedes Zeichen, das die echte Tastatur produzieren kann — die Vereinigung aller CharKey-Outputs
+    // UND ihrer Long-Press-Alternativen (qu, ch, Umlaute, Akzente …), kleingeschrieben. Da das volle
+    // Alphabet je eine eigene Taste hat und ä/ö/ü als Ein-Zeichen-Alternative auf ihrem Grundvokal
+    // liegen, gilt: „jedes Zeichen einzeln tippbar" ist genau „jedes Zeichen ist hier enthalten".
+    private val producibleChars: Set<Char> =
+        charKeys.flatMap { listOf(it.output) + it.alternatives }
+            .joinToString("")
+            .lowercase()
+            .toSet()
+
     private val vowelTargets = charKeys.filter { it.char in VOWELS_SET }.map { it.output.lowercase() }
     private val consonantTargets = charKeys.filter { it.char in CONSONANTS_SET }.map { it.output.lowercase() }
     // Die qu-Taste committet „qu" → ihr Ziel ist „qu" (genau das, was ein Tap liefert), ehrlich
     // zum Layout. Alle anderen Tasten committen ihren eigenen Buchstaben.
     private val alphabetTargets = charKeys.map { it.output.lowercase() }
     // Häufigste zuerst (Guided beginnt mit den geläufigsten Wörtern), kleingeschrieben, dedupliziert.
+    // GEFILTERT auf tippbare Wörter: das Korpus (GermanWordList) darf laut CLAUDE.md wachsen, OHNE das
+    // eingefrorene Layout anzufassen. Käme je ein Wort mit einem hier nicht produzierbaren Zeichen in
+    // den Drill (Leerzeichen/Phrase, ß, Ziffer …), wäre sein Ziel unausweichlich untippbar und triebe
+    // garantiert in den Game Over — ein Fehltipp-Tod ohne richtigen Tap. Der Filter koppelt den Pool
+    // ehrlich an das, was die Tastatur committen kann; der Round-Trip-Test pinnt die Invariante.
     private val wordTargets = GermanWordList.words
         .sortedByDescending { it.second }
         .map { it.first.lowercase() }
         .distinct()
+        .filter { word -> word.all { it in producibleChars } }
 
     // Laufzeiger für den Guided-Modus (Index in den aktuellen Pool); im Random-Modus ungenutzt.
     private var guidedIndex = 0
+
+    // Höchste Serie INNERHALB des laufenden Laufs (nicht global). Der Bestwert ist ein echtes Run-Paar:
+    // Score UND die Serie DESSELBEN Laufs. Der Score steigt im Lauf monoton, die Serie kann durch
+    // Fehltipper auf 0 fallen — darum braucht es dieses Lauf-Maximum, statt die Serie global zu
+    // maximieren (sonst stammten Score und Serie aus zwei verschiedenen Läufen). resetGame setzt es null.
+    private var runBestStreak = 0
 
     init {
         nextChallenge()
@@ -158,14 +180,16 @@ class DojoViewModel(
     /** Lädt den persistierten Bestwert ins Spiel — von der Activity beim Beobachten von
      *  `DojoStatsRepository` aufgerufen (analog zu `KeyboardViewModel.applySettings`: Persistenz
      *  fliesst durch eine Methode, nicht durch den Konstruktor, damit der ViewModel rein bleibt).
-     *  Hebt den Bestwert nur an, senkt ihn nie — so kann ein verspätetes Lade-Echo einen bereits
-     *  in dieser Sitzung erspielten höheren Wert nicht überschreiben. */
+     *  Übernimmt das geladene Run-Paar nur, wenn es einen besseren Lauf darstellt als der bereits im
+     *  Zustand stehende ([isBetterRun]) — so kann ein verspätetes Lade-Echo einen in dieser Sitzung
+     *  bereits erspielten besseren Lauf nicht überschreiben, und Score/Serie bleiben EIN Paar. */
     fun setBest(bestScore: Int, bestStreak: Int) {
         _state.update {
-            it.copy(
-                bestScore = maxOf(it.bestScore, bestScore),
-                bestStreak = maxOf(it.bestStreak, bestStreak),
-            )
+            if (isBetterRun(bestScore, bestStreak, it.bestScore, it.bestStreak)) {
+                it.copy(bestScore = bestScore, bestStreak = bestStreak)
+            } else {
+                it
+            }
         }
     }
 
@@ -220,19 +244,29 @@ class DojoViewModel(
     }
 
     private fun registerCorrect() {
+        val s = _state.value
+        val newScore = s.score + POINTS_PER_HIT + s.streak * STREAK_BONUS
+        val newStreak = s.streak + 1
+        runBestStreak = maxOf(runBestStreak, newStreak)
+        // Bestwert als Run-Paar mitführen: nur wenn DIESER Lauf den bisherigen besten schlägt, übernehmen
+        // wir Score UND die Serie dieses Laufs gemeinsam. resetGame lässt die Best-Felder bewusst stehen.
+        val better = isBetterRun(newScore, runBestStreak, s.bestScore, s.bestStreak)
         _state.update {
-            val newScore = it.score + POINTS_PER_HIT + it.streak * STREAK_BONUS
-            val newStreak = it.streak + 1
             it.copy(
                 score = newScore,
                 streak = newStreak,
-                // Bestwert monoton mitführen; resetGame lässt diese Felder bewusst stehen.
-                bestScore = maxOf(it.bestScore, newScore),
-                bestStreak = maxOf(it.bestStreak, newStreak),
+                bestScore = if (better) newScore else it.bestScore,
+                bestStreak = if (better) runBestStreak else it.bestStreak,
                 lastResult = true,
             )
         }
     }
+
+    /** Total geordnete „besserer Lauf"-Relation: höherer Score gewinnt, bei Score-Gleichstand die
+     *  längere Serie. Hält Score und Serie als EIN Run-Paar zusammen, statt zweier unabhängiger Maxima
+     *  aus womöglich verschiedenen Läufen. */
+    private fun isBetterRun(score: Int, streak: Int, bestScore: Int, bestStreak: Int): Boolean =
+        score > bestScore || (score == bestScore && streak > bestStreak)
 
     private fun registerWrong() {
         _state.update {
@@ -248,6 +282,7 @@ class DojoViewModel(
 
     private fun resetGame() {
         guidedIndex = 0
+        runBestStreak = 0
         _state.update {
             it.copy(
                 score = 0,
