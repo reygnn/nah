@@ -54,9 +54,10 @@ class DojoActivity : ComponentActivity() {
                         .map { it.bestScore to it.bestStreak }
                         .distinctUntilChanged()
                         .collect { (score, streak) ->
-                            // Run-Paar-Ordnung: höherer Score, bei Gleichstand längere Serie. Score und
-                            // Serie werden als EIN Paar fortgeschrieben, nicht je für sich maximiert.
-                            if (score > persistedScore || (score == persistedScore && streak > persistedStreak)) {
+                            // Run-Paar-Ordnung über die geteilte isBetterRun-Regel (dieselbe, die das
+                            // Spiel und recordBest benutzen): höherer Score, bei Gleichstand längere Serie.
+                            // Score und Serie werden als EIN Paar fortgeschrieben, nicht je für sich maximiert.
+                            if (isBetterRun(score, streak, persistedScore, persistedStreak)) {
                                 stats.recordBest(score, streak)
                                 persistedScore = score
                                 persistedStreak = streak

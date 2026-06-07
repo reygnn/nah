@@ -21,10 +21,6 @@ private val Context.dojoStatsDataStore: DataStore<Preferences> by preferencesDat
     corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
 )
 
-/** Bestwerte des Tipp-Trainings — bester Score und beste Serie, global über alle Stufen/Modi. Der
- *  einzige Dojo-Zustand, der das Verlassen überlebt; der laufende Spielstand absichtlich nicht. */
-data class DojoBest(val score: Int = 0, val streak: Int = 0)
-
 class DojoStatsRepository(private val context: Context) {
 
     private object Keys {
@@ -47,7 +43,7 @@ class DojoStatsRepository(private val context: Context) {
         context.dojoStatsDataStore.edit { prefs ->
             val curScore = prefs[Keys.bestScore] ?: 0
             val curStreak = prefs[Keys.bestStreak] ?: 0
-            if (score > curScore || (score == curScore && streak > curStreak)) {
+            if (isBetterRun(score, streak, curScore, curStreak)) {
                 prefs[Keys.bestScore] = score
                 prefs[Keys.bestStreak] = streak
             }

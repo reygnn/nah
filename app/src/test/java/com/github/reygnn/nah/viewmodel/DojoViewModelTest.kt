@@ -23,6 +23,46 @@ class DojoViewModelTest {
     /** Eingabe eines Strings über den Long-Press-Pfad (geht durch dieselbe onInput-Logik wie ein Tap). */
     private fun DojoViewModel.type(text: String) = onAlternative(text)
 
+    // --- Echtes Tastatur-Eingabemodell (für die Tippbarkeits-Tests) ---
+    // Bewusst NICHT aus der `producibleChars`-Set<Char>-Logik des ViewModels abgeleitet: würde es
+    // dieselbe Quelle benutzen, prüfte der Test den Produktions-Filter gegen eine Kopie seiner selbst.
+
+    private val layoutCharKeys = OptimizedLayout.deCh().rows.flatten().filterIsInstance<CharKey>()
+
+    /** Die Strings, die EIN Tastendruck der echten Tastatur liefern kann: jeder CharKey-Output (ein
+     *  Tap) und jede Long-Press-Alternative (gehalten + gewählt). Das vollständige Modell dessen, was
+     *  eine einzelne Eingabeaktion committet — inkl. Digraphen wie „qu"/„sch". */
+    private val keyboardTokens: Set<String> =
+        layoutCharKeys.flatMap { listOf(it.output) + it.alternatives }.map { it.lowercase() }.toSet()
+
+    /** Davon die Ein-Zeichen-Tokens: genau die Zeichen, die als EIN Tap oder EIN Long-Press fallen.
+     *  Ein Zeichen, das nur als Teilstück eines Mehrzeichen-Tokens vorkommt (z. B. ein Digraph ohne
+     *  eigene Taste), wäre hier NICHT enthalten — und damit nicht einzeln tippbar. */
+    private val singleCharTokens: Set<String> = keyboardTokens.filter { it.length == 1 }.toSet()
+
+    /** Die Ein-Zeichen-Tasten-Outputs (ein Tap) — zur Wahl der ECHTEN Eingabeaktion in [tapChar]:
+     *  ein Tap für eigene Tasten, sonst ein Long-Press (Alternative wie ä/ö/ü/Akzent/einzelnes q). */
+    private val singleCharOutputs: Set<String> =
+        layoutCharKeys.map { it.output.lowercase() }.filter { it.length == 1 }.toSet()
+
+    /** Tippt EIN Zeichen über die Aktion, die ein echter Nutzer ausführen würde: ein Tap, wenn das
+     *  Zeichen ein eigener Tasten-Output ist; sonst ein Long-Press auf die passende Alternative. */
+    private fun DojoViewModel.tapChar(ch: Char) {
+        val token = ch.lowercaseChar().toString()
+        if (token in singleCharOutputs) onKey(CharKey(ch)) else onAlternative(token)
+    }
+
+    /** Läuft den (zyklischen) Guided-Wort-Pool einmal ab und gibt jedes Ziel genau einmal zurück. */
+    private fun DojoViewModel.collectWordPool(): Set<String> {
+        val pool = linkedSetOf<String>()
+        while (true) {
+            val t = state.value.target
+            if (!pool.add(t)) break
+            onAlternative(t) // ganzes Wort → Treffer → nächstes Ziel (nur zum Pool-Ablaufen)
+        }
+        return pool
+    }
+
     @Test
     fun `guided startet mit dem ersten Ziel des Vokal-Pools`() {
         val vm = vm()
@@ -309,32 +349,63 @@ class DojoViewModelTest {
     }
 
     @Test
-    fun `jedes Ziel der Wort-Stufe ist mit der echten Tastatur tippbar`() {
-        val vm = vm()
-        vm.setMode(DojoMode.GUIDED)
-        vm.setLevel(DojoLevel.WORDS)
-        // Den ganzen Wort-Pool einmal durchlaufen (Guided ist zyklisch): jedes Ziel komplett in EINER
-        // Eingabe tippen → Treffer → nächstes Ziel, bis sich das erste Ziel wiederholt.
-        val pool = linkedSetOf<String>()
-        while (true) {
-            val t = vm.state.value.target
-            if (!pool.add(t)) break
-            vm.onAlternative(t)
-        }
-        assertTrue("Wort-Pool darf nicht leer sein", pool.isNotEmpty())
-        // Produzierbare Zeichen = Vereinigung aller CharKey-Outputs UND ihrer Long-Press-Alternativen.
-        val producible = OptimizedLayout.deCh().rows.flatten()
-            .filterIsInstance<CharKey>()
+    fun `jedes produzierbare Zeichen ist als einzelner Tap-Long-Press erreichbar`() {
+        // Die tragende Invariante hinter dem Set<Char>-Wort-Filter (DojoViewModel.producibleChars):
+        // er prüft Zeichen-MITGLIEDSCHAFT und ist nur deshalb äquivalent zu „echt tippbar", weil
+        // JEDES produzierbare Zeichen auch als EINZEL-Token (eigener Tap oder Ein-Zeichen-Long-Press)
+        // fällt. Käme je eine Mehrzeichen-Alternative für ein Zeichen OHNE eigene Taste dazu, wäre das
+        // Zeichen produzierbar (als Teilstück), aber nicht einzeln tippbar — und der Filter liesse ein
+        // untippbares Wort durch. Dieser Test pinnt die Invariante UNABHÄNGIG (Token-Längen, nicht der
+        // Filter selbst): producibleChars ⊆ singleCharTokens.
+        val producibleChars = layoutCharKeys
             .flatMap { listOf(it.output) + it.alternatives }
             .joinToString("")
             .lowercase()
             .toSet()
-        // Genau die Zeichen, an denen der Drill ohne Filter hängenbliebe, dürfen NICHT produzierbar sein …
-        assertFalse("Leerzeichen darf nicht tippbar sein (Phrasen-Schutz)", ' ' in producible)
-        assertFalse("ß ist nicht im Layout (de-CH: ss)", 'ß' in producible)
-        // … und jedes gedrillte Ziel besteht ausschliesslich aus produzierbaren Zeichen. Dieser Test ist
-        // zugleich die Regression gegen ein wachsendes Korpus: ein untippbares Wort fiele hier sofort auf.
-        pool.forEach { w -> assertTrue("untippbares Ziel im Wort-Drill: $w", w.all { it in producible }) }
+        assertTrue("erwartete produzierbare Zeichen", producibleChars.isNotEmpty())
+        producibleChars.forEach { c ->
+            assertTrue(
+                "Zeichen '$c' ist produzierbar, aber nicht als Einzel-Token tippbar — " +
+                    "die Set<Char>-Annahme des Wort-Filters bricht",
+                c.toString() in singleCharTokens,
+            )
+        }
+        // Gegenprobe: genau die Zeichen, an denen der Drill sonst hinge, sind kein Token (nicht tippbar).
+        assertFalse("Leerzeichen darf nicht tippbar sein (Phrasen-Schutz)", " " in singleCharTokens)
+        assertFalse("ß ist nicht im Layout (de-CH: ss)", "ß" in singleCharTokens)
+    }
+
+    @Test
+    fun `jedes Wort-Ziel ist per echter Einzel-Tap-Sequenz vollendbar, ohne ein Leben zu kosten`() {
+        // Der eigentliche Tippbarkeits-Test: NICHT das ganze Wort in EINER Eingabe (das träfe trivial
+        // via remaining == input), sondern Zeichen für Zeichen über die echte Eingabeaktion (tapChar:
+        // Tap bzw. Long-Press). Das durchläuft die reale startsWith-Progression der Wort-Stufe und ist
+        // zugleich die Regression gegen ein wachsendes Korpus: ein untippbares Ziel fiele hier auf.
+        val pool = vm().apply { setMode(DojoMode.GUIDED); setLevel(DojoLevel.WORDS) }.collectWordPool()
+        assertTrue("Wort-Pool darf nicht leer sein", pool.isNotEmpty())
+
+        val vm = vm()
+        vm.setMode(DojoMode.GUIDED)
+        vm.setLevel(DojoLevel.WORDS)
+        repeat(pool.size) {
+            val target = vm.state.value.target
+            // Reachability unabhängig vom Produktions-Filter: jedes Zeichen MUSS ein Einzel-Token sein,
+            // sonst wäre die folgende tapChar-Sequenz keine ehrliche „echte Tastatur"-Eingabe.
+            target.forEach { c ->
+                assertTrue(
+                    "Zeichen '$c' in Ziel '$target' ist nicht einzeln tippbar",
+                    c.lowercaseChar().toString() in singleCharTokens,
+                )
+            }
+            val scoreBefore = vm.state.value.score
+            val livesBefore = vm.state.value.lives
+            target.forEach { vm.tapChar(it) }
+            assertTrue(
+                "Ziel '$target' liess sich nicht per Einzel-Taps vollenden (kein Treffer)",
+                vm.state.value.score > scoreBefore,
+            )
+            assertEquals("Einzel-Taps von '$target' kosteten ein Leben", livesBefore, vm.state.value.lives)
+        }
     }
 
     @Test

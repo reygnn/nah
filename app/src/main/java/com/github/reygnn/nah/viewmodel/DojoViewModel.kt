@@ -7,6 +7,7 @@ import com.github.reygnn.nah.layout.FunctionKey
 import com.github.reygnn.nah.layout.KeyAction
 import com.github.reygnn.nah.layout.KeyboardKey
 import com.github.reygnn.nah.layout.OptimizedLayout
+import com.github.reygnn.nah.settings.isBetterRun
 import kotlin.random.Random
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -261,12 +262,6 @@ class DojoViewModel(
             )
         }
     }
-
-    /** Total geordnete „besserer Lauf"-Relation: höherer Score gewinnt, bei Score-Gleichstand die
-     *  längere Serie. Hält Score und Serie als EIN Run-Paar zusammen, statt zweier unabhängiger Maxima
-     *  aus womöglich verschiedenen Läufen. */
-    private fun isBetterRun(score: Int, streak: Int, bestScore: Int, bestStreak: Int): Boolean =
-        score > bestScore || (score == bestScore && streak > bestStreak)
 
     private fun registerWrong() {
         _state.update {
