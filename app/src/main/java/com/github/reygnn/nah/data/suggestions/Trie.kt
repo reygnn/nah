@@ -32,8 +32,10 @@ class Trie {
         // sind nicht-eingreifend und ein verlorener Eigenname kostet höchstens einen Vorschlag,
         // nie ein falsch ersetztes Wort. Eine case-erhaltende Variante (zwei Knoten pro Pfad) wäre
         // die Lösung, lohnt beim aktuellen Nutzen aber nicht.
-        if (!node.isWord || frequency > node.frequency) {
-            node.isWord = true
+        // `originalWord != null` IST die „dieser Knoten ist ein Wortende"-Markierung — kein separates
+        // isWord-Flag, das mit der Originalform synchron gehalten werden müsste. Gleichstand behält den
+        // ersten Eintrag (`frequency >`, nicht `>=`), bleibt also deterministisch.
+        if (node.originalWord == null || frequency > node.frequency) {
             node.frequency = frequency
             node.originalWord = word
         }
@@ -66,7 +68,7 @@ class Trie {
         for (char in word.lowercase()) {
             node = node.children[char] ?: return false
         }
-        return node.isWord
+        return node.originalWord != null
     }
 
     /**
@@ -78,9 +80,9 @@ class Trie {
      * kleinen Teilbaum auf. Einmalige Messung dazu: `tools/trie_benchmark.md`.
      */
     private fun collectWords(node: TrieNode, results: MutableList<Pair<String, Int>>) {
-        if (node.isWord) {
-            node.originalWord?.let { results.add(it to node.frequency) }
-        }
+        // `originalWord != null` markiert ein Wortende; das `?.let` ist damit die Prüfung selbst, kein
+        // Defensiv-Code gegen einen unmöglichen Zustand.
+        node.originalWord?.let { results.add(it to node.frequency) }
         for (child in node.children.values) {
             collectWords(child, results)
         }
@@ -88,7 +90,8 @@ class Trie {
 
     private class TrieNode {
         val children = HashMap<Char, TrieNode>()
-        var isWord = false
+        // Nicht-null genau für Wortenden — gleichzeitig Markierung UND die zu committende Originalform
+        // (mit der im Korpus häufigsten Gross-/Kleinschreibung, siehe insert). Kein separates isWord-Flag.
         var frequency = 0
         var originalWord: String? = null
     }
