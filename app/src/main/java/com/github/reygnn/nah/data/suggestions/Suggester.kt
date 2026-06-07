@@ -2,7 +2,7 @@ package com.github.reygnn.nah.data.suggestions
 
 /**
  * Liefert Wortvorschläge für ein (noch unfertiges) Präfix. Bewusst minimal, damit
- * der ViewModel nicht an den Trie gekoppelt ist und in JVM-Tests trivial gefakt
+ * der ViewModel nicht an den WordIndex gekoppelt ist und in JVM-Tests trivial gefakt
  * werden kann. Vorschläge sind **nicht-eingreifend**: sie ersetzen nur das aktuelle
  * Präfix auf Antippen, niemals ein bereits abgeschlossenes Wort.
  */

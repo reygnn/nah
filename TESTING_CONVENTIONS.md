@@ -15,7 +15,7 @@ Reine Logik bleibt JVM-only.
 - **MockK, nicht Mockito.** Mock-Variablen nach dem benennen, was sie darstellen
   (kein `mock`-Präfix) — `mockk(...)` sagt schon, dass es ein Mock ist.
 - **Pure Logik lebt ausserhalb der Android-Runtime-Klassen.** `KeyboardViewModel`,
-  `OptimizedLayout`, `Trie`, `SuggestionRepository`, `DojoViewModel` sind JVM-testbar
+  `OptimizedLayout`, `WordIndex`, `SuggestionRepository`, `DojoViewModel` sind JVM-testbar
   ohne Robolectric. Der IME-Service ist dünner Glue und wird nicht unit-getestet.
 - **Robolectric nur für echtes Android-Runtime.** Wo ein Test wirklich die Plattform
   braucht (DataStore-Round-Trip in `DojoStatsRepositoryTest`), ist Robolectric mit

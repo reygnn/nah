@@ -102,7 +102,7 @@ deliberate scope choice for a single-user personal keyboard, not an oversight.
   3-column large-key pad (PIN, amount, dial number) instead of the narrow symbol
   row. Every layer reaches every other: a long-press on the layer-toggle key
   offers the pads it can't tap to (NUM / TEL) plus the settings (OPT) — a full mesh.
-- **Optional suggestion bar** — Trie-backed, fed by a baked-in de-CH word list
+- **Optional suggestion bar** — prefix-index-backed, fed by a baked-in de-CH word list
   plus your own words/phrases (independently toggleable). **Off by default**, and
   *non-intrusive*: tapping a suggestion only replaces the current unfinished
   prefix, never finished text. (Settings are reached via a long-press on the
@@ -145,17 +145,17 @@ ui/         KeyboardScreen / TapKey / SuggestionBar / NahColors / NahIcons,
             LongPressGesture (pure long-press state machine) — Compose.
 settings/   Settings, SettingsRepository (DataStore), SettingsActivity,
             UserWordsActivity (manage own words).
-data/suggestions/  Trie, GermanWordList, SuggestionRepository, UserWordRepository,
-            UserWordValidation.
+data/suggestions/  WordIndex (sorted array + binary search), GermanWordList,
+            SuggestionRepository, UserWordRepository, UserWordValidation.
 tools/      optimize_layout.py — the layout optimiser (reproducible);
-            trie_benchmark.md — suggestion-cost measurement + corpus threshold.
+            word_index_benchmark.md — suggestion-cost measurement + corpus threshold.
 ```
 
 - **Kotlin + Jetpack Compose + Material 3**, Compose-only (no XML layouts).
 - **AGP 9 + Gradle 9, built-in Kotlin** (no `org.jetbrains.kotlin.android`).
 - `minSdk = compileSdk = targetSdk = 36` (Android 16 only), `jvmTarget = JVM_21`.
 - Logic is kept out of the Android-runtime class: the ViewModel, layout, and
-  Trie are plain JVM-testable.
+  WordIndex are plain JVM-testable.
 
 ### Testing
 
@@ -164,7 +164,7 @@ only where a test needs real Android runtime (DataStore round-trip in
 `DojoStatsRepositoryTest`).
 Covered: the layout's travel property (must beat QWERTZ), the ViewModel state
 machine (commit / backspace / shift / caps / layer switch / auto-cap / the
-"suggestion never replaces finished text" invariant), the Trie, and the pure
+"suggestion never replaces finished text" invariant), the WordIndex, and the pure
 units lifted out of the Compose/Service layer (PasteGuard, LongPressGesture,
 FieldContext, user-word validation, the self-echo dedup). A seed-reproducible
 **invariant fuzzer** runs thousands of random op sequences against the hard
@@ -186,8 +186,8 @@ personal key at install time, not by Gradle.
 Deliberately deferred from v1:
 
 - Clipboard history, theme selection, a bigger optimiser corpus. (The suggestion
-  Trie's per-keystroke cost is measured in
-  [`tools/trie_benchmark.md`](tools/trie_benchmark.md): comfortable up to ~50k
+  index's per-keystroke cost is measured in
+  [`tools/word_index_benchmark.md`](tools/word_index_benchmark.md): comfortable up to ~50k
   words, so corpus growth needs no code change until well beyond that.)
 
 Per-character offset learning (a `MissMap`) was once earmarked as the next

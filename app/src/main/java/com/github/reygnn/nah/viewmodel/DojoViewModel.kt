@@ -110,11 +110,14 @@ class DojoViewModel(
             .lowercase()
             .toSet()
 
-    private val vowelTargets = charKeys.filter { it.char in VOWELS_SET }.map { it.output.lowercase() }
-    private val consonantTargets = charKeys.filter { it.char in CONSONANTS_SET }.map { it.output.lowercase() }
+    // `distinct()` erzwingt die Duplikatfreiheit, auf die sich randomTarget verlässt, statt sie nur
+    // dem (eingefrorenen) Layout zu unterstellen — zwei Tasten mit demselben Output würden den
+    // Anti-Repeat-Loop sonst hängen lassen. Heute ändert es nichts an der Pool-Reihenfolge.
+    private val vowelTargets = charKeys.filter { it.char in VOWELS_SET }.map { it.output.lowercase() }.distinct()
+    private val consonantTargets = charKeys.filter { it.char in CONSONANTS_SET }.map { it.output.lowercase() }.distinct()
     // Die qu-Taste committet „qu" → ihr Ziel ist „qu" (genau das, was ein Tap liefert), ehrlich
     // zum Layout. Alle anderen Tasten committen ihren eigenen Buchstaben.
-    private val alphabetTargets = charKeys.map { it.output.lowercase() }
+    private val alphabetTargets = charKeys.map { it.output.lowercase() }.distinct()
     // Häufigste zuerst (Guided beginnt mit den geläufigsten Wörtern), kleingeschrieben, dedupliziert.
     // GEFILTERT auf tippbare Wörter: das Korpus (GermanWordList) darf laut CLAUDE.md wachsen, OHNE das
     // eingefrorene Layout anzufassen. Käme je ein Wort mit einem hier nicht produzierbaren Zeichen in

@@ -629,7 +629,7 @@ class KeyboardViewModelTest {
     fun `bei abgeschalteten eigenen Woertern wird ein Treffer wie ein Woerterbuch-Wort gecast`() {
         val fake = FakeIc()
         // Der Suggester meldet „zeit" als eigenes Wort — aber die Funktion ist AUS. (Der
-        // reale Grund: der User-Trie wird immer vorgehalten, isUserWord triggert also weiter.)
+        // reale Grund: der User-Index wird immer vorgehalten, isUserWord triggert also weiter.)
         val vm = vm(fake, suggester = userWordSuggester("zeit"))
             .apply { applySettings(Settings(userWordsEnabled = false, autoCapEnabled = false)) }
         vm.onKey(FunctionKey(KeyAction.SHIFT))

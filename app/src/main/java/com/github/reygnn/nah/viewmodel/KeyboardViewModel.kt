@@ -380,7 +380,7 @@ class KeyboardViewModel(
         // massgeblich. Nur Wörterbuch-Vorschläge dem Präfix-Casing anpassen, damit ein am
         // Satzanfang gross begonnenes „De" nicht durch klein vorgeschlagenes „der" ersetzt
         // wird. Kein Autocorrect: in beiden Fällen wird nur das unfertige Präfix ersetzt.
-        // userWordsEnabled mitprüfen: der User-Trie wird IMMER vorgehalten (siehe NahIme), also
+        // userWordsEnabled mitprüfen: der User-Index wird IMMER vorgehalten (siehe NahIme), also
         // meldet isUserWord auch bei abgeschalteter Funktion noch Treffer. Ohne diese Gate würde
         // ein Wort, das zufällig in beiden Listen steht, bei AUS­geschalteten eigenen Wörtern
         // fälschlich wörtlich statt gecast committet (z. B. „Zeit" statt „ZEIT" unter Caps-Lock).

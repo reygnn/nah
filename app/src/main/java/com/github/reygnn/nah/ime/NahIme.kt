@@ -62,7 +62,7 @@ class NahIme :
 
         settingsRepository = SettingsRepository(applicationContext)
         userWordRepository = UserWordRepository(applicationContext)
-        // Lazy Trie — wird nur gebaut, wenn Vorschläge je aktiviert werden (Default aus).
+        // Lazy Index — wird nur gebaut, wenn Vorschläge je aktiviert werden (Default aus).
         val suggester = SuggestionRepository()
 
         viewModel = KeyboardViewModel(
@@ -80,7 +80,7 @@ class NahIme :
         lifecycleScope.launch {
             settingsRepository.settings.collect { settings ->
                 viewModel.applySettings(settings)
-                // Eingebauten Trie im Hintergrund vorbauen, sobald die Liste das erste Mal
+                // Eingebauten Index im Hintergrund vorbauen, sobald die Liste das erste Mal
                 // gebraucht wird — nie synchron auf dem UI-Thread beim ersten Tastendruck.
                 // Genau einmal anstossen (warmUpBuiltIn ist zwar idempotent, aber ein neuer
                 // Coroutine-Start pro Settings-Emission wäre unnötig).
@@ -91,9 +91,9 @@ class NahIme :
             }
         }
         lifecycleScope.launch(Dispatchers.Default) {
-            // Den User-Trie im Hintergrund bauen (nie auf dem UI-Thread) und IMMER vorhalten —
-            // anders als der eingebaute Trie, der erst beim Einschalten der Vorschläge lazy
-            // gebaut wird (er ist gross). Der User-Trie ist klein, das ständige Vorhalten kostet
+            // Den User-Index im Hintergrund bauen (nie auf dem UI-Thread) und IMMER vorhalten —
+            // anders als der eingebaute Index, der erst beim Einschalten der Vorschläge lazy
+            // gebaut wird (er ist gross). Der User-Index ist klein, das ständige Vorhalten kostet
             // kaum etwas. OB er einfliesst, entscheidet allein der ViewModel über
             // settings.userWordsEnabled — und zwar für Vorschläge UND die Wörtlich-Sonder-
             // behandlung (siehe onSuggestionTap), nicht hier. setUserWords tauscht danach nur die

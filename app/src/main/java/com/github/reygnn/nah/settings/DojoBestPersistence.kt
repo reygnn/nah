@@ -11,8 +11,11 @@ import kotlinx.coroutines.flow.first
  *
  * Hält den **`persisted`-Spiegel** dessen, was diese Sitzung schon geschrieben wurde: so berührt
  * [persistIfBetter] die Platte nur bei einer echten Verbesserung — `DataStore.edit{}` schreibt die Datei
- * sonst auch ohne Wertänderung. Eine Instanz pro Bildschirm (in der Activity `remember`t), single-threaded
- * auf dem Main-Dispatcher benutzt → der einfache `var` reicht. Score und Serie sind **unabhängige
+ * sonst auch ohne Wertänderung. Eine Instanz pro Bildschirm (in der Activity `remember`t). Der einfache
+ * `var` braucht keine Synchronisation: nicht weil nie nebenläufig aufgerufen würde (zwei `persistIfBetter`
+ * können am `recordBest`-Suspend-Punkt interleaven), sondern weil [DojoStatsRepository.recordBest] selbst
+ * idempotent-monoton ist — der schlimmste Ausgang ist ein redundanter Write, nie ein verlorener Rekord.
+ * Score und Serie sind **unabhängige
  * Maxima** (dieselbe Sicht wie im Spiel und in [DojoStatsRepository.recordBest]): ein Write fällt an,
  * sobald auch nur eines der beiden Felder den Spiegel übertrifft.
  */

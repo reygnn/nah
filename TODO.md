@@ -39,10 +39,10 @@ Zusätzlich abgesichert:
   (`5117861`, `3a14dca`) und per Invarianten-Test gepinnt; eine veraltete Vorhersage kostet
   höchstens EIN Recompute, der synchrone Read in `afterTextChanged` trägt die Korrektheit.
   Nicht erneut als Befund aufkochen.
-- **Trie-Vorschlagskosten quantifiziert** → `tools/trie_benchmark.md`. ~0,1–0,2 µs/Wort im
-  Teilbaum; grün bis ~50k Wörter (<~1 ms/Tastendruck am Gerät), Branch-and-Bound (s.
-  `Trie.collectWords`) lohnt erst ab ~100k–200k. Der „grösseres Korpus"-Fast-Follow braucht
-  bis dahin **keine** Code-Änderung. Heute (363 Wörter): ~1 µs, irrelevant.
+- **WordIndex-Vorschlagskosten quantifiziert** → `tools/word_index_benchmark.md`. ~0,1 µs/Wort
+  im Präfix-Bereich; grün bis ~50k Wörter (<~1 ms/Tastendruck am Gerät). Der „grösseres
+  Korpus"-Fast-Follow braucht bis dahin **keine** Code-Änderung. Heute (~1440 Wörter):
+  wenige µs, irrelevant.
 
 ---
 
@@ -86,7 +86,7 @@ ist primär die **Service-/Async-Naht** (Paste-Landung × Lifecycle × Echo-Orde
 echo-reorder×selektions-backspace (`afterTextChanged` setzt lokal `selEnd=selStart`
 vor dem echten Echo) · `beginBatchEdit`×Echo-mitten-im-Batch×autoCap ·
 autoCap×Ziffer-Guard×Vorschlag-Casing×Caps · Auswahl×Vorschlag×`atWordEnd` ·
-Long-Press-Geste×Recomposition×Multi-Touch · Trie-Swap×`suggest`×Settings-Toggle ·
+Long-Press-Geste×Recomposition×Multi-Touch · WordIndex-Swap×`suggest`×Settings-Toggle ·
 Restart×Shift-Erhalt×`pasteAvailable`.
 
 **Wieder ausführbar:** `Workflow({scriptPath:

@@ -5,9 +5,9 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class TrieTest {
+class WordIndexTest {
 
-    private fun trie() = Trie().apply {
+    private fun index() = WordIndex().apply {
         insert("hallo", 800)
         insert("haben", 890)
         insert("hat", 890)
@@ -16,7 +16,7 @@ class TrieTest {
 
     @Test
     fun `getSuggestions liefert nach Frequenz sortiert`() {
-        val result = trie().getSuggestions("ha", limit = 3).map { it.first }
+        val result = index().getSuggestions("ha", limit = 3).map { it.first }
         assertEquals(3, result.size)
         // "haben"/"hat" (890) vor "hallo" (800) vor "halten" (640)
         assertTrue(result.first() in setOf("haben", "hat"))
@@ -25,12 +25,12 @@ class TrieTest {
 
     @Test
     fun `unbekanntes Praefix liefert leer`() {
-        assertTrue(trie().getSuggestions("xyz", limit = 3).isEmpty())
+        assertTrue(index().getSuggestions("xyz", limit = 3).isEmpty())
     }
 
     @Test
     fun `gleiche Frequenz wird alphabetisch sortiert (deterministisch)`() {
-        val t = Trie().apply {
+        val t = WordIndex().apply {
             insert("birne", 500)
             insert("apfel", 500)
         }
@@ -39,7 +39,7 @@ class TrieTest {
 
     @Test
     fun `Gleichstand sortiert case-insensitiv, nicht ASCIIbetisch`() {
-        val t = Trie().apply {
+        val t = WordIndex().apply {
             insert("Birne", 500)
             insert("apfel", 500)
         }
@@ -50,17 +50,17 @@ class TrieTest {
 
     @Test
     fun `case-Kollision behaelt die hoehere Frequenz, unabhaengig von der Einfuegereihenfolge`() {
-        // „morgen"/„Morgen" landen auf demselben kleingeschriebenen Pfad. Die höhere Frequenz muss
+        // „morgen"/„Morgen" landen auf demselben kleingeschriebenen Key. Die höhere Frequenz muss
         // gewinnen — egal welche Schreibweise zuletzt eingefügt wird (sonst stille Fehlschreibung).
-        val lowerFirst = Trie().apply { insert("morgen", 830); insert("Morgen", 670) }
-        val upperFirst = Trie().apply { insert("Morgen", 670); insert("morgen", 830) }
+        val lowerFirst = WordIndex().apply { insert("morgen", 830); insert("Morgen", 670) }
+        val upperFirst = WordIndex().apply { insert("Morgen", 670); insert("morgen", 830) }
         assertEquals(listOf("morgen" to 830), lowerFirst.getSuggestions("morgen", limit = 3))
         assertEquals(listOf("morgen" to 830), upperFirst.getSuggestions("morgen", limit = 3))
     }
 
     @Test
     fun `contains erkennt Woerter`() {
-        val t = trie()
+        val t = index()
         assertTrue(t.contains("hallo"))
         assertFalse(t.contains("hal"))
     }
@@ -79,7 +79,7 @@ class SuggestionRepositoryTest {
     @Test
     fun `eingebaute Vorschlaege erscheinen erst nach warmUp`() {
         val cold = SuggestionRepository()
-        // Vor dem Warmup ist der eingebaute Trie noch nicht da → nicht-eingreifend leer.
+        // Vor dem Warmup ist der eingebaute Index noch nicht da → nicht-eingreifend leer.
         assertTrue(cold.suggest("ha", includeBuiltIn = true, includeUser = false).isEmpty())
         cold.warmUpBuiltIn()
         assertTrue(cold.suggest("ha", includeBuiltIn = true, includeUser = false).isNotEmpty())
@@ -125,7 +125,7 @@ class SuggestionRepositoryTest {
 
     @Test
     fun `case-Dublette der eingebauten Liste liefert die haeufigere Schreibweise`() {
-        // GermanWordList enthält „morgen" (830) und „Morgen" (670) — auf demselben Trie-Pfad. Die
+        // GermanWordList enthält „morgen" (830) und „Morgen" (670) — auf demselben Key. Die
         // häufigere (kleine) Form muss gewinnen, obwohl die Grossschreibung später eingefügt wird.
         assertEquals("morgen", repo.suggest("morge", includeBuiltIn = true, includeUser = false).first())
     }
@@ -135,7 +135,7 @@ class SuggestionRepositoryTest {
         val r = SuggestionRepository().apply { warmUpBuiltIn() }
         r.setUserWords(setOf("Müller", "max@firma.ch"))
         assertTrue(r.isUserWord("Müller"))
-        assertTrue(r.isUserWord("müller")) // case-insensitiv (Trie.contains)
+        assertTrue(r.isUserWord("müller")) // case-insensitiv (WordIndex.contains)
         assertTrue(r.isUserWord("max@firma.ch"))
         // Ein reines Wörterbuch-Wort ist KEIN eigenes Wort → bekommt Präfix-Casing.
         assertFalse(r.isUserWord("Zeit"))
@@ -143,7 +143,7 @@ class SuggestionRepositoryTest {
 
     @Test
     fun `gleich-frequente Casings desselben eigenen Wortes ergeben ein stabiles Ergebnis`() {
-        // Beide Schreibweisen liegen auf demselben kleingeschriebenen Trie-Pfad mit derselben
+        // Beide Schreibweisen liegen auf demselben kleingeschriebenen Key mit derselben
         // USER_WORD_FREQUENCY. Unabhängig von der Set-Reihenfolge muss dasselbe Casing gewinnen
         // (kanonisch „Müller", da 'M' < 'm') — sonst wäre der Vorschlag über Neustarts nicht
         // reproduzierbar. Die beiden Sets sind bewusst gegenläufig geordnet.

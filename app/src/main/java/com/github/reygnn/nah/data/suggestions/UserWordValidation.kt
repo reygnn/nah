@@ -10,8 +10,8 @@ enum class UserWordError { TooShort, TooLong, InvalidCharacters, AlreadyExists }
  * Bewusst grosszügig bei den Zeichen — Leerzeichen, Ziffern und Satzzeichen sind
  * erlaubt (z. B. „Hauptstrasse 115", „8050 Zürich", „max@firma.ch"). Das ist gefahrlos,
  * weil das Matching strncmp-artig **vom Anfang** des gespeicherten Eintrags läuft (ein
- * Trie): getippt wird nur das alphanumerische Präfix vor dem Cursor, alles dahinter
- * (Leerzeichen etc.) sitzt im Trie hinter diesem Präfix und fährt beim Einfügen mit.
+ * Präfix-Index): getippt wird nur das alphanumerische Präfix vor dem Cursor, alles dahinter
+ * (Leerzeichen etc.) sitzt im Eintrag hinter diesem Präfix und fährt beim Einfügen mit.
  * Eine Phrase wird also über den Anfang ihres ersten Wortes gefunden, nie per Teilstring-
  * Suche mitten im Eintrag. Persistenz ist nicht Teil davon.
  */

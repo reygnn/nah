@@ -12,8 +12,6 @@ import com.github.reygnn.nah.NahApplication
 import com.github.reygnn.nah.ui.DojoScreen
 import com.github.reygnn.nah.ui.NahTheme
 import com.github.reygnn.nah.viewmodel.DojoViewModel
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
@@ -24,8 +22,8 @@ import kotlinx.coroutines.launch
  * Persistenz (Bestwert) läuft bewusst hier, nicht im ViewModel: der ViewModel bleibt rein und
  * JVM-testbar, der DataStore-Zugriff hängt an der lebenden Composition. Dadurch gibt es auch keinen
  * an einen toten Activity-Scope gebundenen Callback nach einem Config-Change — die laufende
- * Composition seedet den Bestwert und schreibt ihn nur an **Run-Grenzen** (Lauf zu Ende /
- * Bildschirm verlassen) auf die Platte, nicht bei jedem Treffer.
+ * Composition seedet den Bestwert und schreibt ihn beim **Verlassen** (`ON_STOP`) auf die Platte,
+ * nicht bei jedem Treffer.
  */
 class DojoActivity : ComponentActivity() {
 
@@ -43,25 +41,20 @@ class DojoActivity : ComponentActivity() {
                 val viewModel: DojoViewModel = viewModel()
 
                 // Die WANN-schreiben-Entscheidung lebt in DojoBestPersistence (testbar, ohne Compose);
-                // hier bleibt nur die Erkennung der Auslöser. Der laufende state.bestScore/bestStreak
-                // klettert weiter live fürs Scoreboard, treibt den Disk-Write aber NICHT mehr (früher:
-                // ein Write pro neuem Höchststand). `remember`t → ein persisted-Spiegel je Bildschirm.
+                // hier bleibt nur die Erkennung des Auslösers. Der laufende state.bestScore/bestStreak
+                // klettert weiter live fürs Scoreboard, treibt den Disk-Write aber NICHT (früher: ein
+                // Write pro neuem Höchststand). `remember`t → ein persisted-Spiegel je Bildschirm.
                 val persistence = remember { DojoBestPersistence(stats) }
 
-                LaunchedEffect(viewModel) {
-                    persistence.seed(viewModel)
-                    // An der Run-Grenze persistieren: nur die gameOver false→true-Kante treibt den Write,
-                    // nicht jeder Treffer dazwischen (persistIfBetter prüft gegen den Spiegel).
-                    viewModel.state
-                        .map { DojoBest(it.bestScore, it.bestStreak) to it.gameOver }
-                        .distinctUntilChanged()
-                        .collect { (best, gameOver) -> if (gameOver) persistence.persistIfBetter(best) }
-                }
+                LaunchedEffect(viewModel) { persistence.seed(viewModel) }
 
-                // Mitten im Lauf verlassen (noch kein Game Over) darf einen frischen Rekord nicht verlieren →
-                // bei ON_STOP ebenfalls persistieren. Bewusst auf dem prozessweiten appScope, NICHT auf einem
-                // rememberCoroutineScope: ein Config-Change löst ON_STOP aus und reisst zugleich die Composition
-                // (und deren Scope) ab — der noch nicht angelaufene DataStore-Write ginge sonst verloren.
+                // EINZIGER Schreib-Auslöser: ON_STOP deckt jedes reale Verlassen ab (Home/Recents/Back/
+                // Screen-off, auch den Config-Change). Eine separate gameOver-Kante gab es früher als
+                // Hosenträger gegen Prozesstod *im Vordergrund ohne ON_STOP* (= Crash) — für einen
+                // persönlichen Bestwert die Pipeline nicht wert. Bewusst auf dem prozessweiten appScope,
+                // NICHT auf einem rememberCoroutineScope: ein Config-Change löst ON_STOP aus und reisst
+                // zugleich die Composition (und deren Scope) ab — der noch nicht angelaufene
+                // DataStore-Write ginge sonst verloren.
                 LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
                     val best = viewModel.state.value.let { DojoBest(it.bestScore, it.bestStreak) }
                     appScope.launch { persistence.persistIfBetter(best) }

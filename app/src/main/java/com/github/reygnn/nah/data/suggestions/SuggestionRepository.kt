@@ -1,7 +1,7 @@
 package com.github.reygnn.nah.data.suggestions
 
 /**
- * Vorschlagsquelle aus zwei unabhängig schaltbaren Tries: die eingebaute
+ * Vorschlagsquelle aus zwei unabhängig schaltbaren [WordIndex]en: die eingebaute
  * [GermanWordList] (im Hintergrund vorgebaut, siehe [warmUpBuiltIn] — da Vorschläge
  * standardmässig aus sind, kostet sie im Normalfall nichts) und die benutzerdefinierten
  * Wörter aus [UserWordRepository] (per [setUserWords] gesetzt). Kein Hilt. Liefert nur
@@ -10,13 +10,13 @@ package com.github.reygnn.nah.data.suggestions
 class SuggestionRepository : Suggester {
 
     @Volatile
-    private var builtInTrie: Trie? = null
+    private var builtInIndex: WordIndex? = null
 
     @Volatile
-    private var userTrie: Trie? = null
+    private var userIndex: WordIndex? = null
 
     /**
-     * Baut den eingebauten de-CH-Trie — einmalig und idempotent. **Bewusst von einem
+     * Baut den eingebauten de-CH-Index — einmalig und idempotent. **Bewusst von einem
      * Hintergrund-Dispatcher aufzurufen** (siehe `NahIme`), damit der Aufbau (hunderte
      * Wörter) nie den UI-Thread beim ersten Tastendruck blockiert. Bis er fertig ist,
      * liefert [suggest] einfach keine eingebauten Vorschläge — nicht-eingreifend, der
@@ -24,15 +24,15 @@ class SuggestionRepository : Suggester {
      */
     @Synchronized
     fun warmUpBuiltIn() {
-        if (builtInTrie != null) return
-        builtInTrie = Trie().apply {
+        if (builtInIndex != null) return
+        builtInIndex = WordIndex().apply {
             GermanWordList.words.forEach { (word, frequency) -> insert(word, frequency) }
         }
     }
 
     /**
      * Aktualisiert die benutzerdefinierten Wörter (vom IME beim Beobachten von
-     * [UserWordRepository] aufgerufen). Eigener Trie → unabhängig von der
+     * [UserWordRepository] aufgerufen). Eigener [WordIndex] → unabhängig von der
      * eingebauten Liste zu- und abschaltbar.
      *
      * `@Synchronized` wie [warmUpBuiltIn]: serialisiert konkurrierende Aufrufe, damit „letzter gewinnt"
@@ -40,13 +40,13 @@ class SuggestionRepository : Suggester {
      */
     @Synchronized
     fun setUserWords(words: Set<String>) {
-        userTrie = if (words.isEmpty()) {
+        userIndex = if (words.isEmpty()) {
             null
         } else {
-            // sorted() vor dem Einfügen: stünden zwei Eigenwörter auf demselben Trie-Pfad mit gleicher
+            // sorted() vor dem Einfügen: stünden zwei Eigenwörter auf demselben Key mit gleicher
             // Frequenz (z. B. „Müller"/„müller"), entschiede sonst die undefinierte Set-Reihenfolge, welches
             // Casing gewinnt. Welches genau, ist egal — nur stabil muss es sein.
-            Trie().apply { words.sorted().forEach { insert(it, USER_WORD_FREQUENCY) } }
+            WordIndex().apply { words.sorted().forEach { insert(it, USER_WORD_FREQUENCY) } }
         }
     }
 
@@ -64,11 +64,11 @@ class SuggestionRepository : Suggester {
             }
         }
 
-        if (includeUser) userTrie?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
-        if (includeBuiltIn) builtInTrie?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
+        if (includeUser) userIndex?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
+        if (includeBuiltIn) builtInIndex?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
 
         // Sekundär case-insensitiv alphabetisch → deterministisch bei Frequenz-Gleichstand (wie
-        // Trie.getSuggestions).
+        // WordIndex.getSuggestions).
         return merged.values
             .sortedWith(
                 compareByDescending<Pair<String, Int>> { it.second }
@@ -79,11 +79,11 @@ class SuggestionRepository : Suggester {
     }
 
     /**
-     * Liegt [word] im User-Trie? Dann wird es wörtlich committet (siehe [Suggester.isUserWord]).
-     * [Trie.contains] prüft den exakten Eintrag case-insensitiv — der Vorschlagstext ist die
+     * Liegt [word] im User-Index? Dann wird es wörtlich committet (siehe [Suggester.isUserWord]).
+     * [WordIndex.contains] prüft den exakten Eintrag case-insensitiv — der Vorschlagstext ist die
      * gespeicherte Originalform, trifft also seinen eigenen Eintrag.
      */
-    override fun isUserWord(word: String): Boolean = userTrie?.contains(word) ?: false
+    override fun isUserWord(word: String): Boolean = userIndex?.contains(word) ?: false
 
     private companion object {
         const val MIN_PREFIX_LENGTH = 2

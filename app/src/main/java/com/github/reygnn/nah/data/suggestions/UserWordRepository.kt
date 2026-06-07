@@ -23,7 +23,7 @@ private val Context.userWordsDataStore: DataStore<Preferences> by
 
 /**
  * Benutzerdefinierte Wörter, persistiert als String-Set in DataStore (kein Room —
- * das Abfragen erledigt der [Trie], hier wird nur gehalten). Speist als zweite
+ * das Abfragen erledigt der [WordIndex], hier wird nur gehalten). Speist als zweite
  * Quelle in [SuggestionRepository] ein und ändert **nie** fertigen Text, sondern
  * liefert nur Vorschläge.
  */
