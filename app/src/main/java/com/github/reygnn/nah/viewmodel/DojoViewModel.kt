@@ -60,9 +60,11 @@ data class DojoState(
     val typed: String = "",
     val lastResult: Boolean? = null,
     val gameOver: Boolean = false,
-    // Bester Score / beste Serie global über alle Stufen und Modi — der einzige Zustand, der einen
-    // Reset (und, von der Activity persistiert, das Verlassen des Dojos) überlebt. Der laufende
-    // Spielstand bleibt absichtlich flüchtig.
+    // Bester Score / beste Serie global über alle Stufen und Modi. Das ist der ANZEIGE-Wert fürs
+    // Scoreboard: er klettert live im Lauf mit und überlebt einen Reset. Bewusst NICHT die Persistenz-
+    // quelle pro Frame — den dauerhaften Record schreibt die Activity event-gesteuert an Run-Grenzen
+    // (Lauf zu Ende / Verlassen), nicht bei jedem Treffer (siehe DojoActivity). Beide nutzen dieselbe
+    // isBetterRun-Ordnung, fliessen aber getrennt: flüchtiger Anzeige-Zustand hier, dauerhafter dort.
     val bestScore: Int = 0,
     val bestStreak: Int = 0,
 ) {
