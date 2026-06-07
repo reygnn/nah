@@ -1,6 +1,6 @@
 # Test-Source-Set — Orientierung
 
-Vollständige Referenz: `../../../TESTING_CONVENTIONS.md` im Projektwurzel.
+Vollständige Referenz: `java/com/github/reygnn/nah/TESTING_CONVENTIONS.kt` (im Test-Source-Set).
 
 Kurz:
 - JUnit 4 + MockK + kotlinx-coroutines-test, JVM-only als Default. Kein Mockito.
