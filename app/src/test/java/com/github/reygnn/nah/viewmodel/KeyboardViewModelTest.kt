@@ -74,6 +74,12 @@ private class FakeIc {
         every { getTextAfterCursor(any(), any()) } answers {
             buffer.substring(selEnd, (selEnd + firstArg<Int>()).coerceAtMost(buffer.length))
         }
+        // Wie die echte InputConnection: der markierte Text, oder null bei kollabiertem Cursor.
+        // Spiegelt die REALE Editor-Selektion (selStart/selEnd des Fakes) — die kann der Auswahl
+        // vorausgehen, die der ViewModel kennt (Echo unterwegs), genau das prüft onSuggestionTap.
+        every { getSelectedText(any()) } answers {
+            if (selStart == selEnd) null else buffer.substring(selStart, selEnd)
+        }
     }
 }
 
@@ -567,6 +573,25 @@ class KeyboardViewModelTest {
         vm.onSuggestionTap("hallo")
         // Oberstes Gesetz: „WICHTIG " bleibt unangetastet; der Tap bricht ab (leeres Praefix erkannt).
         assertEquals("WICHTIG ha", fake.buffer.toString())
+    }
+
+    @Test
+    fun `vorschlag-tap bei Live-Auswahl ueber fertigem Text mit nicht-leerem Praefix bricht ab`() {
+        // Komplementär zum Test darüber: dort verdeckt die Auswahl den Wortanfang, das Präfix ist
+        // leer und schon der erste Check greift. HIER beginnt die Auswahl HINTER einem Wort, das
+        // Präfix ist also NICHT leer — erst die Live-Auswahlprüfung (getSelectedText) verhindert,
+        // dass der commitText den markierten fertigen Text ersetzt (oberstes Gesetz).
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo") })
+            .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
+        fake.buffer.append("halloWELT") // „hallo" = Präfix vor dem Cursor, „WELT" wird gleich markiert
+        fake.select(5, 5)
+        vm.onSelectionChanged(5, 5)     // VM glaubt: Cursor kollabiert bei 5
+        // Nutzer markiert den fertigen Text [5,9) — das onUpdateSelection-Echo ist noch nicht beim VM,
+        // dessen hasSelection also weiterhin false ist; nur der Editor weiss schon von der Auswahl.
+        fake.select(5, 9)
+        vm.onSuggestionTap("hallo")
+        assertEquals("halloWELT", fake.buffer.toString()) // nichts angefasst
     }
 
     @Test

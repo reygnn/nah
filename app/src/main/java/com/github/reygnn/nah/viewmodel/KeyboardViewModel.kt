@@ -2,7 +2,6 @@ package com.github.reygnn.nah.viewmodel
 
 import android.util.Log
 import android.view.KeyEvent
-import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import com.github.reygnn.nah.data.suggestions.Suggester
 import com.github.reygnn.nah.layout.CharKey
@@ -364,15 +363,18 @@ class KeyboardViewModel(
         //  - leeres Präfix: ein gültiger Vorschlag hatte immer ein >= 2 Zeichen langes Präfix; ist es
         //    jetzt leer, hat sich der Kontext geändert (eine Auswahl verdeckt den Wortanfang → wordBefore
         //    liefert ""), also nichts anfassen.
-        //  - der Editor meldet eine real noch offene Auswahl (getExtractedText ist autoritativ und deckt
-        //    auch Auswahlen ab, die nicht am Wortanfang beginnen). Null = Editor unterstützt es nicht →
-        //    dann trägt der Präfix-Check oben.
+        //  - der Editor meldet real noch markierten Text (getSelectedText ist autoritativ und deckt auch
+        //    Auswahlen ab, die nicht am Wortanfang beginnen — dort ist das Präfix nicht leer). Bewusst
+        //    getSelectedText und NICHT getExtractedText: getExtractedText marshallt den GANZEN Feldinhalt
+        //    über den Binder (die hintMaxChars sind nur ein Hinweis, den die Standard-TextView ignoriert),
+        //    nur um eine Auswahl zu erkennen — getSelectedText liefert genau den (kurzen) markierten Text,
+        //    derselbe Schutz ohne den unbegrenzten Read. Null/leer = keine Auswahl ODER vom Editor nicht
+        //    unterstützt; dann trägt der Präfix-Check oben.
         if (prefix.isEmpty()) {
             clearSuggestions()
             return
         }
-        val extracted = safeIc { it.getExtractedText(ExtractedTextRequest(), 0) }
-        if (extracted != null && extracted.selectionStart != extracted.selectionEnd) {
+        if (!safeIc { it.getSelectedText(0) }.isNullOrEmpty()) {
             clearSuggestions()
             return
         }
