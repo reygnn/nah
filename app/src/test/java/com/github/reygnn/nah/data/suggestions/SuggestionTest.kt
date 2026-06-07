@@ -142,6 +142,20 @@ class SuggestionRepositoryTest {
     }
 
     @Test
+    fun `gleich-frequente Casings desselben eigenen Wortes ergeben ein stabiles Ergebnis`() {
+        // Beide Schreibweisen liegen auf demselben kleingeschriebenen Trie-Pfad mit derselben
+        // USER_WORD_FREQUENCY. Unabhängig von der Set-Reihenfolge muss dasselbe Casing gewinnen
+        // (kanonisch „Müller", da 'M' < 'm') — sonst wäre der Vorschlag über Neustarts nicht
+        // reproduzierbar. Die beiden Sets sind bewusst gegenläufig geordnet.
+        val a = SuggestionRepository().apply { setUserWords(linkedSetOf("Müller", "müller")) }
+        val b = SuggestionRepository().apply { setUserWords(linkedSetOf("müller", "Müller")) }
+        val sa = a.suggest("mü", includeBuiltIn = false, includeUser = true)
+        val sb = b.suggest("mü", includeBuiltIn = false, includeUser = true)
+        assertEquals(listOf("Müller"), sa)
+        assertEquals(sa, sb)
+    }
+
+    @Test
     fun `isUserWord ist false ohne gesetzte eigene Woerter`() {
         assertFalse(SuggestionRepository().isUserWord("egal"))
     }

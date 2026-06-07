@@ -46,16 +46,17 @@ class Trie {
         }
         val results = mutableListOf<Pair<String, Int>>()
         collectWords(node, results)
-        // Sekundär alphabetisch (case-insensitiv): bei Frequenz-Gleichstand sonst HashMap-abhängig
-        // und damit nicht reproduzierbar (passt nicht zum Determinismus-Anspruch). Bewusst über
-        // `lowercase()` verglichen — ein roher String-Vergleich ist ASCIIbetisch (Grossbuchstaben
-        // vor Kleinbuchstaben, Umlaute hinter „z") und stellte „Zürich" vor „apfel". Eine weitere
-        // Tie-Break-Stufe braucht es nicht: im Teilbaum kollabieren die kleingeschriebenen Pfade,
-        // zwei verschiedene Ergebnisse haben also nie denselben kleingeschriebenen Schlüssel.
+        // Sekundär alphabetisch, case-insensitiv über String.CASE_INSENSITIVE_ORDER: bei Frequenz-
+        // Gleichstand sonst HashMap-abhängig und nicht reproduzierbar (passt nicht zum Determinismus-
+        // Anspruch). Case-insensitiv, weil ein roher String-Vergleich ASCIIbetisch wäre (Grossbuchstaben
+        // vor Kleinbuchstaben, Umlaute hinter „z") und „Zürich" vor „apfel" stellte. CASE_INSENSITIVE_ORDER
+        // faltet die Gross-/Kleinschreibung beim Vergleich, ohne pro Vergleich einen lowercase-String zu
+        // allokieren. Eine weitere Tie-Break-Stufe braucht es nicht: im Teilbaum kollabieren die klein-
+        // geschriebenen Pfade, zwei verschiedene Ergebnisse haben also nie denselben Schlüssel.
         return results
             .sortedWith(
                 compareByDescending<Pair<String, Int>> { it.second }
-                    .thenBy { it.first.lowercase() },
+                    .thenBy(String.CASE_INSENSITIVE_ORDER) { it.first },
             )
             .take(limit)
     }

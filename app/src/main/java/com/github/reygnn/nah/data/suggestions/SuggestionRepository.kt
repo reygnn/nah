@@ -45,7 +45,12 @@ class SuggestionRepository : Suggester {
         userTrie = if (words.isEmpty()) {
             null
         } else {
-            Trie().apply { words.forEach { insert(it, USER_WORD_FREQUENCY) } }
+            // In kanonischer Reihenfolge einfügen (lexikografisch, locale-unabhängig), damit das Ergebnis
+            // reproduzierbar ist: stünden zwei Eigenwörter auf demselben kleingeschriebenen Trie-Pfad mit
+            // gleicher USER_WORD_FREQUENCY (z. B. „Müller"/„müller"), entschiede sonst die undefinierte
+            // Set-Iterationsreihenfolge, welches Casing gewinnt (Trie-Tie: erster Eintrag gewinnt). sorted()
+            // macht den Sieger stabil — welches Casing genau gewinnt, ist egal, nur stabil muss es sein.
+            Trie().apply { words.sorted().forEach { insert(it, USER_WORD_FREQUENCY) } }
         }
     }
 
@@ -66,14 +71,14 @@ class SuggestionRepository : Suggester {
         if (includeUser) userTrie?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
         if (includeBuiltIn) builtInTrie?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
 
-        // Sekundär alphabetisch (case-insensitiv) → deterministische Reihenfolge bei gleicher
-        // Frequenz; roher String-Vergleich wäre ASCIIbetisch (siehe Trie.getSuggestions). Die
-        // Einträge sind hier bereits nach kleingeschriebenem Schlüssel dedupliziert, ein weiterer
-        // Tie-Break auf der Originalform wäre also nie wirksam.
+        // Sekundär alphabetisch, case-insensitiv über String.CASE_INSENSITIVE_ORDER → deterministische
+        // Reihenfolge bei gleicher Frequenz, ohne pro Vergleich einen lowercase-String zu allokieren;
+        // ein roher String-Vergleich wäre ASCIIbetisch (siehe Trie.getSuggestions). Die Einträge sind
+        // hier bereits nach kleingeschriebenem Schlüssel dedupliziert, ein weiterer Tie-Break wäre nie wirksam.
         return merged.values
             .sortedWith(
                 compareByDescending<Pair<String, Int>> { it.second }
-                    .thenBy { it.first.lowercase() },
+                    .thenBy(String.CASE_INSENSITIVE_ORDER) { it.first },
             )
             .take(MAX_SUGGESTIONS)
             .map { it.first }
