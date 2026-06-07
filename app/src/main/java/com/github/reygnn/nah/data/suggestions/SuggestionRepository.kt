@@ -35,21 +35,17 @@ class SuggestionRepository : Suggester {
      * [UserWordRepository] aufgerufen). Eigener Trie → unabhängig von der
      * eingebauten Liste zu- und abschaltbar.
      *
-     * `@Synchronized` wie [warmUpBuiltIn] — gleiches Muster: beide bauen einen Trie und
-     * veröffentlichen ihn atomar über das `@Volatile`-Feld. Die Annotation serialisiert
-     * konkurrierende Aufrufe, damit „letzter gewinnt" wohldefiniert ist statt eines Wettlaufs
-     * zweier sich überlappender Setzungen.
+     * `@Synchronized` wie [warmUpBuiltIn]: serialisiert konkurrierende Aufrufe, damit „letzter gewinnt"
+     * wohldefiniert ist (Veröffentlichung atomar übers `@Volatile`-Feld).
      */
     @Synchronized
     fun setUserWords(words: Set<String>) {
         userTrie = if (words.isEmpty()) {
             null
         } else {
-            // In kanonischer Reihenfolge einfügen (lexikografisch, locale-unabhängig), damit das Ergebnis
-            // reproduzierbar ist: stünden zwei Eigenwörter auf demselben kleingeschriebenen Trie-Pfad mit
-            // gleicher USER_WORD_FREQUENCY (z. B. „Müller"/„müller"), entschiede sonst die undefinierte
-            // Set-Iterationsreihenfolge, welches Casing gewinnt (Trie-Tie: erster Eintrag gewinnt). sorted()
-            // macht den Sieger stabil — welches Casing genau gewinnt, ist egal, nur stabil muss es sein.
+            // sorted() vor dem Einfügen: stünden zwei Eigenwörter auf demselben Trie-Pfad mit gleicher
+            // Frequenz (z. B. „Müller"/„müller"), entschiede sonst die undefinierte Set-Reihenfolge, welches
+            // Casing gewinnt. Welches genau, ist egal — nur stabil muss es sein.
             Trie().apply { words.sorted().forEach { insert(it, USER_WORD_FREQUENCY) } }
         }
     }
@@ -71,10 +67,8 @@ class SuggestionRepository : Suggester {
         if (includeUser) userTrie?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
         if (includeBuiltIn) builtInTrie?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
 
-        // Sekundär alphabetisch, case-insensitiv über String.CASE_INSENSITIVE_ORDER → deterministische
-        // Reihenfolge bei gleicher Frequenz, ohne pro Vergleich einen lowercase-String zu allokieren;
-        // ein roher String-Vergleich wäre ASCIIbetisch (siehe Trie.getSuggestions). Die Einträge sind
-        // hier bereits nach kleingeschriebenem Schlüssel dedupliziert, ein weiterer Tie-Break wäre nie wirksam.
+        // Sekundär case-insensitiv alphabetisch → deterministisch bei Frequenz-Gleichstand (wie
+        // Trie.getSuggestions).
         return merged.values
             .sortedWith(
                 compareByDescending<Pair<String, Int>> { it.second }

@@ -1,13 +1,9 @@
 package com.github.reygnn.nah.data.suggestions
 
 /**
- * Präfix-Trie für Wortvorschläge. **Bewusst nicht thread-safe** — und braucht es nicht:
- * Gelesen (Vorschläge) wird auf dem UI-Thread; der User-Trie wird in [SuggestionRepository]
- * als ganze, fertig gebaute Instanz atomar über ein `@Volatile`-Feld getauscht, der
- * eingebaute Trie einmal im Hintergrund gebaut und danach nur noch gelesen. Dieselbe
- * Instanz wird also nie nebenläufig mutiert *und* gelesen. Portiert aus vuot — dort lag
- * vorsorglich ein `ReentrantReadWriteLock` drum; hier kostete das nur pro Tastendruck eine
- * Lock-Akquise, ohne je einen echten Wettlauf abzusichern.
+ * Präfix-Trie für Wortvorschläge. **Bewusst nicht thread-safe**: gelesen wird auf dem UI-Thread, und
+ * jede Instanz wird fertig gebaut, bevor [SuggestionRepository] sie atomar über ein `@Volatile`-Feld
+ * veröffentlicht — dieselbe Instanz wird also nie nebenläufig mutiert *und* gelesen.
  */
 class Trie {
     private val root = TrieNode()
@@ -17,24 +13,13 @@ class Trie {
         for (char in word.lowercase()) {
             node = node.children.getOrPut(char) { TrieNode() }
         }
-        // Case-insensitive Kollision (z. B. „morgen" 830 vs. „Morgen" 670 — beide landen auf
-        // demselben kleingeschriebenen Pfad): die HÖHERE Frequenz behalten, nicht den zuletzt
-        // eingefügten Eintrag gewinnen lassen. Sonst verdeckte die spätere, seltenere Schreibweise
-        // stumm die häufigere und der Vorschlag käme falsch gecast heraus (klein getipptes „morge"
-        // → „Morgen") — genau die stille Fehlschreibung, die nah ablehnt. Gleichstand behält den
-        // ersten Eintrag (deterministisch).
-        //
-        // BEWUSSTE GRENZE, kein gelöstes Problem: das löst nur die *Schreibvarianten-*Kollision
-        // desselben Wortes. Echte Homographen, die sich NUR in der Gross-/Kleinschreibung
-        // unterscheiden und Verschiedenes bedeuten (Verb „essen" vs. Stadt „Essen", „sie"/„Sie"),
-        // teilen sich denselben Pfad — der seltenere Eintrag verschwindet hier ebenfalls stumm.
-        // Für einen case-insensitiven Präfix-Index ist das der akzeptierte Preis; die Vorschläge
-        // sind nicht-eingreifend und ein verlorener Eigenname kostet höchstens einen Vorschlag,
-        // nie ein falsch ersetztes Wort. Eine case-erhaltende Variante (zwei Knoten pro Pfad) wäre
-        // die Lösung, lohnt beim aktuellen Nutzen aber nicht.
-        // `originalWord != null` IST die „dieser Knoten ist ein Wortende"-Markierung — kein separates
-        // isWord-Flag, das mit der Originalform synchron gehalten werden müsste. Gleichstand behält den
-        // ersten Eintrag (`frequency >`, nicht `>=`), bleibt also deterministisch.
+        // Case-insensitive Kollision (z. B. „morgen" 830 vs. „Morgen" 670 → derselbe Pfad): die HÖHERE
+        // Frequenz gewinnt, nicht der letzte Eintrag — sonst verdeckte die seltenere Schreibweise stumm
+        // die häufigere und „morge" käme als „Morgen" heraus. Gleichstand behält den ersten Eintrag
+        // (`>`, nicht `>=`) → deterministisch. Akzeptierte Grenze: echte Gross-/Klein-Homographen
+        // („essen"/„Essen") teilen sich den Pfad, der seltenere verschwindet — bei nicht-eingreifenden
+        // Vorschlägen kostet das höchstens einen Vorschlag, nie ein falsch ersetztes Wort.
+        // `originalWord != null` ist zugleich die Wortend-Markierung (kein separates isWord-Flag).
         if (node.originalWord == null || frequency > node.frequency) {
             node.frequency = frequency
             node.originalWord = word
@@ -48,13 +33,9 @@ class Trie {
         }
         val results = mutableListOf<Pair<String, Int>>()
         collectWords(node, results)
-        // Sekundär alphabetisch, case-insensitiv über String.CASE_INSENSITIVE_ORDER: bei Frequenz-
-        // Gleichstand sonst HashMap-abhängig und nicht reproduzierbar (passt nicht zum Determinismus-
-        // Anspruch). Case-insensitiv, weil ein roher String-Vergleich ASCIIbetisch wäre (Grossbuchstaben
-        // vor Kleinbuchstaben, Umlaute hinter „z") und „Zürich" vor „apfel" stellte. CASE_INSENSITIVE_ORDER
-        // faltet die Gross-/Kleinschreibung beim Vergleich, ohne pro Vergleich einen lowercase-String zu
-        // allokieren. Eine weitere Tie-Break-Stufe braucht es nicht: im Teilbaum kollabieren die klein-
-        // geschriebenen Pfade, zwei verschiedene Ergebnisse haben also nie denselben Schlüssel.
+        // Sekundär case-insensitiv alphabetisch (String.CASE_INSENSITIVE_ORDER): macht Frequenz-
+        // Gleichstände reproduzierbar statt HashMap-abhängig, ohne pro Vergleich zu allokieren, und
+        // ordnet nicht ASCIIbetisch (sonst stünde „Zürich" vor „apfel").
         return results
             .sortedWith(
                 compareByDescending<Pair<String, Int>> { it.second }
@@ -72,16 +53,12 @@ class Trie {
     }
 
     /**
-     * Sammelt ALLE Wörter im Teilbaum unter [node], bevor [getSuggestions] nach Frequenz
-     * sortiert und auf das Limit kürzt. Bewusst ohne vorzeitigen Abbruch: das häufigste Wort
-     * kann beliebig tief im Teilbaum liegen, für eine korrekte Top-K-Auswahl muss der ganze
-     * Teilbaum besucht werden. Beim Korpus dieser App (gut 1400 Wörter, ein Finger) ist das
-     * vernachlässigbar — selbst der kürzeste erlaubte Präfix (2 Zeichen) spannt nur einen
-     * kleinen Teilbaum auf. Einmalige Messung dazu: `tools/trie_benchmark.md`.
+     * Sammelt ALLE Wörter im Teilbaum — ohne vorzeitigen Abbruch, weil das häufigste Wort beliebig tief
+     * liegen kann und [getSuggestions] erst danach nach Frequenz sortiert/kürzt. Beim Korpus dieser App
+     * vernachlässigbar (Messung: `tools/trie_benchmark.md`).
      */
     private fun collectWords(node: TrieNode, results: MutableList<Pair<String, Int>>) {
-        // `originalWord != null` markiert ein Wortende; das `?.let` ist damit die Prüfung selbst, kein
-        // Defensiv-Code gegen einen unmöglichen Zustand.
+        // `originalWord != null` markiert ein Wortende — das `?.let` ist die Prüfung, kein Defensiv-Code.
         node.originalWord?.let { results.add(it to node.frequency) }
         for (child in node.children.values) {
             collectWords(child, results)
@@ -90,8 +67,7 @@ class Trie {
 
     private class TrieNode {
         val children = HashMap<Char, TrieNode>()
-        // Nicht-null genau für Wortenden — gleichzeitig Markierung UND die zu committende Originalform
-        // (mit der im Korpus häufigsten Gross-/Kleinschreibung, siehe insert). Kein separates isWord-Flag.
+        // Nicht-null genau für Wortenden: Markierung UND die zu committende Originalform (siehe insert).
         var frequency = 0
         var originalWord: String? = null
     }
