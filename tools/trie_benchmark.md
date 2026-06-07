@@ -9,7 +9,7 @@ welcher Korpusgrösse** das den 60-fps-Frame (16,6 ms) gefährdet — damit ein 
 
 ## Kernaussage (TL;DR)
 
-- **Heute (363 Wörter): irrelevant** — Worst-Case ~1 µs (Desktop), ~8 µs (Gerät geschätzt).
+- **Heute (~1440 Wörter): irrelevant** — Worst-Case ~7 µs (Desktop), ~58 µs (Gerät geschätzt).
 - **Grün bis ~50 000 Wörter** — Worst-Case bleibt unter ~1 ms auf dem Gerät.
 - **Eng ab ~100k–200k Wörtern** — mehrere ms auf dem UI-Thread am seltenen 2-Zeichen-Präfix.
   **Das** ist die Schwelle, ab der sich die in `Trie.collectWords` skizzierte
@@ -27,10 +27,10 @@ der realistische Worst Case). 50 000 Warmup- + 200 000 Mess-Iterationen je Zeile
 
 | Korpus              | grösster 2-Zeichen-Teilbaum | `Trie.getSuggestions` | `suggest()` (voller Pfad) |
 | ------------------- | --------------------------- | --------------------- | ------------------------- |
-| **REAL (363)**      | „sc", 12 Wörter             | **1,0 µs**            | 1,6 µs                    |
-| SYN 5 000           | 99 Wörter                   | 10,0 µs               | 10,3 µs                   |
-| SYN 50 000          | 851 Wörter                  | 119 µs                | 120 µs                    |
-| SYN 200 000         | 3 246 Wörter                | 716 µs                | 755 µs                    |
+| **REAL (1441)**     | „ge", 61 Wörter             | **7,2 µs**            | 6,1 µs                    |
+| SYN 5 000           | 99 Wörter                   | 11,0 µs               | 10,7 µs                   |
+| SYN 50 000          | 851 Wörter                  | 121 µs                | 115 µs                    |
+| SYN 200 000         | 3 246 Wörter                | 572 µs                | 580 µs                    |
 
 Skaliert ~linear mit der Wortzahl im Teilbaum (≈0,1–0,2 µs/Wort) — wie für „besuche den
 ganzen Teilbaum + sortiere" erwartet. Der `suggest()`-Merge-Overhead (≤3+≤3 Resultate
@@ -43,10 +43,10 @@ langsamer als die Desktop-JVM. Konservativ ×8:
 
 | Korpus            | geschätzt/Tastendruck (worst case) | Anteil 16,6-ms-Frame |
 | ----------------- | ---------------------------------- | -------------------- |
-| **REAL (heute)**  | **~8 µs**                          | 0,05 % — unsichtbar  |
-| 5 000             | ~80 µs                             | 0,5 %                |
+| **REAL (heute)**  | **~58 µs**                         | 0,35 % — unsichtbar  |
+| 5 000             | ~88 µs                             | 0,5 %                |
 | 50 000            | ~1,0 ms                            | 6 %                  |
-| 200 000           | **~5,7 ms**                        | 34 %                 |
+| 200 000           | **~4,6 ms**                        | 28 %                 |
 
 Der **typische** Tastendruck (Präfix ≥ 3 Zeichen, kleinerer Teilbaum) ist deutlich
 billiger als diese 2-Zeichen-Worst-Cases.
@@ -129,5 +129,6 @@ class TrieBenchmarkThrowaway {
 }
 ```
 
-_Messung: Opus-4.8-Session, 2026-06-06, gegen den Korpus dieses Commits (363 Wörter).
-Desktop-JVM; Gerätezahlen sind eine konservative ×8-Hochrechnung, keine On-device-Messung._
+_Messung: Opus-4.8-Session, 2026-06-07, gegen den Korpus dieses Commits (1441 Wörter; nach dem
+Listen-Ausbau von 363 → ~1440 neu gemessen). Desktop-JVM; Gerätezahlen sind eine konservative
+×8-Hochrechnung, keine On-device-Messung._

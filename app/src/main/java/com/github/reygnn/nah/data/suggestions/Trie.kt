@@ -55,14 +55,14 @@ class Trie {
      * Sammelt ALLE Wörter im Teilbaum unter [node], bevor [getSuggestions] nach Frequenz
      * sortiert und auf das Limit kürzt. Bewusst ohne vorzeitigen Abbruch: das häufigste Wort
      * kann beliebig tief im Teilbaum liegen, für eine korrekte Top-K-Auswahl muss der ganze
-     * Teilbaum besucht werden. Beim aktuellen Korpus (einige hundert Wörter) ist das
+     * Teilbaum besucht werden. Beim aktuellen Korpus (gut 1400 Wörter) ist das
      * vernachlässigbar — selbst der kürzeste erlaubte Präfix (2 Zeichen) spannt nur einen
      * kleinen Teilbaum auf. Erst ein um Grössenordnungen grösseres Wörterbuch würde Branch-and-
      * Bound lohnen (max. Teilbaum-Frequenz je Knoten cachen und nicht-konkurrenzfähige Äste kappen).
      *
      * Quantifiziert in `tools/trie_benchmark.md`: gemessen ~0,1–0,2 µs/Wort im Teilbaum; grün bis
      * ~50k Wörter (<~1 ms/Tastendruck am Gerät), Branch-and-Bound lohnt erst ab ~100k–200k Wörtern.
-     * Heute (363 Wörter): ~1 µs — irrelevant.
+     * Heute (~1440 Wörter): ~7 µs — irrelevant.
      */
     private fun collectWords(node: TrieNode, results: MutableList<Pair<String, Int>>) {
         if (node.isWord) {

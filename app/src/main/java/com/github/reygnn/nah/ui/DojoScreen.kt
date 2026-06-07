@@ -140,8 +140,10 @@ private fun ModeChips(selected: DojoMode, onSelect: (DojoMode) -> Unit) {
 
 /**
  * Das aktuelle Ziel, gross und zentriert. Game Over zeigt den Neustart-Hinweis. In der Wort-Stufe
- * wird der bereits korrekt getippte Anfang abgesetzt (Akzentfarbe), der Rest normal — so sieht man
- * den Fortschritt. Der Hintergrund blitzt bei Treffer/Fehler kurz grün/rot ([DojoState.lastResult]).
+ * wird der bereits korrekt getippte Anfang grün abgesetzt, der Rest neutral — bzw. rot direkt nach
+ * einem Fehltipp, damit ein falscher Tap auch mitten im Wort sichtbar ist, nicht nur am Herz-Zähler.
+ * Die Ziel-Schrift (nicht der Hintergrund) färbt sich bei Treffer/Fehler ein und bleibt so bis zum
+ * nächsten Tap — kein Timer ([DojoState.lastResult]).
  */
 @Composable
 private fun TargetPrompt(state: DojoState) {
@@ -162,8 +164,12 @@ private fun TargetPrompt(state: DojoState) {
     val text = buildAnnotatedString {
         val typed = state.typed
         if (typed.isNotEmpty() && typed.length <= state.target.length) {
+            // Korrekt getippter Anfang grün; der Rest neutral — bzw. rot direkt nach einem Fehltipp
+            // (lastResult == false). Sonst bliebe ein falscher Tap mit bereits getipptem Fortschritt
+            // ohne sichtbares Fehler-Signal (nur das Herz sänke), anders als bei den Buchstaben-Stufen.
+            val remainderColor = if (state.lastResult == false) colors.error else colors.onSurface
             withStyle(SpanStyle(color = colors.primary)) { append(state.target.substring(0, typed.length)) }
-            withStyle(SpanStyle(color = colors.onSurface)) { append(state.target.substring(typed.length)) }
+            withStyle(SpanStyle(color = remainderColor)) { append(state.target.substring(typed.length)) }
         } else {
             withStyle(SpanStyle(color = if (state.typed.isEmpty()) flash else colors.onSurface)) {
                 append(state.target)
