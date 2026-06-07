@@ -22,11 +22,11 @@ import org.robolectric.annotation.Config
  * Projekt nicht getestet), die testbare Entscheidung sitzt im hierher gezogenen Seam.
  *
  * Geprüft: dass [DojoBestPersistence.seed] den Stand von der Platte in den ViewModel lädt, dass
- * [DojoBestPersistence.persistIfBetter] die Run-Paar-Ordnung auf der Platte durchsetzt und — der Kern
- * des #4-Fix — dass der `persisted`-Spiegel die Platte ohne echte Verbesserung **gar nicht erst
- * anfasst** (kein `recordBest`-Aufruf, also kein `DataStore.edit{}`, das sonst auch ohne Wertänderung
- * schreibt). Der Spiegel wird per MockK-Spy auf den Aufruf hin verifiziert, der Disk-Roundtrip über
- * echte Lese-/Schreibpfade.
+ * [DojoBestPersistence.persistIfBetter] Score und Serie als **unabhängige Maxima** auf der Platte
+ * anhebt und dass der `persisted`-Spiegel die Platte ohne echte Verbesserung in *einem* Feld **gar
+ * nicht erst anfasst** (kein `recordBest`-Aufruf, also kein `DataStore.edit{}`, das sonst auch ohne
+ * Wertänderung schreibt). Der Spiegel wird per MockK-Spy auf den Aufruf hin verifiziert, der
+ * Disk-Roundtrip über echte Lese-/Schreibpfade.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
@@ -58,29 +58,27 @@ class DojoBestPersistenceTest {
     }
 
     @Test
-    fun `persistIfBetter setzt die Run-Paar-Ordnung auf der Platte durch`() = runTest {
+    fun `persistIfBetter hebt Score und Serie unabhaengig auf der Platte an`() = runTest {
         persistence.persistIfBetter(DojoBest(120, 9))
-        persistence.persistIfBetter(DojoBest(50, 3))   // schlechterer Lauf → bleibt
+        persistence.persistIfBetter(DojoBest(50, 3))   // in beiden Feldern schlechter → bleibt
         assertEquals(DojoBest(120, 9), repo.best.first())
-        persistence.persistIfBetter(DojoBest(80, 20))  // höhere Serie, kleinerer Score → bleibt
-        assertEquals(DojoBest(120, 9), repo.best.first())
-        persistence.persistIfBetter(DojoBest(120, 12)) // gleicher Score, längere Serie → schreibt
-        assertEquals(DojoBest(120, 12), repo.best.first())
-        persistence.persistIfBetter(DojoBest(200, 1))  // höherer Score nimmt seine (kürzere) Serie mit
-        assertEquals(DojoBest(200, 1), repo.best.first())
+        persistence.persistIfBetter(DojoBest(80, 20))  // längere Serie → Serie steigt, Score bleibt
+        assertEquals(DojoBest(120, 20), repo.best.first())
+        persistence.persistIfBetter(DojoBest(200, 1))  // höherer Score → Score steigt, Serie bleibt
+        assertEquals(DojoBest(200, 20), repo.best.first())
     }
 
     @Test
-    fun `persistIfBetter beruehrt die Platte nicht ohne echte Verbesserung (Spiegel)`() = runTest {
+    fun `persistIfBetter beruehrt die Platte nur bei echter Verbesserung in einem Feld (Spiegel)`() = runTest {
         val spyRepo = spyk(DojoStatsRepository(RuntimeEnvironment.getApplication()))
         val p = DojoBestPersistence(spyRepo) // Spiegel startet (0,0); der Store ist in setUp geleert
-        p.persistIfBetter(DojoBest(120, 9))  // erster echter Rekord → schreibt
-        p.persistIfBetter(DojoBest(120, 9))  // gleich → kein Write
-        p.persistIfBetter(DojoBest(50, 3))   // schlechter → kein Write
-        p.persistIfBetter(DojoBest(119, 99)) // kleinerer Score (trotz langer Serie) → kein Write
+        p.persistIfBetter(DojoBest(120, 9))  // erster Rekord → schreibt
+        p.persistIfBetter(DojoBest(120, 9))  // in beiden Feldern gleich → kein Write
+        p.persistIfBetter(DojoBest(50, 3))   // in beiden Feldern schlechter → kein Write
+        p.persistIfBetter(DojoBest(119, 99)) // längere Serie (99 > 9) → echte Verbesserung → Write
         coVerify(exactly = 1) { spyRepo.recordBest(120, 9) }
         coVerify(exactly = 0) { spyRepo.recordBest(50, 3) }
-        coVerify(exactly = 0) { spyRepo.recordBest(119, 99) }
+        coVerify(exactly = 1) { spyRepo.recordBest(119, 99) }
     }
 
     @Test
@@ -91,7 +89,7 @@ class DojoBestPersistenceTest {
         p.seed(DojoViewModel(random = Random(0))) // Spiegel = (77,4) von der Platte
         p.persistIfBetter(DojoBest(77, 4))        // gleich dem geladenen Stand → kein Write
         coVerify(exactly = 0) { spyRepo.recordBest(any(), any()) }
-        p.persistIfBetter(DojoBest(77, 5))        // besserer Lauf → Write
+        p.persistIfBetter(DojoBest(77, 5))        // längere Serie → Write
         coVerify(exactly = 1) { spyRepo.recordBest(77, 5) }
     }
 }

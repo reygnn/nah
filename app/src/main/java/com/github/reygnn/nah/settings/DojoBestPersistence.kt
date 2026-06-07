@@ -12,8 +12,9 @@ import kotlinx.coroutines.flow.first
  * Hält den **`persisted`-Spiegel** dessen, was diese Sitzung schon geschrieben wurde: so berührt
  * [persistIfBetter] die Platte nur bei einer echten Verbesserung — `DataStore.edit{}` schreibt die Datei
  * sonst auch ohne Wertänderung. Eine Instanz pro Bildschirm (in der Activity `remember`t), single-threaded
- * auf dem Main-Dispatcher benutzt → der einfache `var` reicht. Run-Paar-Ordnung über das geteilte
- * [isBetterRun], dieselbe Regel wie im Spiel und in [DojoStatsRepository.recordBest].
+ * auf dem Main-Dispatcher benutzt → der einfache `var` reicht. Score und Serie sind **unabhängige
+ * Maxima** (dieselbe Sicht wie im Spiel und in [DojoStatsRepository.recordBest]): ein Write fällt an,
+ * sobald auch nur eines der beiden Felder den Spiegel übertrifft.
  */
 class DojoBestPersistence(private val repo: DojoStatsRepository) {
 
@@ -31,14 +32,18 @@ class DojoBestPersistence(private val repo: DojoStatsRepository) {
     }
 
     /**
-     * Schreibt [best] nur, wenn es den gespiegelten Stand als Run-Paar echt übertrifft, und zieht dann
-     * den Spiegel nach. Aufzurufen an den Run-Grenzen (Lauf zu Ende / Bildschirm verlassen), nicht pro
-     * Treffer. Idempotent: ein gleich gutes oder schlechteres Paar berührt die Platte nicht.
+     * Schreibt [best], sobald auch nur Score ODER Serie den gespiegelten Stand echt übertrifft, und
+     * zieht dann den Spiegel feldweise nach. Aufzurufen an den Run-Grenzen (Lauf zu Ende / Bildschirm
+     * verlassen), nicht pro Treffer. Idempotent: ein in beiden Feldern gleich gutes oder schlechteres
+     * Paar berührt die Platte nicht.
      */
     suspend fun persistIfBetter(best: DojoBest) {
-        if (isBetterRun(best.score, best.streak, persisted.score, persisted.streak)) {
+        if (best.score > persisted.score || best.streak > persisted.streak) {
             repo.recordBest(best.score, best.streak)
-            persisted = best
+            persisted = DojoBest(
+                maxOf(persisted.score, best.score),
+                maxOf(persisted.streak, best.streak),
+            )
         }
     }
 }

@@ -1,21 +1,10 @@
 package com.github.reygnn.nah.settings
 
-/** Bestwerte des Tipp-Trainings — bester Score und beste Serie, global über alle Stufen/Modi. Der
- *  einzige Dojo-Zustand, der das Verlassen überlebt; der laufende Spielstand absichtlich nicht. */
-data class DojoBest(val score: Int = 0, val streak: Int = 0)
-
 /**
- * Total geordnete „besserer Lauf"-Relation: höherer [score] gewinnt, bei Score-Gleichstand die
- * längere [streak]. Hält Score und Serie als EIN Run-Paar zusammen, statt zweier unabhängiger
- * Maxima aus womöglich verschiedenen Läufen.
- *
- * Die **einzige Quelle** dieser Regel — geteilt vom laufenden Spiel
- * ([com.github.reygnn.nah.viewmodel.DojoViewModel]), vom Seed-/Persistenz-Pfad
- * ([com.github.reygnn.nah.settings.DojoActivity]) und vom persistenzseitigen Sicherungsnetz
- * ([DojoStatsRepository.recordBest]). Bewusst kein Android, keine Coroutine: rein und JVM-testbar,
- * damit alle drei Aufrufer garantiert dieselbe Ordnung benutzen und nie auseinanderlaufen.
- *
- * Reine Kotlin-Datei (kein Android-Import), damit der ViewModel sie ohne Android-Kopplung nutzen kann.
+ * Bestwerte des Tipp-Trainings — bester Score und beste Serie, **unabhängig** über alle Stufen/Modi.
+ * Die beiden Felder sind getrennte Höchststände: `score` ist der höchste je erreichte Punktestand,
+ * `streak` die längste je erreichte Serie — sie müssen nicht aus demselben Lauf stammen (eine lange
+ * Serie zählt als Rekord, auch wenn der Punkt-Bestlauf eine kürzere hatte). Der einzige Dojo-Zustand,
+ * der das Verlassen überlebt; der laufende Spielstand absichtlich nicht.
  */
-fun isBetterRun(score: Int, streak: Int, thanScore: Int, thanStreak: Int): Boolean =
-    score > thanScore || (score == thanScore && streak > thanStreak)
+data class DojoBest(val score: Int = 0, val streak: Int = 0)

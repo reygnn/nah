@@ -7,7 +7,6 @@ import com.github.reygnn.nah.layout.FunctionKey
 import com.github.reygnn.nah.layout.KeyAction
 import com.github.reygnn.nah.layout.KeyboardKey
 import com.github.reygnn.nah.layout.OptimizedLayout
-import com.github.reygnn.nah.settings.isBetterRun
 import kotlin.random.Random
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -60,11 +59,12 @@ data class DojoState(
     val typed: String = "",
     val lastResult: Boolean? = null,
     val gameOver: Boolean = false,
-    // Bester Score / beste Serie global über alle Stufen und Modi. Das ist der ANZEIGE-Wert fürs
-    // Scoreboard: er klettert live im Lauf mit und überlebt einen Reset. Bewusst NICHT die Persistenz-
-    // quelle pro Frame — den dauerhaften Record schreibt die Activity event-gesteuert an Run-Grenzen
-    // (Lauf zu Ende / Verlassen), nicht bei jedem Treffer (siehe DojoActivity). Beide nutzen dieselbe
-    // isBetterRun-Ordnung, fliessen aber getrennt: flüchtiger Anzeige-Zustand hier, dauerhafter dort.
+    // Bester Score / beste Serie global über alle Stufen und Modi — zwei UNABHÄNGIGE Höchststände
+    // (nicht ein Paar): bestScore ist der höchste je erreichte Punktestand, bestStreak die längste je
+    // erreichte Serie, auch wenn sie aus verschiedenen Läufen stammen. Das ist der ANZEIGE-Wert fürs
+    // Scoreboard: beide klettern live im Lauf mit und überleben einen Reset. Bewusst NICHT die
+    // Persistenzquelle pro Frame — den dauerhaften Record schreibt die Activity event-gesteuert an
+    // Run-Grenzen (Lauf zu Ende / Verlassen), nicht bei jedem Treffer (siehe DojoActivity).
     val bestScore: Int = 0,
     val bestStreak: Int = 0,
 ) {
@@ -130,12 +130,6 @@ class DojoViewModel(
     // Laufzeiger für den Guided-Modus (Index in den aktuellen Pool); im Random-Modus ungenutzt.
     private var guidedIndex = 0
 
-    // Höchste Serie INNERHALB des laufenden Laufs (nicht global). Der Bestwert ist ein echtes Run-Paar:
-    // Score UND die Serie DESSELBEN Laufs. Der Score steigt im Lauf monoton, die Serie kann durch
-    // Fehltipper auf 0 fallen — darum braucht es dieses Lauf-Maximum, statt die Serie global zu
-    // maximieren (sonst stammten Score und Serie aus zwei verschiedenen Läufen). resetGame setzt es null.
-    private var runBestStreak = 0
-
     init {
         nextChallenge()
     }
@@ -183,16 +177,14 @@ class DojoViewModel(
     /** Lädt den persistierten Bestwert ins Spiel — von der Activity beim Beobachten von
      *  `DojoStatsRepository` aufgerufen (analog zu `KeyboardViewModel.applySettings`: Persistenz
      *  fliesst durch eine Methode, nicht durch den Konstruktor, damit der ViewModel rein bleibt).
-     *  Übernimmt das geladene Run-Paar nur, wenn es einen besseren Lauf darstellt als der bereits im
-     *  Zustand stehende ([isBetterRun]) — so kann ein verspätetes Lade-Echo einen in dieser Sitzung
-     *  bereits erspielten besseren Lauf nicht überschreiben, und Score/Serie bleiben EIN Paar. */
+     *  Hebt jedes Feld nur an, nie ab (feldweises Maximum) — so kann ein verspätetes Lade-Echo einen
+     *  in dieser Sitzung bereits erspielten höheren Score oder eine längere Serie nicht überschreiben. */
     fun setBest(bestScore: Int, bestStreak: Int) {
         _state.update {
-            if (isBetterRun(bestScore, bestStreak, it.bestScore, it.bestStreak)) {
-                it.copy(bestScore = bestScore, bestStreak = bestStreak)
-            } else {
-                it
-            }
+            it.copy(
+                bestScore = maxOf(it.bestScore, bestScore),
+                bestStreak = maxOf(it.bestStreak, bestStreak),
+            )
         }
     }
 
@@ -250,16 +242,14 @@ class DojoViewModel(
         val s = _state.value
         val newScore = s.score + POINTS_PER_HIT + s.streak * STREAK_BONUS
         val newStreak = s.streak + 1
-        runBestStreak = maxOf(runBestStreak, newStreak)
-        // Bestwert als Run-Paar mitführen: nur wenn DIESER Lauf den bisherigen besten schlägt, übernehmen
-        // wir Score UND die Serie dieses Laufs gemeinsam. resetGame lässt die Best-Felder bewusst stehen.
-        val better = isBetterRun(newScore, runBestStreak, s.bestScore, s.bestStreak)
+        // Bestwerte als zwei unabhängige Maxima mitführen: jedes Feld klettert für sich, ohne dass
+        // Score und Serie aus demselben Lauf stammen müssen. resetGame lässt die Best-Felder stehen.
         _state.update {
             it.copy(
                 score = newScore,
                 streak = newStreak,
-                bestScore = if (better) newScore else it.bestScore,
-                bestStreak = if (better) runBestStreak else it.bestStreak,
+                bestScore = maxOf(it.bestScore, newScore),
+                bestStreak = maxOf(it.bestStreak, newStreak),
                 lastResult = true,
             )
         }
@@ -279,7 +269,6 @@ class DojoViewModel(
 
     private fun resetGame() {
         guidedIndex = 0
-        runBestStreak = 0
         _state.update {
             it.copy(
                 score = 0,

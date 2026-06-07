@@ -34,19 +34,18 @@ class DojoStatsRepository(private val context: Context) {
         .map { DojoBest(it[Keys.bestScore] ?: 0, it[Keys.bestStreak] ?: 0) }
 
     /**
-     * Hält [score]/[streak] als **Run-Paar** fest: ein besserer Lauf gewinnt — höherer Score zuerst,
-     * bei Score-Gleichstand die längere Serie — und ersetzt dann Score UND Serie gemeinsam. So bleibt
-     * der gespeicherte Wert ein echter Lauf, nicht zwei unabhängige Maxima aus verschiedenen Läufen.
-     * Der Aufruf ist idempotent: ein gleich gutes oder schlechteres Paar ändert nichts.
+     * Hebt Score und Serie als **zwei unabhängige Maxima** an: jedes Feld wird nur überschrieben, wenn
+     * der neue Wert das gespeicherte echt übertrifft — getrennt, nicht als Paar. So ist `bestScore`
+     * stets der höchste je erreichte Punktestand und `bestStreak` die längste je erreichte Serie, auch
+     * wenn sie aus verschiedenen Läufen stammen. Beide Felder sind damit monoton; der Aufruf ist
+     * idempotent: ein in beiden Feldern gleich gutes oder schlechteres Paar ändert nichts.
      */
     suspend fun recordBest(score: Int, streak: Int) {
         context.dojoStatsDataStore.edit { prefs ->
             val curScore = prefs[Keys.bestScore] ?: 0
             val curStreak = prefs[Keys.bestStreak] ?: 0
-            if (isBetterRun(score, streak, curScore, curStreak)) {
-                prefs[Keys.bestScore] = score
-                prefs[Keys.bestStreak] = streak
-            }
+            if (score > curScore) prefs[Keys.bestScore] = score
+            if (streak > curStreak) prefs[Keys.bestStreak] = streak
         }
     }
 

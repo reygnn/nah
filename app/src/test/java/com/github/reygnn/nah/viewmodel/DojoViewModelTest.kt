@@ -306,28 +306,28 @@ class DojoViewModelTest {
     }
 
     @Test
-    fun `setBest uebernimmt nur ein besseres Run-Paar - Score zuerst, dann Serie`() {
+    fun `setBest hebt Score und Serie unabhaengig an und senkt nie`() {
         val vm = vm()
         vm.setBest(100, 5)
         assertEquals(100, vm.state.value.bestScore)
         assertEquals(5, vm.state.value.bestStreak)
-        // Höhere Serie, aber niedrigerer Score → KEIN besserer Lauf: die Serie wird NICHT auf 20 gehoben
-        // (kein unabhängiges Maximum — Score und Serie bleiben EIN Paar).
+        // Höhere Serie, niedrigerer Score → die Serie steigt unabhängig auf 20, der Score bleibt 100
+        // (jedes Feld ist ein eigenes Maximum, kein Paar).
         vm.setBest(80, 20)
         assertEquals(100, vm.state.value.bestScore)
-        assertEquals(5, vm.state.value.bestStreak)
-        // Gleicher Score, längere Serie → besserer Lauf.
-        vm.setBest(100, 8)
-        assertEquals(100, vm.state.value.bestScore)
-        assertEquals(8, vm.state.value.bestStreak)
-        // Höherer Score gewinnt und nimmt seine (kürzere) Serie mit.
+        assertEquals(20, vm.state.value.bestStreak)
+        // Höherer Score, kürzere Serie → der Score steigt auf 120, die Serie bleibt bei 20.
         vm.setBest(120, 2)
         assertEquals(120, vm.state.value.bestScore)
-        assertEquals(2, vm.state.value.bestStreak)
+        assertEquals(20, vm.state.value.bestStreak)
+        // In beiden Feldern schlechter → nichts ändert sich (senkt nie).
+        vm.setBest(50, 1)
+        assertEquals(120, vm.state.value.bestScore)
+        assertEquals(20, vm.state.value.bestStreak)
     }
 
     @Test
-    fun `Bestwert ist ein Run-Paar - der hoechste Score traegt die Serie SEINES Laufs`() {
+    fun `Bestwerte sind unabhaengig - hoechster Score und laengste Serie aus verschiedenen Laeufen`() {
         val vm = vm()
         vm.setMode(DojoMode.GUIDED) // VOWELS, Ziele o, u, a, i, e
         // Lauf A: fünf Treffer in Folge → Score 70 bei Serie 5.
@@ -342,10 +342,10 @@ class DojoViewModelTest {
         repeat(4) { vm.onKey(CharKey(vm.state.value.target.first())) } // Serie auf 4
         vm.onKey(CharKey('x')) // Fehltipp: Serie bricht, Lauf läuft mit 4 Leben weiter
         repeat(4) { vm.onKey(CharKey(vm.state.value.target.first())) } // weiter punkten, Serie nur bis 4
-        // Run-Paar: Score 104 schlägt 70 → der Bestwert trägt die Serie VON Lauf B (4), nicht die global
-        // höchste (5 aus Lauf A). Zwei unabhängige Maxima ergäben fälschlich (104, 5).
+        // Unabhängige Maxima: Score 104 aus Lauf B schlägt 70 → bestScore 104. Die längste Serie bleibt
+        // die 5 aus Lauf A — sie überlebt getrennt vom Score-Bestlauf (kein Paar).
         assertEquals(104, vm.state.value.bestScore)
-        assertEquals(4, vm.state.value.bestStreak)
+        assertEquals(5, vm.state.value.bestStreak)
     }
 
     @Test
