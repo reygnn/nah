@@ -12,6 +12,11 @@ package com.github.reygnn.nah.layout
  * optimierte Optimum, der Vokal-Cluster kostet also so gut wie nichts. Vier Buchstaben-
  * reihen → breite Tasten mit Totzonen ringsum.
  *
+ * **Ehrlich zur Zahl:** Die ~36 % ruhen auf *handgeschätzten* Wort-/Bigramm-Frequenzen
+ * ([com.github.reygnn.nah.data.suggestions.GermanWordList]), nicht auf einem gemessenen
+ * Korpus — eine Grössenordnung (grob ein Drittel), kein belastbarer Messwert. Verlässlich
+ * ist die Richtung (häufige Buchstaben nah beieinander), nicht die zweite Stelle.
+ *
  * Die **Umlaute ä/ö/ü** haben keine eigene Taste: sie liegen per Long-Press auf ihrem
  * Grundvokal (a→ä, o→ö, u→ü, siehe [KeyAlternatives]). Das spart die rechte Spalte und
  * macht jede Taste breiter (Fat-Finger), ohne den optimierten Rest zu verschieben — die

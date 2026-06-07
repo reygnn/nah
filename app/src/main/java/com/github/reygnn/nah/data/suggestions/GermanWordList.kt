@@ -121,10 +121,12 @@ object GermanWordList {
         "Wochenende" to 650, "Ferien" to 640, "Party" to 630,
         "Kino" to 590, "Film" to 580, "Musik" to 570, "Sport" to 560,
 
-        // --- Expansion to the ~1000 most-used de-CH words (chore/wordlist-1000) ---
+        // --- Expansion toward the most-used de-CH words (chore/wordlist-1000) ---
         // Same de-CH rules: no ß ("ss"), lowercase keys deduped against the above.
-        // Frequencies stay in the 200–870 band so the top function words above
-        // keep ranking first.
+        // Frequencies stay below the ~1000 tier of the top articles/pronouns above
+        // (a few connectors reach 880–900) so those keep ranking first. The whole
+        // list is ~1440 entries (see WordIndex) — the "1000" is the branch name, not
+        // the count.
 
         // Personal & possessive pronouns (object/dative forms, missing above)
         "mich" to 870, "mir" to 870, "dich" to 850, "dir" to 850,

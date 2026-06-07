@@ -29,7 +29,11 @@ The consonants are placed by simulated annealing over de-CH bigram frequencies
 (including the space key at word boundaries and the Shift key for capitalised
 nouns), minimising total finger travel — roughly **36 % less travel than
 QWERTZ-CH** for one finger, practically tied with the freely-optimised optimum
-(the central vowel cluster costs almost nothing). The optimiser lives in
+(the central vowel cluster costs almost nothing). Caveat: that ~36 % rests on
+**hand-estimated** word/bigram frequencies (see
+[`GermanWordList`](app/src/main/java/com/github/reygnn/nah/data/suggestions/GermanWordList.kt)),
+not a measured corpus — read it as an order of magnitude (about a third), not a
+precise figure. The direction is robust; the second digit is not. The optimiser lives in
 [`tools/optimize_layout.py`](tools/optimize_layout.py); the result is baked into
 [`OptimizedLayout.kt`](app/src/main/java/com/github/reygnn/nah/layout/OptimizedLayout.kt).
 

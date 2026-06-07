@@ -19,9 +19,11 @@ data class KeyboardLayout(
      * die Tasten nicht quadratisch (am Pixel 9a ~51 dp breit vs. 58 dp hoch, plus Totzonen),
      * und ein realer Finger reist nicht Mitte-zu-Mitte. Die „~36 % weniger Reise" ist also
      * ein **relativer** Vergleich gegen QWERTZ-CH in derselben Konvention, keine gemessene
-     * Strecke in mm. Für den Zweck (Anordnung optimieren/gegen Regression schützen) genügt
-     * das; der Optimizer (`tools/optimize_layout.py`) nutzt dasselbe Modell, ist also in sich
-     * konsistent.
+     * Strecke in mm. Hinzu kommt: die Bigramm-Gewichte sind *handgeschätzt*
+     * ([com.github.reygnn.nah.data.suggestions.GermanWordList]), nicht korpus-gemessen — die
+     * Zahl ist eine Grössenordnung, kein Messwert. Für den Zweck (Anordnung optimieren/gegen
+     * Regression schützen) genügt das; der Optimizer (`tools/optimize_layout.py`) nutzt dasselbe
+     * Modell, ist also in sich konsistent.
      *
      * **Spalten-Hinweis:** Die Metrik setzt je Reihe gleich breite, zentrierte Spalten an
      * (`colIdx`) und ignoriert die [KeyboardKey.weight]e. Das deckt sich mit dem tatsächlichen

@@ -10,7 +10,9 @@ Session-Start. Kurz und handlungsleitend halten.
 > fürs *Zehnfinger*-System auseinanderzureissen — für *einen* Finger maximiert
 > das die Reisestrecke. nah ordnet die Buchstaben so an, dass häufige
 > Buchstaben/Bigramme nah beieinander liegen (~36 % weniger Fingerreise als
-> QWERTZ-CH, siehe `tools/optimize_layout.py`).
+> QWERTZ-CH laut `tools/optimize_layout.py`). Die ~36 % ruhen auf *handgeschätzten*
+> Frequenzen (`GermanWordList`), nicht auf einem gemessenen Korpus — eine
+> Grössenordnung, kein Messwert; verlässlich ist die Richtung, nicht die zweite Stelle.
 
 ## Die vier harten Anforderungen (Reihenfolge ist Absicht)
 
