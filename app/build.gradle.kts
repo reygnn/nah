@@ -44,7 +44,11 @@ android {
     }
 
     testOptions {
-        unitTests.isReturnDefaultValues = true
+        unitTests {
+            isReturnDefaultValues = true
+            // Robolectric braucht die gemergten Android-Ressourcen/Manifest im Test-Classpath.
+            isIncludeAndroidResources = true
+        }
     }
 
     packaging {
@@ -82,4 +86,6 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
+    // Nur für Tests mit echtem Android-Runtime (DataStore-Round-Trip von DojoStatsRepository).
+    testImplementation(libs.robolectric)
 }

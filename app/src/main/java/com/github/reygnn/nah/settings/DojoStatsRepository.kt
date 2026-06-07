@@ -48,4 +48,10 @@ class DojoStatsRepository(private val context: Context) {
             prefs[Keys.bestStreak] = maxOf(prefs[Keys.bestStreak] ?: 0, streak)
         }
     }
+
+    /** Setzt die Bestwerte zurück. Bewusst klein gehalten — Andockpunkt für ein späteres
+     *  „Bestwert löschen" und der Reset für isolierte Test-Läufe. */
+    suspend fun clear() {
+        context.dojoStatsDataStore.edit { it.clear() }
+    }
 }

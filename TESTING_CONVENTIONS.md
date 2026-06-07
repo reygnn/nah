@@ -1,7 +1,10 @@
 # TESTING_CONVENTIONS
 
-JVM-only Unit-Tests. JUnit 4 + MockK + kotlinx-coroutines-test. Kein Robolectric,
-kein Mockito, kein androidTest-Source-Set.
+JVM-only Unit-Tests als Default. JUnit 4 + MockK + kotlinx-coroutines-test. Kein
+Mockito, kein androidTest-Source-Set. **Robolectric** kommt nur dort dazu, wo ein
+Test echtes Android-Runtime braucht (DataStore) — aktuell ausschliesslich
+`DojoStatsRepositoryTest` (`@RunWith(RobolectricTestRunner)`, `@Config(sdk = [36])`).
+Reine Logik bleibt JVM-only.
 
 ## Nicht verhandelbar
 
@@ -12,8 +15,12 @@ kein Mockito, kein androidTest-Source-Set.
 - **MockK, nicht Mockito.** Mock-Variablen nach dem benennen, was sie darstellen
   (kein `mock`-Präfix) — `mockk(...)` sagt schon, dass es ein Mock ist.
 - **Pure Logik lebt ausserhalb der Android-Runtime-Klassen.** `KeyboardViewModel`,
-  `OptimizedLayout`, `Trie`, `SuggestionRepository` sind JVM-testbar ohne
-  Robolectric. Der IME-Service ist dünner Glue und wird nicht unit-getestet.
+  `OptimizedLayout`, `Trie`, `SuggestionRepository`, `DojoViewModel` sind JVM-testbar
+  ohne Robolectric. Der IME-Service ist dünner Glue und wird nicht unit-getestet.
+- **Robolectric nur für echtes Android-Runtime.** Wo ein Test wirklich die Plattform
+  braucht (DataStore-Round-Trip in `DojoStatsRepositoryTest`), ist Robolectric mit
+  `@Config(sdk = [36])` erlaubt — aber die Ausnahme, nicht der Default. Den Context im
+  Test über `RuntimeEnvironment.getApplication()` holen (kein `androidx.test:core` nötig).
 - `unitTests.isReturnDefaultValues = true` ist gesetzt (Framework-Klassen geben in
   JVM-Tests Defaults zurück).
 

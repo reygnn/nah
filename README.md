@@ -159,7 +159,9 @@ tools/      optimize_layout.py — the layout optimiser (reproducible);
 
 ### Testing
 
-JVM-only unit tests (JUnit 4 + MockK + kotlinx-coroutines-test, no Robolectric).
+Mostly JVM-only unit tests (JUnit 4 + MockK + kotlinx-coroutines-test); Robolectric
+only where a test needs real Android runtime (DataStore round-trip in
+`DojoStatsRepositoryTest`).
 Covered: the layout's travel property (must beat QWERTZ), the ViewModel state
 machine (commit / backspace / shift / caps / layer switch / auto-cap / the
 "suggestion never replaces finished text" invariant), the Trie, and the pure
