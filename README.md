@@ -88,6 +88,13 @@ deliberate scope choice for a single-user personal keyboard, not an oversight.
 - **Training-wheel colours** (optional, off by default) — tint vowels and the
   highest-frequency consonants in fixed colours, and dim the rarely-used `x`/`y`,
   while muscle memory settles.
+- **Typing dojo** (opened from settings) — a drill for the new letter *positions*,
+  the one thing nah makes you relearn. Shows a target, you tap the right key,
+  with score / streak / lives. Four levels (vowels → frequent consonants → full
+  alphabet → real de-CH words) in *random* or *in-order* mode. Reuses the real
+  keyboard rendering, so the geometry — and the muscle memory — is identical;
+  no hints, labels stay visible. The frozen layout is only read, never changed.
+  (vuot's dojo idea, but drilling tap positions instead of invisible gestures.)
 - **Symbols layer** of equal height (no resize jump when switching), with `,` `.`
   space and return in the same positions as the letter layer. `?` and `!` sit on a
   long-press of the period key.

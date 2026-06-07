@@ -25,6 +25,12 @@
             android:exported="false"
             android:label="@string/app_name" />
 
+        <!-- Tipp-Training / Dojo (aus den Einstellungen geöffnet) -->
+        <activity
+            android:name=".settings.DojoActivity"
+            android:exported="false"
+            android:label="@string/app_name" />
+
         <!-- Die eigentliche IME -->
         <service
             android:name=".ime.NahIme"

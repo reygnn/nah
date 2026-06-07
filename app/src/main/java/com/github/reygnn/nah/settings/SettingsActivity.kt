@@ -53,6 +53,9 @@ class SettingsActivity : ComponentActivity() {
                     onManageUserWords = {
                         startActivity(Intent(this, UserWordsActivity::class.java))
                     },
+                    onOpenDojo = {
+                        startActivity(Intent(this, DojoActivity::class.java))
+                    },
                 )
             }
         }
@@ -65,6 +68,7 @@ fun SettingsScreen(
     onOpenImePicker: () -> Unit,
     onOpenSystemKeyboardSettings: () -> Unit,
     onManageUserWords: () -> Unit,
+    onOpenDojo: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val settings by repository.settings.collectAsStateWithLifecycle(initialValue = Settings())
@@ -132,6 +136,14 @@ fun SettingsScreen(
                     scope.launch { repository.update { it.copy(letterColorHintsEnabled = value) } }
                 },
             )
+
+            HorizontalDivider()
+
+            // Tipp-Training: drillt die Buchstaben-Positionen des optimierten Layouts (Lernhilfe
+            // wie die Lern-Farben, nur aktiv statt passiv). Eigene Activity, kein IME-Kontext nötig.
+            Button(onClick = onOpenDojo, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.settings_open_dojo))
+            }
         }
     }
 }

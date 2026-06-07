@@ -10,6 +10,19 @@
     <string name="settings_manage_user_words">Eigene Wörter verwalten</string>
     <string name="settings_auto_cap">Auto-Grossschreibung am Satzanfang</string>
     <string name="settings_color_hints">Lern-Farben (Vokale &amp; häufige Konsonanten)</string>
+    <string name="settings_open_dojo">Tipp-Training</string>
+
+    <!-- Dojo (Tipp-Training) -->
+    <string name="dojo_title">Tipp-Training</string>
+    <string name="dojo_score">Punkte: %1$d</string>
+    <string name="dojo_streak">Serie: %1$d</string>
+    <string name="dojo_level_vowels">Vokale</string>
+    <string name="dojo_level_consonants">Konsonanten</string>
+    <string name="dojo_level_alphabet">Alphabet</string>
+    <string name="dojo_level_words">Wörter</string>
+    <string name="dojo_mode_random">Zufall</string>
+    <string name="dojo_mode_guided">Der Reihe nach</string>
+    <string name="dojo_game_over">Game Over — tippe eine Taste für Neustart</string>
 
     <!-- Eigene Wörter -->
     <string name="user_words_title">Eigene Wörter</string>

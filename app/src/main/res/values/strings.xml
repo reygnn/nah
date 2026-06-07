@@ -12,6 +12,19 @@
     <string name="settings_manage_user_words">Manage your own words</string>
     <string name="settings_auto_cap">Auto-capitalise at sentence start</string>
     <string name="settings_color_hints">Learning colours (vowels &amp; frequent consonants)</string>
+    <string name="settings_open_dojo">Typing dojo</string>
+
+    <!-- Dojo (typing trainer) -->
+    <string name="dojo_title">Typing dojo</string>
+    <string name="dojo_score">Score: %1$d</string>
+    <string name="dojo_streak">Streak: %1$d</string>
+    <string name="dojo_level_vowels">Vowels</string>
+    <string name="dojo_level_consonants">Consonants</string>
+    <string name="dojo_level_alphabet">Alphabet</string>
+    <string name="dojo_level_words">Words</string>
+    <string name="dojo_mode_random">Random</string>
+    <string name="dojo_mode_guided">In order</string>
+    <string name="dojo_game_over">Game over — tap any key to restart</string>
 
     <!-- User words -->
     <string name="user_words_title">Your own words</string>
