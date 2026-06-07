@@ -149,27 +149,33 @@ class DojoViewModel(
 
     // --- öffentliche Aktionen ---
 
+    /**
+     * Modus-Toggle (RANDOM↔GUIDED): **behält den laufenden Spielstand** (Score/Serie/Leben) und zieht
+     * nur ein frisches Ziel aus DEMSELBEN Pool (siehe [switchPool]). Ein Moduswechsel ändert bloss die
+     * Ziehreihenfolge, nicht die Stufe — er kann also nichts in einen fremden Stufen-Rekord lecken und
+     * muss den Lauf nicht zurücksetzen (anders als [setLevel]). Ausnahme Game Over: ein toter Lauf lässt
+     * sich nicht „behalten", und ein [switchPool] hinterliesse einen widersprüchlichen
+     * target-gesetzt-aber-gameOver-Zustand → dort voller [resetGame].
+     */
     fun setMode(mode: DojoMode) {
         if (_state.value.mode == mode) return
         _state.update { it.copy(mode = mode) }
-        rebuildAfterPoolChange()
-    }
-
-    fun setLevel(level: DojoLevel) {
-        if (_state.value.level == level) return
-        _state.update { it.copy(level = level) }
-        rebuildAfterPoolChange()
+        if (_state.value.gameOver) resetGame() else switchPool()
     }
 
     /**
-     * Jeder Stufen- oder Moduswechsel startet einen **frischen Lauf** für den gewählten Pool (Score,
-     * Serie und Leben zurück auf Anfang) — die persistierten Stufen-Rekorde ([DojoState.bests]) bleiben.
-     * Das ist die Konsequenz aus per-Stufe-Rekorden: ein Lauf gehört zu genau einer Stufe, also darf eine
-     * auf der leichten Vokal-Stufe aufgebaute Serie/Score beim Wechsel nicht in den Rekord einer anderen
-     * Stufe lecken (sonst wäre die Bestenliste wieder von der leichtesten Stufe dominierbar). Deckt
-     * zugleich den Game-Over-Fall sauber ab: kein widersprüchlicher target-gesetzt-aber-gameOver-Zustand.
+     * Stufenwechsel startet **immer einen frischen Lauf** (Score/Serie/Leben zurück auf Anfang) — die
+     * persistierten Stufen-Rekorde ([DojoState.bests]) bleiben. Konsequenz aus den per-Stufe-Rekorden:
+     * ein Lauf gehört zu genau einer Stufe, also darf eine auf der leichten Vokal-Stufe aufgebaute
+     * Serie/Score beim Wechsel nicht in den Rekord einer anderen Stufe lecken (sonst wäre die
+     * Bestenliste wieder von der leichtesten Stufe dominierbar). [resetGame] deckt zugleich den
+     * Game-Over-Fall sauber ab: kein widersprüchlicher target-gesetzt-aber-gameOver-Zustand.
      */
-    private fun rebuildAfterPoolChange() = resetGame()
+    fun setLevel(level: DojoLevel) {
+        if (_state.value.level == level) return
+        _state.update { it.copy(level = level) }
+        resetGame()
+    }
 
     /** Tap auf eine Taste der gerenderten Tastatur. Buchstaben sind ein Versuch; Funktionstasten
      *  sind im Drill neutral (nur Backspace nimmt in der Wort-Stufe den letzten Buchstaben zurück). */
@@ -298,6 +304,19 @@ class DojoViewModel(
                 gameOver = false,
             )
         }
+        nextChallenge()
+    }
+
+    /**
+     * Modus-Wechsel bei laufendem Spiel: zieht ein frisches Ziel aus DEMSELBEN Pool, **ohne** den
+     * Spielstand anzutasten — Score, Serie und Leben bleiben stehen (anders als [resetGame], das beim
+     * Neustart nach Game Over und bei jedem Stufenwechsel greift). Der Guided-Cursor springt auf den
+     * Anfang des Pools; ein etwaiger Wort-Fortschritt und ein stehengebliebenes Treffer/Fehler-Aufblitzen
+     * werden verworfen.
+     */
+    private fun switchPool() {
+        guidedIndex = 0
+        _state.update { it.copy(typed = "", lastResult = null) }
         nextChallenge()
     }
 

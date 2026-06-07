@@ -449,4 +449,24 @@ class DojoViewModelTest {
         assertEquals(10, s.bestFor(DojoLevel.VOWELS).score)
         assertEquals(0, s.bestFor(DojoLevel.CONSONANTS).score)
     }
+
+    @Test
+    fun `Moduswechsel laesst den Spielstand stehen und zieht nur neu aus demselben Pool`() {
+        val vm = vm()
+        vm.setMode(DojoMode.GUIDED) // Vokal-Stufe, GUIDED
+        vm.onKey(CharKey('o')) // korrekt → 10 Punkte, Serie 1
+        vm.onKey(CharKey('x')) // Fehltipp → ein Leben weg, Serie bricht
+        assertEquals(10, vm.state.value.score)
+        assertEquals(DojoState.MAX_LIVES - 1, vm.state.value.lives)
+        vm.setMode(DojoMode.RANDOM)
+        val s = vm.state.value
+        // Gleiche Stufe → kein Leck in einen fremden Rekord → der Lauf bleibt stehen (keine Strafe).
+        assertEquals(10, s.score)
+        assertEquals(DojoState.MAX_LIVES - 1, s.lives)
+        assertEquals(DojoLevel.VOWELS, s.level)
+        // Nur Fortschritt/Aufblitzen verworfen, frisches Ziel aus demselben Vokal-Pool.
+        assertEquals("", s.typed)
+        assertEquals(null, s.lastResult)
+        assertTrue(s.target in setOf("a", "e", "i", "o", "u"))
+    }
 }
