@@ -63,7 +63,7 @@ object GermanWordList {
         "jung" to 750, "lang" to 740, "kurz" to 730, "hoch" to 720, "schön" to 710,
         "schnell" to 700, "langsam" to 690, "stark" to 680, "schwach" to 670, "leicht" to 660,
         "schwer" to 650, "wichtig" to 640, "richtig" to 630, "falsch" to 620, "möglich" to 610,
-        "verschieden" to 600, "besonder" to 590, "eigen" to 580, "genau" to 570, "klar" to 560,
+        "verschieden" to 600, "besondere" to 590, "eigen" to 580, "genau" to 570, "klar" to 560,
         "einfach" to 550, "schwierig" to 540, "voll" to 530, "leer" to 520, "weit" to 510,
         "nah" to 500, "früh" to 490, "spät" to 480, "offen" to 470, "frei" to 460,
         "sicher" to 450, "ganz" to 440, "gleich" to 430, "andere" to 420, "beide" to 410,
@@ -79,7 +79,7 @@ object GermanWordList {
 
         // Substantive - Zeit
         "Zeit" to 750, "Jahr" to 740, "Tag" to 730, "Woche" to 720, "Monat" to 710,
-        "Stunde" to 700, "Minute" to 690, "Sekunde" to 680, "Morgen" to 670, "Abend" to 660,
+        "Stunde" to 700, "Minute" to 690, "Sekunde" to 680, "Morgen" to 670, "Abend" to 710,
         "Nacht" to 650, "Anfang" to 640, "Ende" to 630, "Moment" to 620, "Augenblick" to 610,
 
         // Substantive - Menschen
@@ -116,8 +116,8 @@ object GermanWordList {
 
         // WhatsApp/SMS häufig
         "hey" to 790, "hi" to 780, "bis" to 760,
-        "später" to 750, "abend" to 710,
-        "liebe" to 700, "grüsse" to 690, "kuss" to 680, "hdl" to 670, "lg" to 660,
+        "später" to 750,
+        "liebe" to 700, "Grüsse" to 690, "kuss" to 680, "hdl" to 670, "lg" to 660,
         "Wochenende" to 650, "Ferien" to 640, "Party" to 630,
         "Kino" to 590, "Film" to 580, "Musik" to 570, "Sport" to 560,
 
@@ -309,7 +309,7 @@ object GermanWordList {
         "Kirche" to 460, "Museum" to 460, "Theater" to 440, "Bibliothek" to 420, "Universität" to 440,
 
         // Nouns — food & drink
-        "Brot" to 560, "Brötchen" to 460, "Butter" to 480, "Käse" to 520, "Wurst" to 480,
+        "Brot" to 560, "Brötli" to 460, "Butter" to 480, "Käse" to 520, "Wurst" to 480,
         "Fleisch" to 500, "Fisch" to 500, "Huhn" to 420, "Milch" to 520, "Kaffee" to 580,
         "Tee" to 540, "Bier" to 520, "Wein" to 500, "Saft" to 480, "Zucker" to 460,
         "Salz" to 480, "Pfeffer" to 380, "Mehl" to 400, "Reis" to 460, "Nudeln" to 460,
