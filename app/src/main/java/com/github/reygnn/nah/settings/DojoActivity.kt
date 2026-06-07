@@ -3,7 +3,7 @@ package com.github.reygnn.nah.settings
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.runtime.remember
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.reygnn.nah.ui.DojoScreen
 import com.github.reygnn.nah.ui.NahTheme
 import com.github.reygnn.nah.viewmodel.DojoViewModel
@@ -19,9 +19,10 @@ class DojoActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             NahTheme {
-                // remember überlebt Rekomposition; ein Config-Change (Drehung) baut die Activity neu
-                // und startet die Runde frisch — für ein kurzes Drill akzeptabel, kein persistenter Stand.
-                val viewModel = remember { DojoViewModel() }
+                // viewModel() bindet den DojoViewModel an den ViewModelStore der Activity → der
+                // Spielstand (Punkte/Serie/Leben/Ziel) überlebt einen Config-Change (Drehung),
+                // statt bei jeder Drehung neu zu starten.
+                val viewModel: DojoViewModel = viewModel()
                 DojoScreen(viewModel = viewModel)
             }
         }

@@ -1,5 +1,6 @@
 package com.github.reygnn.nah.viewmodel
 
+import androidx.lifecycle.ViewModel
 import com.github.reygnn.nah.data.suggestions.GermanWordList
 import com.github.reygnn.nah.layout.CharKey
 import com.github.reygnn.nah.layout.FunctionKey
@@ -60,8 +61,11 @@ data class DojoState(
 }
 
 /**
- * Reine Zustandsmaschine für das Tipp-Training („Dojo"). Wie [KeyboardViewModel] ein
- * plain-class + [StateFlow], kein Android — JVM-testbar.
+ * Zustandsmaschine für das Tipp-Training („Dojo"). Ein [androidx.lifecycle.ViewModel] (anders als
+ * [KeyboardViewModel], das im IME-Service ohne Lifecycle lebt), damit der Spielstand einen
+ * Config-Change (Drehung) überlebt — sonst startete jede Drehung die laufende Runde neu. Reine
+ * Logik + [StateFlow], kein viewModelScope/Coroutine, also auch ohne Robolectric JVM-testbar
+ * (der `ViewModel()`-Default-Konstruktor berührt kein Android-Runtime).
  *
  * **Trainiert die Positionen, nicht das Tippen von Text:** das Dojo committet nichts in ein
  * Eingabefeld, es zeigt ein Ziel und prüft den Tap. Damit das Muskelgedächtnis exakt passt,
@@ -69,10 +73,12 @@ data class DojoState(
  * deren Tap-Ereignisse ([onKey]/[onAlternative]) und verrechnet sie zu Score/Streak/Lives.
  *
  * [random] ist injizierbar, damit der Test die Challenge-Auswahl deterministisch machen kann.
+ * Alle Konstruktor-Parameter haben Defaults → Kotlin erzeugt den parameterlosen Konstruktor, den
+ * die `viewModel()`-Default-Factory braucht.
  */
 class DojoViewModel(
     private val random: Random = Random.Default,
-) {
+) : ViewModel() {
 
     private val _state = MutableStateFlow(DojoState())
     val state: StateFlow<DojoState> = _state.asStateFlow()
