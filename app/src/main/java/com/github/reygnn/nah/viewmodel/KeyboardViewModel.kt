@@ -378,6 +378,23 @@ class KeyboardViewModel(
             clearSuggestions()
             return
         }
+        // Dritter Abbruchgrund, gegen denselben Eingriff in fertigen Text aus einem anderen Eckfall:
+        // ein Vorschlag wird nur am Wortende angeboten (siehe [computeSuggestions]/[atWordEnd]), aber
+        // diese Prüfung läuft beim BERECHNEN. Steht der Cursor zum TAP-Zeitpunkt mitten im Wort, muss
+        // die Vorschlagsliste stale sein — ein übersprungener Recompute ist die einzige Quelle: nach
+        // einem eigenen Edit ist [selStart] bis zum `onUpdateSelection`-Echo stale, und trifft ein
+        // externer Cursor-Callback (oder ein vom Editor coalesctes Netto-Echo) genau diese stale
+        // Position, greift der no-change-Guard in [onSelectionChanged] und überspringt das
+        // Neurechnen — die am Wortende berechneten Vorschläge bleiben stehen. Ohne diesen Re-Check
+        // trennte der deleteSurroundingText+commitText unten den Wortrest HINTER dem Cursor ab
+        // („hal" + Cursor bei „ha|l" → „hallo l"): fertiger Text, Bruch des obersten Gesetzes.
+        // [atWordEnd] liest die reale InputConnection zum Tap-Zeitpunkt (wie getSelectedText oben),
+        // ist also unabhängig davon, ob ein Echo zwischendurch übersprungen wurde; gleiche
+        // null-als-unbekannt-Haltung (im Zweifel kein Eingriff).
+        if (!atWordEnd()) {
+            clearSuggestions()
+            return
+        }
         // Eigene Wörter (Namen/Adressen/E-Mails) wörtlich committen — ihre Schreibweise ist
         // massgeblich. Nur Wörterbuch-Vorschläge dem Präfix-Casing anpassen, damit ein am
         // Satzanfang gross begonnenes „De" nicht durch klein vorgeschlagenes „der" ersetzt

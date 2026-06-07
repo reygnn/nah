@@ -595,6 +595,34 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `vorschlag-tap bricht ab, wenn der Cursor ueber eine uebersprungene Echo-Naht mitten im Wort steht`() {
+        // Verifizierter Eckfall (über die bestehenden Fuzzer hinaus, die onUpdateSelection IMMER
+        // in-order direkt nach jeder Op nachstellen): Nach einem eigenen Edit ist selStart bis zum
+        // Echo stale. Trifft ein externer Cursor-Callback ODER ein vom Editor coalesctes Netto-Echo
+        // genau diese stale Position, greift der no-change-Guard in onSelectionChanged → KEIN
+        // Recompute → die am Wortende berechneten Vorschläge bleiben stehen, obwohl der reale Cursor
+        // inzwischen mitten im Wort sitzt. Ohne den atWordEnd-Re-Check in onSuggestionTap zerlegte
+        // ein Tap dann fertigen Text („hal" → „hallo l"). Pinnt den Schutz unabhängig von der
+        // Echo-Reihenfolge.
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = Suggester { p, _, _ -> if (p.length >= 2) listOf("hallo") else emptyList() })
+            .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
+        fake.buffer.append("ha")
+        fake.select(2, 2)
+        vm.onSelectionChanged(2, 2)                       // settle: VM-selStart = 2
+        vm.onKey(CharKey('l'))                            // „hal", realer Cursor 3, VM-selStart stale = 2
+        assertEquals(listOf("hallo"), vm.state.value.suggestions) // am Wortende (3) berechnet
+        // Externer Tap / coalesctes Netto-Echo auf Position 2 (== stale selStart), VOR dem Edit-Echo:
+        fake.select(2, 2)
+        vm.onSelectionChanged(2, 2)                       // no-change-Guard → KEIN Recompute
+        assertEquals(listOf("hallo"), vm.state.value.suggestions) // bleibt stale stehen (Cursor jetzt „ha|l")
+        // Tap auf den nun ungültigen Chip darf fertigen Text NICHT anfassen.
+        vm.onSuggestionTap("hallo")
+        assertEquals("hal", fake.buffer.toString())       // unverändert — oberstes Gesetz gewahrt
+        assertTrue(vm.state.value.suggestions.isEmpty())  // und die stale Liste ist geräumt
+    }
+
+    @Test
     fun `ziffern-praefix loest vorschlaege aus, auch auf der Symbolebene`() {
         val fake = FakeIc()
         val vm = vm(fake, suggester = Suggester { prefix, _, _ ->
