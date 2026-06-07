@@ -13,7 +13,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-/** Random springt frei im Pool umher; Guided geht ihn der Reihe nach durch. */
+/**
+ * Wie das nächste Ziel GEWÄHLT wird: [RANDOM] springt frei im Pool umher, [GUIDED] geht ihn der
+ * Reihe nach durch. Das betrifft nur die Auswahl beim *Weiterrücken* — und weitergerückt wird in
+ * beiden Modi ausschliesslich nach einem Treffer. Ein Fehltipp lässt das aktuelle Ziel stehen
+ * (man muss die Position finden, bevor es weitergeht), springt also auch im RANDOM-Modus nicht.
+ */
 enum class DojoMode {
     RANDOM,
     GUIDED,
@@ -115,13 +120,25 @@ class DojoViewModel(
     fun setMode(mode: DojoMode) {
         if (_state.value.mode == mode) return
         _state.update { it.copy(mode = mode) }
-        switchPool()
+        rebuildAfterPoolChange()
     }
 
     fun setLevel(level: DojoLevel) {
         if (_state.value.level == level) return
         _state.update { it.copy(level = level) }
-        switchPool()
+        rebuildAfterPoolChange()
+    }
+
+    /**
+     * Nach einem Stufen-/Moduswechsel das Ziel neu ziehen. Bei laufendem Spiel über [switchPool]
+     * (Spielstand bleibt stehen — ein Wechsel ist keine Strafe). Steht das Spiel aber auf Game Over,
+     * wird voll zurückgesetzt: sonst hinge ein neues Ziel im Zustand, während `gameOver` noch true
+     * ist — ein widersprüchlicher Zwischenzustand, der nur deshalb nicht auffiel, weil die UI bei
+     * Game Over das Ziel ausblendet. Ein Chip-Tap am Game-Over-Bildschirm startet jetzt sauber eine
+     * frische Runde auf dem gewählten Pool.
+     */
+    private fun rebuildAfterPoolChange() {
+        if (_state.value.gameOver) resetGame() else switchPool()
     }
 
     /** Tap auf eine Taste der gerenderten Tastatur. Buchstaben sind ein Versuch; Funktionstasten
@@ -187,10 +204,10 @@ class DojoViewModel(
     }
 
     private fun onFunction(action: KeyAction) {
-        if (_state.value.gameOver) {
-            resetGame()
-            return
-        }
+        // Funktionstasten starten bei Game Over BEWUSST nicht neu — nur ein Buchstaben-Tap
+        // (onInput) tut das. Sonst riss ein versehentlich gestreiftes Shift/Space/Backspace die
+        // gerade erspielte Runde sofort weg, bevor man den Endstand überhaupt anschauen konnte.
+        if (_state.value.gameOver) return
         // In der Wort-Stufe nimmt Backspace den letzten getippten Buchstaben zurück (Korrektur-
         // hilfe, keine Strafe). Alle anderen Funktionstasten (Shift, Space, Ebenenwechsel, …)
         // sind im Drill neutral — sie sind kein Tipp-Versuch und kosten kein Leben.

@@ -34,19 +34,32 @@ class DojoActivity : ComponentActivity() {
                 // statt bei jeder Drehung neu zu starten.
                 val viewModel: DojoViewModel = viewModel()
 
-                // Persistierten Bestwert einmalig ins Spiel laden (setBest hebt nur an, senkt nie —
-                // ein bereits in dieser Sitzung erspielter höherer Wert bleibt also erhalten).
+                // Bestwert laden und persistieren — ein einziger Effekt: erst seeden, dann nur ECHTE
+                // Verbesserungen ÜBER den geladenen Stand wegschreiben.
+                //
+                // Vorher zwei Effekte mit blossem distinctUntilChanged: das schrieb bei JEDEM Öffnen
+                // mindestens einmal auf die Platte, obwohl sich nichts geändert hatte — der Collector
+                // emittiert beim Start den aktuellen Wert (anfangs (0,0)), und DataStore.edit{} schreibt
+                // immer, auch wenn maxOf den Wert nicht anhebt. Jetzt gleicht der Collector gegen die
+                // geladene Basis ab und ruft recordBest nur bei einem tatsächlich höheren Wert auf
+                // (recordBest bleibt zusätzlich monoton als Sicherung).
                 LaunchedEffect(viewModel) {
                     val best = stats.best.first()
+                    // setBest hebt nur an, senkt nie — ein vor dem Laden bereits erspielter höherer
+                    // Wert (das first() suspendiert kurz) überlebt also.
                     viewModel.setBest(best.score, best.streak)
-                }
-                // Jede echte Bestwert-Verbesserung wegschreiben. distinctUntilChanged → ein Schreiben
-                // nur, wenn sich Score- oder Serien-Bestwert ändert (selten), nicht pro Tastendruck.
-                LaunchedEffect(viewModel) {
+                    var persistedScore = best.score
+                    var persistedStreak = best.streak
                     viewModel.state
                         .map { it.bestScore to it.bestStreak }
                         .distinctUntilChanged()
-                        .collect { (score, streak) -> stats.recordBest(score, streak) }
+                        .collect { (score, streak) ->
+                            if (score > persistedScore || streak > persistedStreak) {
+                                stats.recordBest(score, streak)
+                                persistedScore = maxOf(persistedScore, score)
+                                persistedStreak = maxOf(persistedStreak, streak)
+                            }
+                        }
                 }
 
                 DojoScreen(viewModel = viewModel)

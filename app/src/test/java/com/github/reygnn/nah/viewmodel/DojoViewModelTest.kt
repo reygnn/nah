@@ -182,6 +182,53 @@ class DojoViewModelTest {
     }
 
     @Test
+    fun `Funktionstaste startet bei Game Over NICHT neu, ein Buchstabe schon`() {
+        val vm = vm()
+        vm.setMode(DojoMode.GUIDED)
+        repeat(DojoState.MAX_LIVES) { vm.onKey(CharKey('x')) } // Ziel ist ein Vokal → 5x falsch
+        assertTrue(vm.state.value.gameOver)
+        // Funktionstasten lassen den Game-Over-Zustand stehen (kein versehentlicher Reset).
+        vm.onKey(FunctionKey(KeyAction.SHIFT))
+        vm.onKey(FunctionKey(KeyAction.SPACE))
+        vm.onKey(FunctionKey(KeyAction.BACKSPACE))
+        assertTrue("Funktionstaste darf bei Game Over nicht neu starten", vm.state.value.gameOver)
+        // Erst ein Buchstaben-Tap startet eine frische Runde.
+        vm.onKey(CharKey('o'))
+        assertFalse(vm.state.value.gameOver)
+        assertEquals(DojoState.MAX_LIVES, vm.state.value.lives)
+    }
+
+    @Test
+    fun `Stufenwechsel bei Game Over startet eine frische Runde auf dem neuen Pool`() {
+        val vm = vm()
+        vm.setMode(DojoMode.GUIDED)
+        vm.onKey(CharKey('o')) // 10 Punkte, Serie 1
+        repeat(DojoState.MAX_LIVES) { vm.onKey(CharKey('z')) } // 'z' kein Vokal → Game Over
+        assertTrue(vm.state.value.gameOver)
+        val bestBefore = vm.state.value.bestScore // 10 — muss den Reset überleben
+        vm.setLevel(DojoLevel.CONSONANTS)
+        val s = vm.state.value
+        // Voll zurückgesetzt (kein widersprüchlicher target-gesetzt-aber-gameOver-Zustand) …
+        assertFalse(s.gameOver)
+        assertEquals(0, s.score)
+        assertEquals(DojoState.MAX_LIVES, s.lives)
+        // … und das frische Ziel kommt aus dem NEUEN Pool (erster Konsonant in Layout-Reihenfolge).
+        assertEquals("h", s.target)
+        // Der Bestwert bleibt selbstverständlich erhalten.
+        assertEquals(bestBefore, s.bestScore)
+    }
+
+    @Test
+    fun `Moduswechsel bei Game Over startet ebenfalls neu`() {
+        val vm = vm() // RANDOM ist Default
+        repeat(DojoState.MAX_LIVES) { vm.onKey(CharKey('z')) }
+        assertTrue(vm.state.value.gameOver)
+        vm.setMode(DojoMode.GUIDED)
+        assertFalse(vm.state.value.gameOver)
+        assertEquals(DojoState.MAX_LIVES, vm.state.value.lives)
+    }
+
+    @Test
     fun `random wiederholt dasselbe Ziel nicht direkt hintereinander`() {
         // RANDOM ist der Default-Modus — kein setMode nötig. Der Vokal-Pool hat nur fünf Ziele;
         // ohne Anti-Repeat käme häufig zweimal dasselbe in Folge.

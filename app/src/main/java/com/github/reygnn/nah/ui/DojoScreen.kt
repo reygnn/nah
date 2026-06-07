@@ -158,8 +158,10 @@ private fun ModeChips(selected: DojoMode, onSelect: (DojoMode) -> Unit) {
 private fun TargetPrompt(state: DojoState) {
     val colors = MaterialTheme.colorScheme
     if (state.gameOver) {
+        // Endstand mit anzeigen, damit die erspielte Runde sichtbar bleibt, bevor ein Buchstaben-Tap
+        // sie neu startet (Funktionstasten setzen bei Game Over bewusst nicht mehr zurück).
         Text(
-            stringResource(R.string.dojo_game_over),
+            stringResource(R.string.dojo_game_over, state.score),
             style = MaterialTheme.typography.titleLarge,
             color = colors.error,
         )
