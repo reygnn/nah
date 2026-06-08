@@ -426,10 +426,12 @@ class KeyboardViewModel(
                 // == Anzahl Zeichen. (Backspace nutzt bewusst die Code-Point-Variante, weil dort
                 // eingefügte astrale Zeichen wie Emoji im Spiel sein können — hier nie.)
                 if (prefix.isNotEmpty()) ic.deleteSurroundingText(prefix.length, 0)
-                // Bewusst ein angehängtes Leerzeichen (Standard-Wort-Vervollständigung) — auch für
-                // Phrasen wie „max@firma.ch". KEIN feldtyp-abhängiges Weglassen (E-Mail/URL): das
-                // wäre genau das „Raten", das nah ablehnt. Stört es, ist es ein Backspace.
-                ic.commitText("$out ", 1)
+                // Bewusst KEIN angehängtes Leerzeichen: nah committet exakt das Wort, das Leerzeichen
+                // bzw. Satzzeichen setzt der Nutzer selbst. So klebt ein direkt folgendes „."/","/"?"/"!"
+                // ohne Umweg über Backspace am Wort, und es bleibt deterministisch — kein Smart-Space-
+                // Sonderfall, kein Whitespace, den die Tastatur hinter dem Rücken wieder wegschluckt
+                // (das wäre genau das „Raten"/Ändern-fertigen-Texts, das nah ablehnt).
+                ic.commitText(out, 1)
             } finally {
                 ic.endBatchEdit()
             }

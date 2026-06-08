@@ -653,8 +653,8 @@ class KeyboardViewModelTest {
         vm.type("80")
         assertEquals(listOf("8050"), vm.state.value.suggestions)
         vm.onSuggestionTap("8050")
-        // Nur die getippten „80" ersetzt, die volle PLZ verbatim eingefuegt (Standard-Leerzeichen).
-        assertEquals("8050 ", fake.buffer.toString())
+        // Nur die getippten „80" ersetzt, die volle PLZ verbatim eingefuegt — kein Trailing-Space.
+        assertEquals("8050", fake.buffer.toString())
     }
 
     @Test
@@ -666,8 +666,9 @@ class KeyboardViewModelTest {
         vm.type("haupt")
         assertEquals(listOf("Hauptstrasse 115"), vm.state.value.suggestions)
         vm.onSuggestionTap("Hauptstrasse 115")
-        // Nur das getippte „haupt" wird ersetzt, die ganze Phrase (inkl. Leerzeichen) eingefügt.
-        assertEquals("Hauptstrasse 115 ", fake.buffer.toString())
+        // Nur das getippte „haupt" wird ersetzt, die ganze Phrase eingefügt — das Leerzeichen in der
+        // Phrase selbst bleibt, ein Trailing-Space wird NICHT angehängt.
+        assertEquals("Hauptstrasse 115", fake.buffer.toString())
     }
 
     @Test
@@ -679,7 +680,7 @@ class KeyboardViewModelTest {
         vm.type("de")          // „De" (erstes Zeichen gross)
         vm.onSuggestionTap("der")
         // Klein vorgeschlagenes „der" wird auf das gross begonnene Präfix gecast → „Der".
-        assertEquals("Der ", fake.buffer.toString())
+        assertEquals("Der", fake.buffer.toString())
     }
 
     /** Suggester, der seine Treffer als eigene Wörter meldet (wörtlich zu committen). */
@@ -698,7 +699,7 @@ class KeyboardViewModelTest {
         vm.type("max")          // unter Caps → „MAX"
         vm.onSuggestionTap("max@firma.ch")
         // Eigenes Wort bleibt wörtlich — keine Anpassung an Caps-Lock.
-        assertEquals("max@firma.ch ", fake.buffer.toString())
+        assertEquals("max@firma.ch", fake.buffer.toString())
     }
 
     @Test
@@ -714,7 +715,7 @@ class KeyboardViewModelTest {
         vm.onSuggestionTap("zeit")
         // userWordsEnabled = false → KEINE Wörtlich-Sonderbehandlung; der Treffer folgt dem
         // Caps-Lock-Präfix wie ein gewöhnlicher Wörterbuch-Vorschlag (sonst käme „zeit").
-        assertEquals("ZEIT ", fake.buffer.toString())
+        assertEquals("ZEIT", fake.buffer.toString())
     }
 
     @Test
@@ -726,7 +727,7 @@ class KeyboardViewModelTest {
         vm.type("ma")           // → „Ma"
         vm.onSuggestionTap("max@firma.ch")
         // Trotz gross begonnenem Präfix wird die E-Mail nicht kapitalisiert.
-        assertEquals("max@firma.ch ", fake.buffer.toString())
+        assertEquals("max@firma.ch", fake.buffer.toString())
     }
 
     @Test
@@ -738,7 +739,7 @@ class KeyboardViewModelTest {
         vm.onKey(FunctionKey(KeyAction.SHIFT)) // CAPS
         vm.type("der")         // „DER"
         vm.onSuggestionTap("der")
-        assertEquals("DER ", fake.buffer.toString())
+        assertEquals("DER", fake.buffer.toString())
     }
 
     @Test
@@ -753,7 +754,7 @@ class KeyboardViewModelTest {
         // Dokumentierter Tradeoff: casedLikePrefix erkennt Caps-Lock erst ab zwei Buchstaben
         // (sonst nicht von einem Satzanfang-Gross unterscheidbar). Ein einzelnes „D" wird daher
         // wie ein Satzanfang behandelt → „Der", nicht „DER". Test friert diese Entscheidung ein.
-        assertEquals("Der ", fake.buffer.toString())
+        assertEquals("Der", fake.buffer.toString())
     }
 
     @Test
@@ -764,7 +765,24 @@ class KeyboardViewModelTest {
         vm.type("ze")          // klein getippt
         vm.onSuggestionTap("Zeit")
         // Klein getipptes Präfix → das Nomen behält sein eigenes Gross-Z (kein Klein-Cast).
-        assertEquals("Zeit ", fake.buffer.toString())
+        assertEquals("Zeit", fake.buffer.toString())
+    }
+
+    @Test
+    fun `vorschlag haengt keinen Space an, ein folgendes Satzzeichen klebt direkt am Wort`() {
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo") })
+            .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
+        vm.type("hal")
+        vm.onSuggestionTap("hallo")
+        // Bewusst KEIN Trailing-Space (Design-Entscheidung „gar kein Auto-Space"): so klebt ein
+        // direkt folgendes Satzzeichen am Wort, ohne dass erst ein Auto-Space weg-gebackspaced werden
+        // muss. Deterministisch, kein Smart-Space-Sonderfall.
+        assertEquals("hallo", fake.buffer.toString())
+        vm.onKey(FunctionKey(KeyAction.PERIOD))
+        assertEquals("hallo.", fake.buffer.toString())
+        vm.onKey(FunctionKey(KeyAction.COMMA))
+        assertEquals("hallo.,", fake.buffer.toString())
     }
 
     @Test
@@ -907,8 +925,9 @@ class KeyboardViewModelTest {
         vm.onKey(FunctionKey(KeyAction.SPACE))
         vm.type("we")
         vm.onSuggestionTap("welt")
-        // "hallo " bleibt unberührt, nur "we" → "welt " ersetzt
-        assertEquals("hallo welt ", fake.buffer.toString())
+        // "hallo " bleibt unberührt (das Leerzeichen hat der Nutzer getippt), nur "we" → "welt"
+        // ersetzt — kein angehängter Trailing-Space.
+        assertEquals("hallo welt", fake.buffer.toString())
     }
 
     @Test
