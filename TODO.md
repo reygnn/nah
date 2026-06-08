@@ -46,6 +46,41 @@ Zusätzlich abgesichert:
 
 ---
 
+## Compose-Performance — geräte-gebunden, grösstenteils offen
+
+Ehemals `temp/OPTIMIZE.md` (Code-Durchsicht nach Praxis-Test). Kurzfassung: die
+**Logik-Seite ist bereits optimiert** (off-main Index-Aufbau, ein `getTextBeforeCursor`
+pro Schritt, WordIndex als benchmarktes sortiertes Array). Das real Unbeleuchtete liegt
+auf der **Compose-Laufzeit-Seite** — und die misst das Projekt nirgends. Leitprinzip:
+**erst messen, dann optimieren.** Die Mess-Schritte brauchen das Pixel 9a (instrumentiert,
+nicht in der JVM-Suite verifizierbar).
+
+- **§4 Macrobenchmark (zuerst) — die fehlende Messung.** Neues `:macrobenchmark`-Modul
+  (`com.android.test`), das (a) Tastatur-Einblende-Latenz und (b) Frame-Jank während einer
+  gescripteten Tippsequenz auf dem Gerät erfasst. Bricht den Single-Module-Default bewusst.
+  Ist die Baseline, an der §1 und §2 sich erst zeigen. **Fakt heute: kein Modul.**
+- **§1 `TapKey`-Skippability — Versicherung erledigt, Verifikation offen.** `@Immutable` auf
+  `CharKey`/`FunctionKey`/`KeyboardKey`/`KeyboardLayout` (+ `KeyboardUiState`) ist gesetzt
+  (Commit `ef44f39`) — die Regressions-Versicherung. **Offen:** per Layout-Inspector/
+  Composition-Tracing belegen, dass beim Tippen nur die `SuggestionBar` rekomponiert, nicht
+  die ~35 Tasten. Erwartung: skippt schon über Referenz-Identität (Strong Skipping).
+- **§2 Baseline Profile — first-frame-Jank.** `androidx.baselineprofile`-Plugin +
+  Generator über den Pfad „Feld fokussieren → Tastatur sichtbar → erster Tap". Einziger
+  verbliebene Startup-Hebel (R8 ist aus). Gegen §4 gegenmessen. **Fakt heute: keins.**
+- **§3 R8 / Minify — bleibt AUS (dokumentierte Nicht-Entscheidung).** Keine Reflection,
+  persönliche Single-User-App, kein Store → marginal kleineres AAB rechtfertigt das
+  Compose/IME-Keep-Regel-Tuning + Testrisiko nicht. Falls je erwogen: eigener Branch,
+  Smoke-Test über ALLE Ebenen auf echtem Release-Build (Unit-Tests fangen R8-Regressionen
+  nicht). **Nicht reflexhaft „zur Optimierung" einschalten.**
+- **§5 Kleinkram — nur falls §1 zeigt, dass `TapKey` doch rekomponiert.** `onGloballyPositioned`
+  läuft für jede Taste (Fenster-X nur bei Long-Press gebraucht) · `longPressItems` wird pro
+  `TapKey`-Ausführung neu gebaut. Beide verschwinden, sobald das Skippen sicher ist → nachrangig.
+
+**Reihenfolge:** §4 → §1 → §2 → (§5 nur bei Bedarf). Jeweils eigener Branch (`test/`,
+`chore/`, `perf/`). Das Layout bleibt dabei eingefroren — keine Optimizer-Läufe (CLAUDE.md).
+
+---
+
 ## ✅ ERLEDIGT — die zwei Fugen-Funde (Branch `fix/seam-followups`)
 
 1. **Paste-Commit ins fremde Feld (high, I4).** `fieldEpoch++` saß am falschen Hook
