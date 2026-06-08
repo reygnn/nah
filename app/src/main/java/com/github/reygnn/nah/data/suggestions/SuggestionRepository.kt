@@ -91,8 +91,9 @@ class SuggestionRepository : Suggester {
         private const val MIN_PREFIX_LENGTH = 2
         /** Obergrenze der angezeigten Vorschläge — der einzige Wert dieser Art. Nicht nur intern
          *  gekappt (hier), sondern auch von der Ui geteilt (`SuggestionBar` rendert höchstens so
-         *  viele Chips), damit beide nie auseinanderlaufen. */
-        const val MAX_SUGGESTIONS = 3
+         *  viele Chips), damit beide nie auseinanderlaufen. Die Leiste ist horizontal scrollbar
+         *  (`LazyRow`), darum quetscht ein höherer Wert die Chips nicht — er erfordert nur Scrollen. */
+        const val MAX_SUGGESTIONS = 6
         /** Deutlich über der Top-Frequenz der eingebauten Liste (≈1000) → User-Wörter zuerst. */
         private const val USER_WORD_FREQUENCY = 10_000
     }

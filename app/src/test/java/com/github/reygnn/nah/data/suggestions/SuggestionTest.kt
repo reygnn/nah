@@ -109,10 +109,12 @@ class SuggestionRepositoryTest {
     }
 
     @Test
-    fun `bekanntes Praefix liefert bis zu drei Vorschlaege aus der de-CH-Liste`() {
+    fun `bekanntes Praefix liefert hoechstens MAX_SUGGESTIONS Vorschlaege aus der de-CH-Liste`() {
         val result = repo.suggest("ha", includeBuiltIn = true, includeUser = false)
         assertTrue(result.isNotEmpty())
-        assertTrue(result.size <= 3)
+        // An die geteilte Obergrenze gebunden (nicht an eine feste Zahl), damit der Test einem
+        // Bump von MAX_SUGGESTIONS folgt statt zu brechen.
+        assertTrue(result.size <= SuggestionRepository.MAX_SUGGESTIONS)
         assertTrue(result.all { it.lowercase().startsWith("ha") })
     }
 
