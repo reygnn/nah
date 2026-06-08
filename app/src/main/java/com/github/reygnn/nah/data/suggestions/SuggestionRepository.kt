@@ -87,10 +87,13 @@ class SuggestionRepository : Suggester {
      */
     override fun isUserWord(word: String): Boolean = userIndex?.contains(word) ?: false
 
-    private companion object {
-        const val MIN_PREFIX_LENGTH = 2
+    companion object {
+        private const val MIN_PREFIX_LENGTH = 2
+        /** Obergrenze der angezeigten Vorschläge — der einzige Wert dieser Art. Nicht nur intern
+         *  gekappt (hier), sondern auch von der Ui geteilt (`SuggestionBar` rendert höchstens so
+         *  viele Chips), damit beide nie auseinanderlaufen. */
         const val MAX_SUGGESTIONS = 3
         /** Deutlich über der Top-Frequenz der eingebauten Liste (≈1000) → User-Wörter zuerst. */
-        const val USER_WORD_FREQUENCY = 10_000
+        private const val USER_WORD_FREQUENCY = 10_000
     }
 }

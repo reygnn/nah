@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.github.reygnn.nah.data.suggestions.SuggestionRepository
 
 /**
  * Nicht-eingreifende Vorschlagsleiste. Antippen eines Vorschlags ersetzt nur das aktuelle
@@ -40,7 +41,9 @@ fun SuggestionBar(
             .background(MaterialTheme.colorScheme.surfaceContainerLowest),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        suggestions.take(3).forEach { word ->
+        // Geteilte Obergrenze (kein hartcodiertes „3"): die Datenquelle kappt bereits auf
+        // SuggestionRepository.MAX_SUGGESTIONS, hier dieselbe Konstante als zweite Sicherung.
+        suggestions.take(SuggestionRepository.MAX_SUGGESTIONS).forEach { word ->
             Box(
                 modifier = Modifier
                     .weight(1f)
