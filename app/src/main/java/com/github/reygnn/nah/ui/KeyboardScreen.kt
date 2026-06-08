@@ -25,20 +25,26 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.reygnn.nah.viewmodel.KeyboardUiState
 import com.github.reygnn.nah.viewmodel.KeyboardViewModel
 
-/** **Untergrenze** für den Abstand der Tasten zur Bildschirmunterkante (über die Gestenzone).
- *  Auf das Pixel 9a (Gestennavigation) getunt: zu wenig = Kollision mit der Wischleiste, zu viel =
- *  unnötig hoher dunkler Streifen unten. Im Querformat deutlich kleiner, sonst frisst die
- *  fünfreihige Tastatur zu viel der knappen Höhe.
+/** **Mindest**-Abstand der Tasten zur Bildschirmunterkante (Marge über der Gestenzone) — kein
+ *  absoluter Gerätewert. Auf das Pixel 9a (Gestennavigation) getunt: zu wenig = Kollision mit der
+ *  Wischleiste, zu viel = unnötig hoher dunkler Streifen unten. Im Querformat deutlich kleiner,
+ *  sonst frisst die fünfreihige Tastatur zu viel der knappen Höhe.
  *
- *  Der tatsächlich verwendete Abstand ist `max(diese Untergrenze, realer Navigationsleisten-Inset)`
- *  (siehe [KeyboardContent]). Der reale Inset wird dabei nur als **Wert** gelesen — NICHT über den
- *  `navigationBarsPadding()`-Modifier, der in der IME-ComposeView die Höhe auf den Inset kollabieren
- *  liess (leere Tastatur). Am Zielgerät dominiert die Untergrenze (Gesten-Inset < Untergrenze), das
- *  Verhalten bleibt also unverändert; auf einem Gerät mit höherer Leiste (3-Knopf-Navigation) trägt
- *  der reale Inset und die unterste Reihe kollidiert nicht mehr. Schlimmstenfalls ein No-op gleich
- *  dem alten festen Wert — nie schlechter. */
-private val BOTTOM_INSET_PORTRAIT: Dp = 48.dp
-private val BOTTOM_INSET_LANDSCAPE: Dp = 8.dp
+ *  Der tatsächlich verwendete Abstand ist [bottomKeyboardInset]`(realer Navigationsleisten-Inset,
+ *  diese Untergrenze)` (siehe [KeyboardContent]). Der reale Inset wird dabei nur als **Wert**
+ *  gelesen — NICHT über den `navigationBarsPadding()`-Modifier, der in der IME-ComposeView die Höhe
+ *  auf den Inset kollabieren liess (leere Tastatur). Am Zielgerät dominiert die Untergrenze
+ *  (Gesten-Inset < Untergrenze), das Verhalten bleibt also unverändert; auf einem Gerät mit höherer
+ *  Leiste (3-Knopf-Navigation) trägt der reale Inset und die unterste Reihe kollidiert nicht mehr.
+ *  Schlimmstenfalls ein No-op gleich dem alten festen Wert — nie schlechter. */
+private val PORTRAIT_MIN_BOTTOM: Dp = 48.dp
+private val LANDSCAPE_MIN_BOTTOM: Dp = 8.dp
+
+/** Unterer Tastatur-Abstand: der reale System-Inset [systemNavBottom], aber **mindestens**
+ *  [minClearance] (Marge über der Gestenzone). Rein → JVM-testbar (siehe `BottomInsetTest`), `Dp`
+ *  ist ein reiner Compose-Value-Typ ohne Android-Runtime. */
+internal fun bottomKeyboardInset(systemNavBottom: Dp, minClearance: Dp): Dp =
+    maxOf(systemNavBottom, minClearance)
 
 /** Höhe einer Tastenreihe. Im Querformat niedriger, damit die fünf Reihen plus
  *  Vorschlagsleiste nicht über die verfügbare Höhe hinauswachsen. */
@@ -72,8 +78,8 @@ fun KeyboardContent(
     // das die IME-Höhe kollabieren liess). Untergrenze ODER realer Inset, je nachdem was grösser
     // ist: am Pixel 9a dominiert die Untergrenze (unverändert), auf höheren Leisten der Inset.
     val systemNavBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val floor = if (landscape) BOTTOM_INSET_LANDSCAPE else BOTTOM_INSET_PORTRAIT
-    val bottomInset = maxOf(floor, systemNavBottom)
+    val minBottom = if (landscape) LANDSCAPE_MIN_BOTTOM else PORTRAIT_MIN_BOTTOM
+    val bottomInset = bottomKeyboardInset(systemNavBottom, minBottom)
     val rowHeight = if (landscape) ROW_HEIGHT_LANDSCAPE else ROW_HEIGHT_PORTRAIT
     // Die Tastenanordnung ist optimizer-generiert und in LTR definiert; sie darf NIE von der
     // System-Locale gespiegelt werden. Eine RTL-Systemsprache (Arabisch/Hebräisch/…) würde sonst
