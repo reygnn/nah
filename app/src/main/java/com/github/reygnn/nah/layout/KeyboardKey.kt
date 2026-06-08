@@ -1,5 +1,7 @@
 package com.github.reygnn.nah.layout
 
+import androidx.compose.runtime.Immutable
+
 /**
  * Eine Taste in einem festen, reihenbasierten Layout. Anders als bei der toten
  * Schwebe-Tastatur (thumbprint) gibt es keinen Anker und keine lokalen Pixel-
@@ -9,13 +11,22 @@ package com.github.reygnn.nah.layout
  *
  * Geschlossener Typ: [CharKey] committet genau ein Zeichen, [FunctionKey] löst
  * eine [KeyAction] aus. Keine Mehrdeutigkeit, kein Autocorrect.
+ *
+ * `@Immutable`: Diese Typen sind faktisch unveränderlich (eingefrorenes Layout,
+ * nur `val`s) — die Annotation ist also wahr. Ihr Zweck ist Regressions-
+ * Versicherung für die Skip-fähigkeit von `ui/TapKey`: heute skippt es schon über
+ * Referenz-Identität (die vier Layout-Instanzen werden einmal in `NahIme.onCreate`
+ * gebaut), aber bräche ein künftiges Refactoring die Referenz, greift mit
+ * `@Immutable` strukturelle Gleichheit und das Skippen bleibt erhalten.
  */
+@Immutable
 sealed interface KeyboardKey {
     /** Relatives Breitengewicht innerhalb der Reihe. */
     val weight: Float
     val label: String
 }
 
+@Immutable
 data class CharKey(
     val char: Char,
     /** Was beim Tippen committet wird. Default = der Buchstabe selbst; abweichend nur
@@ -30,6 +41,7 @@ data class CharKey(
     override val label: String get() = output
 }
 
+@Immutable
 data class FunctionKey(
     val action: KeyAction,
     override val weight: Float = 1f,

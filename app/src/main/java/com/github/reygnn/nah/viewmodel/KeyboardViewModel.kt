@@ -3,6 +3,7 @@ package com.github.reygnn.nah.viewmodel
 import android.util.Log
 import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
+import androidx.compose.runtime.Immutable
 import com.github.reygnn.nah.data.suggestions.Suggester
 import com.github.reygnn.nah.layout.CharKey
 import com.github.reygnn.nah.layout.FunctionKey
@@ -35,6 +36,13 @@ enum class ShiftState {
     }
 }
 
+/**
+ * `@Immutable`: nur `val`s, neue Instanz je Emission — ehrlich und harmlos. Bringt kein Tempo
+ * (der State wechselt per Definition bei jeder Emission, `KeyboardContent` rekomponiert ohnehin),
+ * steht nur der Konsistenz halber neben den `@Immutable`-Layout-Typen. Das einzige formal instabile
+ * Feld ([suggestions]: `List`) lässt sich nicht annotieren; relevant nur für die `SuggestionBar`.
+ */
+@Immutable
 data class KeyboardUiState(
     val layout: KeyboardLayout,
     val shift: ShiftState = ShiftState.OFF,

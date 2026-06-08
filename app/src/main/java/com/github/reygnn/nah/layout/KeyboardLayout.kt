@@ -1,10 +1,17 @@
 package com.github.reygnn.nah.layout
 
+import androidx.compose.runtime.Immutable
+
 /**
  * Ein fixes Tastatur-Layout als Reihen von Tasten. Jede Reihe wird in der UI
  * über die volle Breite gelegt; die Tasten teilen sich die Breite per
  * [KeyboardKey.weight].
+ *
+ * `@Immutable` wie [KeyboardKey]: eingefroren, nur `val`s (die geschachtelten
+ * Reihen-Listen werden nach dem Bau nie mutiert) — Regressions-Versicherung für
+ * das Skippen von `ui/TapKey`.
  */
+@Immutable
 data class KeyboardLayout(
     val rows: List<List<KeyboardKey>>,
 ) {
