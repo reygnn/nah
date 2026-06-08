@@ -67,6 +67,26 @@ class WordIndexTest {
         assertTrue(t.contains("hallo"))
         assertFalse(t.contains("hal"))
     }
+
+    @Test
+    fun `Praefix matcht case-insensitiv (Grossschreibung am Wortanfang)`() {
+        // getSuggestions kleinschreibt das Präfix: ein getippter Grossbuchstabe am Wortanfang
+        // („HA"/„Ha") muss exakt dieselben Treffer liefern wie „ha".
+        val lower = index().getSuggestions("ha", limit = 3).map { it.first }.toSet()
+        assertEquals(lower, index().getSuggestions("HA", limit = 3).map { it.first }.toSet())
+        assertEquals(lower, index().getSuggestions("Ha", limit = 3).map { it.first }.toSet())
+    }
+
+    @Test
+    fun `limit 0 liefert leer`() {
+        assertTrue(index().getSuggestions("ha", limit = 0).isEmpty())
+    }
+
+    @Test
+    fun `Praefix gleich dem ganzen Wort matcht genau dieses`() {
+        // startsWith ist reflexiv: das volle Wort als Präfix trifft genau seinen eigenen Eintrag.
+        assertEquals(listOf("hallo"), index().getSuggestions("hallo", limit = 3).map { it.first })
+    }
 }
 
 class SuggestionRepositoryTest {
@@ -170,5 +190,18 @@ class SuggestionRepositoryTest {
         assertEquals(listOf("zzabc"), r.suggest("zz", includeBuiltIn = false, includeUser = true))
         // Keine Quelle aktiv → leer, selbst wenn ein Wort passen würde.
         assertTrue(r.suggest("zz", includeBuiltIn = false, includeUser = false).isEmpty())
+    }
+
+    @Test
+    fun `Wort in beiden Quellen erscheint genau einmal, die User-Form gewinnt`() {
+        // „haben" steht klein in der eingebauten Liste. Als Eigenwort in anderer Schreibweise landet
+        // es auf DEMSELBEN kleingeschriebenen Key — der quell-übergreifende Merge muss es zu einem
+        // Eintrag zusammenfassen, und die User-Frequenz (≫ Listen-Spitze) muss die Form bestimmen.
+        val r = SuggestionRepository().apply { warmUpBuiltIn() }
+        r.setUserWords(setOf("Haben"))
+        val result = r.suggest("hab", includeBuiltIn = true, includeUser = true)
+        assertEquals(1, result.count { it.equals("haben", ignoreCase = true) }) // nicht doppelt
+        assertEquals("Haben", result.first())                                   // User-Form gewinnt
+        assertFalse("haben" in result)                                          // Kleinform verdeckt
     }
 }

@@ -41,7 +41,7 @@ Zusätzlich abgesichert:
   Nicht erneut als Befund aufkochen.
 - **WordIndex-Vorschlagskosten quantifiziert** → `tools/word_index_benchmark.md`. ~0,1 µs/Wort
   im Präfix-Bereich; grün bis ~50k Wörter (<~1 ms/Tastendruck am Gerät). Der „grösseres
-  Korpus"-Fast-Follow braucht bis dahin **keine** Code-Änderung. Heute (~1440 Wörter):
+  Korpus"-Fast-Follow braucht bis dahin **keine** Code-Änderung. Heute (~1500 Wörter):
   wenige µs, irrelevant.
 
 ---

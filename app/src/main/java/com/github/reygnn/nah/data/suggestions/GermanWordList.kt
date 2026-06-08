@@ -124,9 +124,9 @@ object GermanWordList {
         // --- Expansion toward the most-used de-CH words (chore/wordlist-1000) ---
         // Same de-CH rules: no ß ("ss"), lowercase keys deduped against the above.
         // Frequencies stay below the ~1000 tier of the top articles/pronouns above
-        // (a few connectors reach 880–900) so those keep ranking first. The whole
-        // list is ~1440 entries (see WordIndex) — the "1000" is the branch name, not
-        // the count.
+        // (a few connectors reach 880–900) so those keep ranking first. This block grew the
+        // list past its original size; it now totals exactly 1500 entries (see the
+        // chore/wordlist-1500 block below) — the "1000" here was the branch name, not the count.
 
         // Personal & possessive pronouns (object/dative forms, missing above)
         "mich" to 870, "mir" to 870, "dich" to 850, "dir" to 850,
@@ -373,5 +373,41 @@ object GermanWordList {
         "Datei" to 440, "Foto" to 500, "Video" to 480, "Kamera" to 460, "Bildschirm" to 440,
         "Taste" to 420, "Tastatur" to 440, "Drucker" to 400, "Akku" to 440, "Batterie" to 420,
         "Kabel" to 420, "Strom" to 460, "Licht" to 540, "Fernseher" to 440, "Radio" to 440,
+
+        // --- Expansion to exactly 1500 entries (chore/wordlist-1500) ---
+        // Same de-CH rules: no ß ("ss"), every key deduped (case-insensitively) against the
+        // above. Only genuinely high-frequency everyday words that were still missing; all
+        // typeable on the frozen layout (a–z plus the long-press umlauts ä/ö/ü). Frequencies
+        // stay in the content-word band (≤ ~720) so the top articles/pronouns keep ranking first.
+
+        // Everyday particles & little words
+        "mal" to 720, "gern" to 620, "gerne" to 600, "bisschen" to 560,
+
+        // Everyday verbs (infinitives & separable)
+        "wohnen" to 540, "mögen" to 560, "abholen" to 500, "aufmachen" to 480, "zumachen" to 460,
+        "erwarten" to 500, "gefallen" to 500, "anschauen" to 460, "zuhören" to 460, "vermissen" to 460,
+        "stören" to 480, "klappen" to 480, "duschen" to 460, "anziehen" to 460, "ausziehen" to 440,
+
+        // Everyday adjectives
+        "toll" to 540, "cool" to 520, "schade" to 520, "perfekt" to 500, "interessant" to 500,
+        "gemütlich" to 500, "langweilig" to 480, "spannend" to 480, "hungrig" to 480, "durstig" to 440,
+        "satt" to 440, "neugierig" to 440, "verliebt" to 440, "verheiratet" to 440, "blöd" to 460,
+        "fein" to 480,
+
+        // Time of day
+        "abends" to 520, "morgens" to 500, "nachts" to 480, "mittags" to 480, "übermorgen" to 480,
+
+        // Weather
+        "Hitze" to 480, "Kälte" to 460, "Gewitter" to 460, "sonnig" to 480,
+
+        // Travel & traffic
+        "Stau" to 480, "abbiegen" to 440,
+
+        // de-CH food staples
+        "Glace" to 480, "Rahm" to 440, "Müesli" to 440, "Ei" to 460,
+
+        // Home, tech, money, health & social
+        "Adresse" to 500, "Anruf" to 480, "Heizung" to 460, "Wäsche" to 460, "Abfall" to 480,
+        "Tablette" to 440, "Alter" to 460, "willkommen" to 500, "tschau" to 460,
     )
 }

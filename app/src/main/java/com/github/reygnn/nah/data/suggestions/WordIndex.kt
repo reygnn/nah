@@ -11,7 +11,7 @@ internal val SUGGESTION_ORDER: Comparator<Pair<String, Int>> =
         .thenBy(String.CASE_INSENSITIVE_ORDER) { it.first }
 
 /**
- * Präfix-Index für Wortvorschläge. Bei der Korpusgrösse dieser App (~1440 Wörter, siehe
+ * Präfix-Index für Wortvorschläge. Bei der Korpusgrösse dieser App (~1500 Wörter, siehe
  * `tools/word_index_benchmark.md`) ist ein **sortiertes Array + Binärsuche** einfacher und
  * speicherärmer als ein Trie, bei gleicher Abfragezeit: der Präfix-Bereich ist nach `key`
  * zusammenhängend, also genügt ein `lowerBound` plus Linearscan über genau die Treffer.
@@ -41,7 +41,7 @@ internal class WordIndex {
      * [Entry] hält `key` (= lowercase) zusätzlich zur Originalform: bewusster Zeit-für-Platz-Tausch
      * — der eine zusätzliche String-Verweis je Eintrag spart beim Sortieren und in [lowerBound] das
      * wiederholte `lowercase()` pro Vergleich. Für grossgeschriebene Einträge sind das zwei Strings
-     * statt einem; bei ~1440 Wörtern vernachlässigbar und immer noch schlanker als ein Trie.
+     * statt einem; bei ~1500 Wörtern vernachlässigbar und immer noch schlanker als ein Trie.
      */
     private val byKey = HashMap<String, Entry>()
 
