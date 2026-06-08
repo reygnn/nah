@@ -786,6 +786,29 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `ein Vorschlag, der exakt das schon Getippte committen wuerde, wird ausgeblendet`() {
+        val fake = FakeIc()
+        // Liefert den Exakt-Treffer „der" UND eine echte Vervollständigung „deren".
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("der", "deren") })
+            .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
+        vm.type("der")
+        // „der" == getipptes Wort → Antippen wäre ein No-op (kein Trailing-Space mehr) → ausgeblendet.
+        // Genau dieser Filter unterdrückt auch das „schlägt sich selbst vor" direkt nach einer Annahme.
+        assertEquals(listOf("deren"), vm.state.value.suggestions)
+    }
+
+    @Test
+    fun `eine Nomen-Grossschreibung (zeit zu Zeit) bleibt sichtbar, ist kein No-op`() {
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("Zeit") })
+            .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
+        vm.type("zeit")
+        // Klein getipptes „zeit" → der Vorschlag committet „Zeit" (≠ „zeit"), korrigiert also die
+        // Grossschreibung. Kein No-op → bleibt sichtbar (case-sensitiver Filter, nicht ignoreCase).
+        assertEquals(listOf("Zeit"), vm.state.value.suggestions)
+    }
+
+    @Test
     fun `backspace nach einem auswahl-ersetzenden Tipp loescht das neue Zeichen, nicht davor`() {
         val fake = FakeIc()
         val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }

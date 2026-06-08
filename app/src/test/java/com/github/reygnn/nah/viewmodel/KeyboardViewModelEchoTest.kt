@@ -126,7 +126,9 @@ class KeyboardViewModelEchoTest {
     @Test
     fun `zwei schnelle Commits ohne zwischengeschaltetes Echo halten den State korrekt`() {
         val fake = CountingIc()
-        val vm = vm(fake) { prefix, _, _ -> listOf(prefix) } // gibt das Präfix selbst zurück
+        // Präfix + Marker (nicht exakt-gleich, sonst entfernte ihn der No-op-Filter in
+        // computeSuggestions); beweist trotzdem, welches Präfix der synchrone Read gesehen hat.
+        val vm = vm(fake) { prefix, _, _ -> listOf(prefix + "x") }
         vm.onStartInput(FieldContext())
         vm.applySettings(Settings(suggestionsEnabled = true))
 
@@ -135,13 +137,13 @@ class KeyboardViewModelEchoTest {
         vm.onKey(CharKey('h'))
         vm.onKey(CharKey('a'))
         // Korrekt trotz Fehlvorhersage: der synchrone Read sah die reale IC ("ha").
-        assertEquals(listOf("ha"), vm.state.value.suggestions)
+        assertEquals(listOf("hax"), vm.state.value.suggestions)
 
         // Jetzt treffen die verspäteten Echos ein. Das erste passt zufällig auf die (falsche)
         // Quittung und wird übersprungen, das zweite recomputet — der State bleibt korrekt.
         vm.onSelectionChanged(1, 1) // verspätetes Echo von 'h'
         vm.onSelectionChanged(2, 2) // Echo von 'a'
-        assertEquals(listOf("ha"), vm.state.value.suggestions)
+        assertEquals(listOf("hax"), vm.state.value.suggestions)
     }
 
     /**

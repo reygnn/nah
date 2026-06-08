@@ -220,7 +220,9 @@ class KeyboardViewModelShiftInvariantTest {
             val rng = Random(seed)
             val fake = FakeIc()
             val vm = vm(fake, suggester = Suggester { prefix, _, _ ->
-                if (prefix.length >= 2) listOf(prefix.lowercase()) else emptyList()
+                // + "x": nicht präfix-gleich, sonst entfernt der No-op-Filter den Vorschlag und der
+                // Suggestion-Tap-Pfad (Op 10) würde nie feuern (stiller Coverage-Verlust).
+                if (prefix.length >= 2) listOf(prefix.lowercase() + "x") else emptyList()
             }).apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = seed % 2 == 0)) }
             // Das aktuell aktive Feld mitführen: ein RESTART (restarting == true) startet dasselbe Feld
             // neu (Config-Change/Editor-restartInput) und behält daher seinen Typ — das Framework wechselt

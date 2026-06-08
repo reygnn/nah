@@ -403,16 +403,9 @@ class KeyboardViewModel(
             clearSuggestions()
             return
         }
-        // Eigene Wörter (Namen/Adressen/E-Mails) wörtlich committen — ihre Schreibweise ist
-        // massgeblich. Nur Wörterbuch-Vorschläge dem Präfix-Casing anpassen, damit ein am
-        // Satzanfang gross begonnenes „De" nicht durch klein vorgeschlagenes „der" ersetzt
-        // wird. Kein Autocorrect: in beiden Fällen wird nur das unfertige Präfix ersetzt.
-        // userWordsEnabled mitprüfen: der User-Index wird IMMER vorgehalten (siehe NahIme), also
-        // meldet isUserWord auch bei abgeschalteter Funktion noch Treffer. Ohne diese Gate würde
-        // ein Wort, das zufällig in beiden Listen steht, bei AUS­geschalteten eigenen Wörtern
-        // fälschlich wörtlich statt gecast committet (z. B. „Zeit" statt „ZEIT" unter Caps-Lock).
-        val isUserWord = settings.userWordsEnabled && suggester?.isUserWord(word) == true
-        val out = if (isUserWord) word else casedLikePrefix(word, prefix)
+        // Den tatsächlich zu committenden Text bestimmen — dieselbe Quelle wie der No-op-Filter
+        // in [computeSuggestions], damit beide nie divergieren (siehe [committedForm]).
+        val out = committedForm(word, prefix)
         safeIc { ic ->
             // Delete + Commit als EIN atomarer Edit (beginBatchEdit/endBatchEdit) — sonst sieht der
             // Editor den Zwischenzustand „Präfix weg, Ersatz noch nicht da": ein Redraw kann flackern
@@ -461,6 +454,27 @@ class KeyboardViewModel(
             letters.firstOrNull()?.isUpperCase() == true -> word.replaceFirstChar { it.uppercaseChar() }
             else -> word
         }
+    }
+
+    /**
+     * Der Text, den ein Tap auf [word] beim aktuellen [prefix] **tatsächlich committen** würde:
+     * eigene Wörter (Namen/Adressen/E-Mails) wörtlich — ihre Schreibweise ist massgeblich —, nur
+     * Wörterbuch-Vorschläge dem Präfix-Casing angepasst (damit ein am Satzanfang gross begonnenes
+     * „De" nicht durch klein vorgeschlagenes „der" ersetzt wird). Kein Autocorrect: in beiden Fällen
+     * wird nur das unfertige Präfix ersetzt.
+     *
+     * [settings.userWordsEnabled] mitprüfen: der User-Index wird IMMER vorgehalten (siehe NahIme),
+     * also meldet [Suggester.isUserWord] auch bei abgeschalteter Funktion noch Treffer. Ohne diese
+     * Gate würde ein Wort, das zufällig in beiden Listen steht, bei AUS­geschalteten eigenen Wörtern
+     * fälschlich wörtlich statt gecast committet (z. B. „Zeit" statt „ZEIT" unter Caps-Lock).
+     *
+     * **Einzige Quelle** für [onSuggestionTap] (was committet wird) UND den No-op-Filter in
+     * [computeSuggestions] (Vorschlag ausblenden, wenn das Ergebnis == dem schon Getippten ist):
+     * laufen beide über diese Funktion, kann der Filter nie etwas anderes annehmen als der Commit tut.
+     */
+    private fun committedForm(word: String, prefix: String): String {
+        val isUserWord = settings.userWordsEnabled && suggester?.isUserWord(word) == true
+        return if (isUserWord) word else casedLikePrefix(word, prefix)
     }
 
     // --- intern ---
@@ -570,6 +584,13 @@ class KeyboardViewModel(
         val prefix = wordBeforeCursor(before)
         val list = if (prefix.length >= 2 && !hasSelection && atWordEnd()) {
             s.suggest(prefix.lowercase(), settings.suggestionsEnabled, settings.userWordsEnabled)
+                // Einen Vorschlag ausblenden, der exakt das schon Getippte committen würde — seit
+                // Vorschläge keinen Trailing-Space mehr anhängen (siehe onSuggestionTap), wäre sein
+                // Antippen ein reiner No-op (Präfix löschen, identisch wieder committen). Das passiert
+                // u. a. direkt nach einer Annahme: das Wort steht noch am Cursor und schlägt sich selbst
+                // vor. Case-sensitiv über committedForm, NICHT equalsIgnoreCase: ein klein getipptes
+                // „zeit" → „Zeit" (Nomen-Grossschreibung) ist KEIN No-op und bleibt sichtbar.
+                .filterNot { committedForm(it, prefix) == prefix }
         } else {
             emptyList()
         }
