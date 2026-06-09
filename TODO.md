@@ -91,11 +91,18 @@ nicht in der JVM-Suite verifizierbar).
   (`com.android.test`), das (a) Tastatur-Einblende-Latenz und (b) Frame-Jank während einer
   gescripteten Tippsequenz auf dem Gerät erfasst. Bricht den Single-Module-Default bewusst.
   Ist die Baseline, an der §1 und §2 sich erst zeigen. **Fakt heute: kein Modul.**
-- **§1 `TapKey`-Skippability — Versicherung erledigt, Verifikation offen.** `@Immutable` auf
-  `CharKey`/`FunctionKey`/`KeyboardKey`/`KeyboardLayout` (+ `KeyboardUiState`) ist gesetzt
-  (Commit `ef44f39`) — die Regressions-Versicherung. **Offen:** per Layout-Inspector/
-  Composition-Tracing belegen, dass beim Tippen nur die `SuggestionBar` rekomponiert, nicht
-  die ~35 Tasten. Erwartung: skippt schon über Referenz-Identität (Strong Skipping).
+- **§1 `TapKey`-Skippability — ✅ VERIFIZIERT (2026-06-09, logcat-Sonde am Pixel 9a).** `@Immutable`
+  auf `CharKey`/`FunctionKey`/`KeyboardKey`/`KeyboardLayout` (+ `KeyboardUiState`) ist gesetzt
+  (Commit `ef44f39`). Verifikation per Wegwerf-Sonde (`SideEffect`-Zähler pro `TapKey`/`SuggestionBar`,
+  `Log.d` → `adb logcat -s nahRecompose`): **Befund stärker als die Hypothese.** Beim reinen Tippen
+  rekomponiert **gar nichts** — weder die ~35 Tasten noch die `SuggestionBar`. Tasten rekomponieren
+  *ausschliesslich* an Ebenen-/Shift-Grenzen, gebündelt in einem Pass (ein Zeitstempel), und dort
+  zu Recht (andere Tasten/Labels). Der Performance-Held beim Tippen ist nicht das Compose-Skipping,
+  sondern die **`StateFlow`-Konflation**: Tippen ändert nahs UI-State nicht (Text geht ins Host-Feld),
+  also emittiert der Flow keinen neuen Wert → der Eltern-Composable rekomponiert nicht → der Skip-Pfad
+  wird beim Tippen nie betreten. `@Immutable` bleibt richtige Versicherung für die Fälle, *wo* der
+  Parent rekomponiert (Ebenen-/Shift-Wechsel). **Keine Performance-Sorge beim Tippen.** Sonde war
+  Branch `test/recomposition-probe` (verworfen, nie gemergt).
 - **§2 Baseline Profile — first-frame-Jank.** `androidx.baselineprofile`-Plugin +
   Generator über den Pfad „Feld fokussieren → Tastatur sichtbar → erster Tap". Einziger
   verbliebene Startup-Hebel (R8 ist aus). Gegen §4 gegenmessen. **Fakt heute: keins.**
@@ -104,12 +111,15 @@ nicht in der JVM-Suite verifizierbar).
   Compose/IME-Keep-Regel-Tuning + Testrisiko nicht. Falls je erwogen: eigener Branch,
   Smoke-Test über ALLE Ebenen auf echtem Release-Build (Unit-Tests fangen R8-Regressionen
   nicht). **Nicht reflexhaft „zur Optimierung" einschalten.**
-- **§5 Kleinkram — nur falls §1 zeigt, dass `TapKey` doch rekomponiert.** `onGloballyPositioned`
-  läuft für jede Taste (Fenster-X nur bei Long-Press gebraucht) · `longPressItems` wird pro
-  `TapKey`-Ausführung neu gebaut. Beide verschwinden, sobald das Skippen sicher ist → nachrangig.
+- **§5 Kleinkram — faktisch erledigt durch §1.** `onGloballyPositioned` läuft für jede Taste
+  (Fenster-X nur bei Long-Press gebraucht) · `longPressItems` wird pro `TapKey`-Ausführung neu
+  gebaut. Beides kostet nur, *wenn* `TapKey` rekomponiert — und §1 hat gemessen, dass das beim
+  Tippen nie passiert. Damit gegenstandslos; nicht weiter verfolgen.
 
-**Reihenfolge:** §4 → §1 → §2 → (§5 nur bei Bedarf). Jeweils eigener Branch (`test/`,
-`chore/`, `perf/`). Das Layout bleibt dabei eingefroren — keine Optimizer-Läufe (CLAUDE.md).
+**Reihenfolge:** §1 ✅ + §5 ✅ erledigt (Tippen ist recomposition-frei, s. o.). Offen bleibt
+§4 → §2 (Macrobenchmark als Baseline, dann Baseline Profile); §3 (R8) bleibt aus. Jeweils eigener
+Branch (`test/`, `chore/`, `perf/`). Das Layout bleibt dabei eingefroren — keine Optimizer-Läufe
+(CLAUDE.md).
 
 ---
 
