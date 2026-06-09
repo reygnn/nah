@@ -51,6 +51,12 @@ internal fun bottomKeyboardInset(systemNavBottom: Dp, minClearance: Dp): Dp =
 private val ROW_HEIGHT_PORTRAIT: Dp = 58.dp
 private val ROW_HEIGHT_LANDSCAPE: Dp = 42.dp
 
+/** Höhe der untersten Funktionsreihe (mit Leertaste). Bewusst höher als die Buchstabenreihen:
+ *  EXPERIMENT — grössere Treffer-Fläche für die am häufigsten getroffene Reihe (Space/Return).
+ *  Tunebar; auf [ROW_HEIGHT_*] zurücksetzen entfernt den Effekt wieder. */
+private val SPACE_ROW_HEIGHT_PORTRAIT: Dp = 74.dp
+private val SPACE_ROW_HEIGHT_LANDSCAPE: Dp = 52.dp
+
 /** Einstiegspunkt, der den IME-Service mit dem ViewModel verbindet. */
 @Composable
 fun KeyboardScreen(viewModel: KeyboardViewModel) {
@@ -81,6 +87,7 @@ fun KeyboardContent(
     val minBottom = if (landscape) LANDSCAPE_MIN_BOTTOM else PORTRAIT_MIN_BOTTOM
     val bottomInset = bottomKeyboardInset(systemNavBottom, minBottom)
     val rowHeight = if (landscape) ROW_HEIGHT_LANDSCAPE else ROW_HEIGHT_PORTRAIT
+    val spaceRowHeight = if (landscape) SPACE_ROW_HEIGHT_LANDSCAPE else SPACE_ROW_HEIGHT_PORTRAIT
     // Die Tastenanordnung ist optimizer-generiert und in LTR definiert; sie darf NIE von der
     // System-Locale gespiegelt werden. Eine RTL-Systemsprache (Arabisch/Hebräisch/…) würde sonst
     // jede reihenbasierte Row spiegeln und damit die gesamte optimierte Anordnung (das Kernver-
@@ -110,10 +117,16 @@ fun KeyboardContent(
                 )
             }
             state.layout.rows.forEach { row ->
+                // Die Reihe mit der Leertaste (unterste Funktionsreihe) bekommt eine eigene,
+                // grössere Höhe; alle anderen die normale Reihenhöhe.
+                val isSpaceRow = row.any {
+                    it is com.github.reygnn.nah.layout.FunctionKey &&
+                        it.action == com.github.reygnn.nah.layout.KeyAction.SPACE
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(rowHeight),
+                        .height(if (isSpaceRow) spaceRowHeight else rowHeight),
                 ) {
                     row.forEach { key ->
                         // Einfügen-Taste ist inaktiv, wenn die Zwischenablage keinen Text hat.
