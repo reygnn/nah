@@ -46,6 +46,38 @@ Zusätzlich abgesichert:
 
 ---
 
+## Vorschlags-Ranking nach Nutzung (Idee, Fast-Follow)
+
+Angeregt vom Kolibri_Launcher-Appdrawer (sortiert Apps nach Usage). Übertragbar auf
+nah — aber **nur auf die Vorschlagsleiste**, nie auf Tasten/Long-Press/Layout:
+bewegliche Tasten sind exakt der `thumbprint`-Tod (Muskelgedächtnis), und das Layout
+ist eingefroren. Die Leiste ist dagegen das eine „weiche" Subsystem (opt-in, default
+aus, nicht-eingreifend, ändert nie fertigen Text) — Adaptivität dort bricht keine harte
+Regel.
+
+**Passt mechanisch gut:** Das Ranking hängt schon an einer Integer-Frequenz
+(`WordIndex` speichert pro Wort eine Frequenz, `SuggestionRepository.suggest()` sortiert
+per `SUGGESTION_ORDER`, User-Wörter via `USER_WORD_FREQUENCY` nach vorn gepinnt). Eine
+Usage-Formel ist also kein neuer Mechanismus, sondern ein **gelernter Frequenz-Boost**:
+beim Vorschlag-Tap (oder Wort-Commit) einen Zähler hoch, beim Ranken einmischen.
+
+**Randbedingungen, falls gebaut:**
+- Eigener Settings-Toggle, unabhängig wie die getrennten Built-in/User-Schalter; sauber
+  durch `applySettings(...)` verdrahtet (Hard rule #4), nicht per Konstruktor-Default.
+- Persistenz via DataStore (Konvention), keyed pro Wort. Hauptkostenpunkt: die Tabelle
+  wächst sonst unbegrenzt → **Cap + Pruning** nötig.
+- Reine Frequency reicht wohl; Frecency (Recency-Decay) braucht eine Clock und
+  verkompliziert die JVM-Testbarkeit (`runTest`/rein) — eher nicht den Aufwand wert.
+- **Strikt vom Optimizer trennen.** `GermanWordList` ist Suggestion-Quelle *und*
+  Optimizer-Input; der Usage-Store darf **nie** nach `optimize_layout.py` zurückfliessen
+  (sonst rechtfertigt er indirekt das eingefrorene Layout). Rein fürs Vorschlags-Ranking.
+- Privacy bleibt konsistent (alles lokal, kein Netz) — nur mehr lokaler State.
+
+Steht weder auf der „Fast-Follow"- noch der „verworfen"-Liste in `CLAUDE.md` — frische
+Idee, kein wiederaufgewärmter Streitpunkt. Bewusst zurückgestellt, kein Layout-Eingriff.
+
+---
+
 ## Compose-Performance — geräte-gebunden, grösstenteils offen
 
 Ehemals `temp/OPTIMIZE.md` (Code-Durchsicht nach Praxis-Test). Kurzfassung: die
