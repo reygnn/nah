@@ -86,9 +86,10 @@ deliberate scope choice for a single-user personal keyboard, not an oversight.
   **hold and release commits the first item** (no sliding needed), slide up for the
   rest, drag below the key to cancel. Keys that carry a menu show a small corner
   dot. Pre-seeded: vowels → their umlaut then accents (`a` → ä/à/â, `o` → ö/ô/ò,
-  `u` → ü/û/ù), lone `q`, `c` → ch/ck, `s` → sch/st/sp, `p` → pf/ph. Freely
-  extendable via a small table. (vuot's data idea, but visible — not its invisible
-  swipes.)
+  `u` → ü/û/ù), lone `q`, `c` → ch/ck, `s` → sch/st/sp, `p` → pf/ph, and a few
+  frequent-bigram/ending shortcuts (`r` → er, `n` → en, `m` → em, `g` → ung).
+  Freely extendable via a small table. (vuot's data idea, but visible — not its
+  invisible swipes.)
 - **Training-wheel colours** (optional, off by default) — tint vowels and the
   highest-frequency consonants in fixed colours, and dim the rarely-used `x`/`y`,
   while muscle memory settles.
