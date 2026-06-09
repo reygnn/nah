@@ -25,6 +25,10 @@ object KeyAlternatives {
         // Muster der anderen Einträge (sie enden auf r/n), weil r/n hier die naheliegende Taste ist.
         'r' to listOf("er"),
         'n' to listOf("en"),
+        // Gleiche Idee wie er/en: häufige Endungen als Einfinger-Shortcut. „em" auf m,
+        // „ung" auf g (g ist der naheliegende Anfangsbuchstabe der Endung).
+        'm' to listOf("em"),
+        'g' to listOf("ung"),
         'a' to listOf("ä", "à", "â"),       // Umlaut zuerst, dann franz. Akzente
         'e' to listOf("é", "è", "ê"),
         'i' to listOf("î", "ì"),
