@@ -36,6 +36,12 @@ data class CharKey(
     /** Alternativen für das Long-Press-Popup (sichtbar, schieben+loslassen): z. B.
      *  `c` → ch/ck/sch, die qu-Taste → einzelnes `q`, Vokale → Akzente. Leer = nur Tap. */
     val alternatives: List<String> = emptyList(),
+    /** Hält der Finger gedrückt, committet die Taste das Zeichen wiederholt — dieselbe
+     *  Auto-Repeat-Geste wie [KeyAction.BACKSPACE] (siehe `ui/TapKey`). Default `false`;
+     *  nur für Tasten gedacht, deren Mehrfach-Eingabe sinnvoll ist (z. B. `-` für eine
+     *  Trennlinie). Schliesst sich mit [alternatives] aus (Halten ist dann der Repeat,
+     *  nicht das Long-Press-Popup). */
+    val autoRepeat: Boolean = false,
     override val weight: Float = 1f,
 ) : KeyboardKey {
     override val label: String get() = output

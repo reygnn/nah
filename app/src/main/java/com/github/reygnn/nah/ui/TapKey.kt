@@ -62,10 +62,11 @@ import kotlinx.coroutines.withTimeoutOrNull
 /** Nicht klickbarer Rand ringsum jede Taste (Totzone gegen Fehltipper). */
 private val KEY_GAP = 5.dp
 
-/** Backspace-Auto-Repeat: Verzögerung bis das Halten zu wiederholen beginnt … */
-private const val BACKSPACE_INITIAL_DELAY_MS = 400L
-/** … und der Abstand zwischen den Wiederhol-Löschungen danach. */
-private const val BACKSPACE_REPEAT_MS = 55L
+/** Auto-Repeat (Backspace + Repeat-CharKeys wie „-"): Verzögerung bis das Halten zu
+ *  wiederholen beginnt … */
+private const val REPEAT_INITIAL_DELAY_MS = 400L
+/** … und der Abstand zwischen den Wiederholungen danach. */
+private const val REPEAT_MS = 55L
 
 /**
  * Marker (kleiner gefüllter Kreis, rechts oben) auf Tasten mit Long-Press-Menü: macht die
@@ -172,7 +173,10 @@ fun TapKey(
         onKey(key)
     }
 
-    val isBackspace = key is FunctionKey && key.action == KeyAction.BACKSPACE
+    // Auto-Repeat: Backspace und als repeat markierte CharKeys (z. B. „-" auf der Symbolebene)
+    // teilen dieselbe Halten-wiederholt-Geste.
+    val isRepeating = (key is FunctionKey && key.action == KeyAction.BACKSPACE) ||
+        (key is CharKey && key.autoRepeat)
     // Vereinheitlichte Long-Press-Einträge: CharKey-Alternativen committen einen String, die
     // Shortcuts der Umschalttaste lösen eine KeyAction aus — beide über dieselbe sichtbare Geste.
     val longPressItems: List<LongPressItem> = when (key) {
@@ -202,20 +206,20 @@ fun TapKey(
     val gesture = remember(key) { LongPressGesture(longPressItems.size) }
 
     val tapModifier = when {
-        isBackspace -> Modifier
+        isRepeating -> Modifier
             .indication(interactionSource, ripple())
             .pointerInput(key) {
-                // Backspace: erst sofort löschen, dann — falls gehalten — im Repeat-Takt.
-                // Haptik nur beim ersten Druck, nicht bei jeder Wiederholung.
+                // Repeat-Taste (Backspace, „-"): erst sofort feuern, dann — falls gehalten —
+                // im Repeat-Takt. Haptik nur beim ersten Druck, nicht bei jeder Wiederholung.
                 detectTapGestures(
                     onPress = {
                         val press = PressInteraction.Press(it)
                         interactionSource.emit(press) // Ripple an
                         tap()
-                        if (withTimeoutOrNull(BACKSPACE_INITIAL_DELAY_MS) { tryAwaitRelease() } == null) {
+                        if (withTimeoutOrNull(REPEAT_INITIAL_DELAY_MS) { tryAwaitRelease() } == null) {
                             while (true) {
                                 onKey(key)
-                                if (withTimeoutOrNull(BACKSPACE_REPEAT_MS) { tryAwaitRelease() } != null) break
+                                if (withTimeoutOrNull(REPEAT_MS) { tryAwaitRelease() } != null) break
                             }
                         }
                         interactionSource.emit(PressInteraction.Release(press)) // Ripple aus

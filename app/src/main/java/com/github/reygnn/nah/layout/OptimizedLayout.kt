@@ -67,7 +67,9 @@ object OptimizedLayout {
     fun symbols(): KeyboardLayout = KeyboardLayout(
         rows = listOf(
             charRow("1234567890"),
-            charRow("@#€$%&*-+="),
+            // Das „-" wiederholt bei Halten (Auto-Repeat wie Backspace) — bequem für
+            // Trennlinien; alle anderen Symbole bleiben Einzel-Tap.
+            charRow("@#€$%&*-+=").withAutoRepeat('-'),
             charRow("()[]{}<>/\\"),
             // Backspace weight 1f → 9 Symbole + Backspace = 10 Tasten wie die Reihen darüber,
             // gleiche Spaltenbreite, kein Versatz (gleiche Logik wie die Buchstabenebene).
@@ -209,4 +211,9 @@ object OptimizedLayout {
      *  ihre Alternative (einzelnes „q") kommt aus [KeyAlternatives]. */
     private fun List<KeyboardKey>.withQu(): List<KeyboardKey> =
         map { if (it is CharKey && it.char == 'q') it.copy(output = "qu") else it }
+
+    /** Schaltet den Auto-Repeat (Halten → wiederholtes Committen, wie Backspace) für die
+     *  [CharKey] mit dem gegebenen [char] frei. */
+    private fun List<KeyboardKey>.withAutoRepeat(char: Char): List<KeyboardKey> =
+        map { if (it is CharKey && it.char == char) it.copy(autoRepeat = true) else it }
 }
