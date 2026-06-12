@@ -19,6 +19,7 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.github.reygnn.nah.R
+import com.github.reygnn.nah.data.suggestions.LearnedWordRepository
 import com.github.reygnn.nah.data.suggestions.SuggestionRepository
 import com.github.reygnn.nah.data.suggestions.UserWordError
 import com.github.reygnn.nah.data.suggestions.UserWordRepository
@@ -53,6 +54,7 @@ class NahIme :
     private lateinit var viewModel: KeyboardViewModel
     private lateinit var settingsRepository: SettingsRepository
     private lateinit var userWordRepository: UserWordRepository
+    private lateinit var learnedWordRepository: LearnedWordRepository
 
     // Schützt einen asynchron aufgelösten Einfüge-Inhalt davor, nach einem Feldwechsel ins fremde Feld
     // zu committen (Fehlcommit + Privacy-Leck). Reine, JVM-getestete Entscheidungslogik (siehe PasteGuard).
@@ -66,6 +68,7 @@ class NahIme :
 
         settingsRepository = SettingsRepository(applicationContext)
         userWordRepository = UserWordRepository(applicationContext)
+        learnedWordRepository = LearnedWordRepository(applicationContext)
         // Lazy Index — wird nur gebaut, wenn Vorschläge je aktiviert werden (Default aus).
         val suggester = SuggestionRepository()
 
@@ -78,7 +81,7 @@ class NahIme :
             suggester = suggester,
             onPasteRequested = ::requestPaste,
             onSettingsRequested = ::openSettings,
-            onSaveWordRequested = ::saveUserWord,
+            onSaveWordRequested = ::saveLearnedWord,
         )
 
         var builtInWarmStarted = false
@@ -104,6 +107,11 @@ class NahIme :
             // behandlung (siehe onSuggestionTap), nicht hier. setUserWords tauscht danach nur die
             // fertig gebaute Instanz atomar (@Volatile) ein, die auf dem UI-Thread gelesen wird.
             userWordRepository.words.collect { suggester.setUserWords(it) }
+        }
+        lifecycleScope.launch(Dispatchers.Default) {
+            // Die beim Tippen gelernten Wörter genauso im Hintergrund vorhalten (eigener Index, wird
+            // wie ein Wörterbuch-Wort gecast statt wörtlich — siehe SuggestionRepository.isLearnedWord).
+            learnedWordRepository.words.collect { suggester.setLearnedWords(it) }
         }
 
         clipboard?.addPrimaryClipChangedListener(primaryClipChangedListener)
@@ -258,17 +266,19 @@ class NahIme :
     }
 
     /**
-     * Speichert das in der Vorschlagsleiste angetippte Wort in die eigene, backuppbare Wortliste
-     * ([UserWordRepository]) und bestätigt per Toast. Aus `KeyboardViewModel.onSaveWordTap` über den
+     * Speichert das in der Vorschlagsleiste angetippte Wort als **gelerntes** Wort
+     * ([LearnedWordRepository]) und bestätigt per Toast. Aus `KeyboardViewModel.onSaveWordTap` über den
      * `onSaveWordRequested`-Callback aufgerufen — der ViewModel kennt weder DataStore noch Android.
-     * `add` validiert erneut gegen den aktuellen Stand (Duplikat ohne Race); die nicht-Duplikat-Fehler
-     * sind hier praktisch unerreichbar (der ViewModel bietet nur 2–50-Zeichen-Wörter ohne Steuerzeichen
-     * an), werden aber der Vollständigkeit halber gemeldet. Das gespeicherte Wort fliesst über den
-     * `words`-Flow zurück in den Suggester und taucht so automatisch in „Eigene Wörter verwalten" auf.
+     * Bewusst der Lern-Store (nicht der kuratierte [UserWordRepository]): live gespeicherte Wörter sollen
+     * sich beim Vorschlagen an Shift/Caps orientieren (wie Wörterbuch-Wörter), nicht wörtlich committet
+     * werden. `add` validiert erneut gegen den aktuellen Stand (Duplikat ohne Race); die nicht-Duplikat-
+     * Fehler sind hier praktisch unerreichbar (der ViewModel bietet nur 2–50-Zeichen-Wörter ohne
+     * Steuerzeichen an), werden aber der Vollständigkeit halber gemeldet. Das Wort fliesst über den
+     * `words`-Flow zurück in den Suggester und erscheint im „Gelernte Wörter"-Abschnitt der Verwaltung.
      */
-    private fun saveUserWord(word: String) {
+    private fun saveLearnedWord(word: String) {
         lifecycleScope.launch {
-            val message = when (userWordRepository.add(word)) {
+            val message = when (learnedWordRepository.add(word)) {
                 null -> getString(R.string.word_saved, word)
                 UserWordError.AlreadyExists -> getString(R.string.word_save_exists, word)
                 UserWordError.TooShort -> getString(R.string.user_word_error_too_short, UserWordValidation.MIN_LENGTH)

@@ -42,6 +42,9 @@
     <string name="user_word_error_too_long">At most %1$d characters</string>
     <string name="user_word_error_invalid">No line breaks or control characters</string>
     <string name="user_word_error_exists">Already in the list</string>
+    <string name="user_words_learned_title">Learned words</string>
+    <string name="user_words_learned_description">Saved while typing (the bookmark chip). Suggested like dictionary words — they follow Shift/Caps Lock, not committed verbatim. Remove to forget one.</string>
+    <string name="user_words_learned_empty">Nothing learned yet.</string>
 
     <!-- Save word while typing (toast confirmation) -->
     <string name="word_saved">Saved “%1$s”</string>

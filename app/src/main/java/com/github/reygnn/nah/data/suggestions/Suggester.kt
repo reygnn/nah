@@ -26,4 +26,14 @@ fun interface Suggester {
      * (Fakes/Tests verhalten sich wie Wörterbuch).
      */
     fun isUserWord(word: String): Boolean = false
+
+    /**
+     * Stammt [word] aus den **beim Tippen gelernten** Wörtern (siehe `LearnedWordRepository`)? Solche
+     * Einträge werden — anders als die kuratierten eigenen Wörter ([isUserWord]) — **wie Wörterbuch-
+     * Wörter** committet, also an Shift/Caps-Lock des Präfix angepasst (`casedLikePrefix`), nicht
+     * wörtlich. Nur genutzt, um beim Live-Speichern ein schon gelerntes Wort nicht erneut anzubieten
+     * (siehe `KeyboardViewModel.computeSaveWord`); fürs Casing genügt, dass [isUserWord] hier `false`
+     * bleibt. Default `false` (Fakes/Tests verhalten sich wie Wörterbuch).
+     */
+    fun isLearnedWord(word: String): Boolean = false
 }

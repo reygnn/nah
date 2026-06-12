@@ -657,10 +657,11 @@ class KeyboardViewModel(
         // Speichern-Chip auf (es geht um Wörter, nicht um Ziffernfolgen).
         if (prefix.length < UserWordValidation.MIN_LENGTH || prefix.length > UserWordValidation.MAX_LENGTH) return null
         if (prefix.none { it.isLetter() }) return null
-        // Schon gespeichert → nichts anzubieten. Der User-Index wird IMMER vorgehalten (siehe NahIme),
-        // also greift das auch, wenn die eigenen Wörter als Vorschlagsquelle gerade abgeschaltet sind.
-        // Fehlt der Suggester (Tests ohne Quelle), kann nicht dedupliziert werden → im Zweifel anbieten.
-        if (suggester?.isUserWord(prefix) == true) return null
+        // Schon gespeichert → nichts anzubieten — egal ob als kuratiertes (wörtliches) ODER bereits
+        // gelerntes Wort. Beide Indizes werden IMMER vorgehalten (siehe NahIme), das greift also auch
+        // bei abgeschalteter Vorschlagsquelle. Fehlt der Suggester (Tests ohne Quelle), kann nicht
+        // dedupliziert werden → im Zweifel anbieten.
+        if (suggester?.isUserWord(prefix) == true || suggester?.isLearnedWord(prefix) == true) return null
         return prefix
     }
 

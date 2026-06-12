@@ -15,6 +15,9 @@ class SuggestionRepository : Suggester {
     @Volatile
     private var userIndex: WordIndex? = null
 
+    @Volatile
+    private var learnedIndex: WordIndex? = null
+
     /**
      * Baut den eingebauten de-CH-Index — einmalig und idempotent. **Bewusst von einem
      * Hintergrund-Dispatcher aufzurufen** (siehe `NahIme`), damit der Aufbau (hunderte
@@ -54,6 +57,24 @@ class SuggestionRepository : Suggester {
         }
     }
 
+    /**
+     * Aktualisiert die **gelernten** Wörter (vom IME beim Beobachten von [LearnedWordRepository]).
+     * Eigener [WordIndex], damit sie unabhängig zu- und abschaltbar sind UND — über [isLearnedWord]
+     * statt [isUserWord] — wie Wörterbuch-Wörter (an Shift/Caps angepasst) statt wörtlich committet
+     * werden. `@Synchronized`/`sorted()` wie [setUserWords].
+     */
+    @Synchronized
+    fun setLearnedWords(words: Set<String>) {
+        learnedIndex = if (words.isEmpty()) {
+            null
+        } else {
+            WordIndex().apply {
+                words.sorted().forEach { insert(it, LEARNED_WORD_FREQUENCY) }
+                build()
+            }
+        }
+    }
+
     override fun suggest(prefix: String, includeBuiltIn: Boolean, includeUser: Boolean): List<String> {
         if (prefix.length < MIN_PREFIX_LENGTH) return emptyList()
 
@@ -68,7 +89,13 @@ class SuggestionRepository : Suggester {
             }
         }
 
-        if (includeUser) userIndex?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
+        // Gelernte Wörter teilen sich den „eigene Wörter"-Schalter mit den kuratierten (beides sind
+        // persönliche Wörter); ihr Casing-Unterschied liegt allein in isUserWord/isLearnedWord, nicht
+        // im Ranking. Sie ranken knapp unter den kuratierten (LEARNED < USER), aber über der Liste.
+        if (includeUser) {
+            userIndex?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
+            learnedIndex?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
+        }
         if (includeBuiltIn) builtInIndex?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
 
         // Geteilte Ordnung mit WordIndex.getSuggestions (SUGGESTION_ORDER): höchste Frequenz zuerst,
@@ -87,6 +114,13 @@ class SuggestionRepository : Suggester {
      */
     override fun isUserWord(word: String): Boolean = userIndex?.contains(word) ?: false
 
+    /**
+     * Liegt [word] im Lern-Index? Dann wird es **nicht** wörtlich committet (anders als [isUserWord]),
+     * sondern wie ein Wörterbuch-Wort an Shift/Caps angepasst — fürs Casing genügt, dass [isUserWord]
+     * false bleibt. Genutzt, um beim Live-Speichern ein schon gelerntes Wort nicht erneut anzubieten.
+     */
+    override fun isLearnedWord(word: String): Boolean = learnedIndex?.contains(word) ?: false
+
     companion object {
         private const val MIN_PREFIX_LENGTH = 2
         /** Obergrenze der angezeigten Vorschläge — der einzige Wert dieser Art. Nicht nur intern
@@ -96,5 +130,8 @@ class SuggestionRepository : Suggester {
         const val MAX_SUGGESTIONS = 6
         /** Deutlich über der Top-Frequenz der eingebauten Liste (≈1000) → User-Wörter zuerst. */
         private const val USER_WORD_FREQUENCY = 10_000
+        /** Wie [USER_WORD_FREQUENCY] über der Liste, aber knapp darunter → bei Gleich-Wort ranken
+         *  kuratierte (wörtliche) Wörter vor gelernten. Beide stehen vor den eingebauten Vorschlägen. */
+        private const val LEARNED_WORD_FREQUENCY = 9_000
     }
 }

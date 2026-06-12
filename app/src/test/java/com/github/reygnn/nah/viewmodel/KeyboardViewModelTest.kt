@@ -692,6 +692,13 @@ class KeyboardViewModelTest {
         override fun isUserWord(word: String) = words.contains(word)
     }
 
+    /** Suggester, der seine Treffer als GELERNTE Wörter meldet: isUserWord bleibt false (→ Präfix-
+     *  Casing wie ein Wörterbuch-Wort), nur isLearnedWord trifft (für den Save-Dedup). */
+    private fun learnedWordSuggester(vararg words: String) = object : Suggester {
+        override fun suggest(prefix: String, includeBuiltIn: Boolean, includeUser: Boolean) = words.toList()
+        override fun isLearnedWord(word: String) = words.contains(word)
+    }
+
     @Test
     fun `eigenes Wort wird unter Caps-Lock NICHT grossgeschrieben`() {
         val fake = FakeIc()
@@ -1423,6 +1430,31 @@ class KeyboardViewModelTest {
         assertEquals("hallo", fake.buffer.toString())
         // … und das Chip ist sofort weg (kein Doppel-Speichern, kein Flackern).
         assertNull(vm.state.value.saveWord)
+    }
+
+    @Test
+    fun `ein bereits gelerntes Wort wird nicht zum Speichern angeboten`() {
+        val fake = FakeIc()
+        // isLearnedWord meldet „hallo" als schon gelernt (Lern-Index wird immer vorgehalten).
+        val vm = vm(fake, suggester = learnedWordSuggester("hallo"))
+            .apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.type("hallo")
+        assertNull(vm.state.value.saveWord)
+    }
+
+    @Test
+    fun `ein gelerntes Wort wird unter Caps-Lock gross geschrieben, nicht woertlich`() {
+        val fake = FakeIc()
+        // Gelerntes Wort: isUserWord false, isLearnedWord true → wird wie ein Wörterbuch-Wort
+        // an Shift/Caps angepasst (genau der Unterschied zu einem kuratierten eigenen Wort).
+        val vm = vm(fake, suggester = learnedWordSuggester("hauptstrasse"))
+            .apply { applySettings(Settings(userWordsEnabled = true, autoCapEnabled = false)) }
+        vm.onKey(FunctionKey(KeyAction.SHIFT))
+        vm.onKey(FunctionKey(KeyAction.SHIFT)) // CAPS
+        vm.type("haupt")                       // unter Caps → „HAUPT"
+        vm.onSuggestionTap("hauptstrasse")
+        // Folgt dem Caps-Präfix → „HAUPTSTRASSE". Ein kuratiertes Wort bliebe dagegen wörtlich klein.
+        assertEquals("HAUPTSTRASSE", fake.buffer.toString())
     }
 
     @Test

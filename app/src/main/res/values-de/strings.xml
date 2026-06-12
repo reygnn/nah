@@ -40,6 +40,9 @@
     <string name="user_word_error_too_long">Höchstens %1$d Zeichen</string>
     <string name="user_word_error_invalid">Keine Zeilenumbrüche oder Steuerzeichen</string>
     <string name="user_word_error_exists">Schon in der Liste</string>
+    <string name="user_words_learned_title">Gelernte Wörter</string>
+    <string name="user_words_learned_description">Beim Tippen gespeichert (das Lesezeichen-Chip). Werden wie Wörterbuch-Wörter vorgeschlagen — sie richten sich nach Shift/Caps-Lock, nicht wörtlich. Zum Vergessen entfernen.</string>
+    <string name="user_words_learned_empty">Noch nichts gelernt.</string>
 
     <!-- Wort beim Tippen speichern (Toast-Bestätigung) -->
     <string name="word_saved">„%1$s“ gespeichert</string>

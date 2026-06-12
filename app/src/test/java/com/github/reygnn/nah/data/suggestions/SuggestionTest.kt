@@ -195,6 +195,38 @@ class SuggestionRepositoryTest {
     }
 
     @Test
+    fun `gelernte Woerter erscheinen nur unter includeUser`() {
+        val r = SuggestionRepository()
+        r.setLearnedWords(setOf("Hauptstrasse"))
+        // Mit der „eigene Wörter"-Quelle (die sich gelernte und kuratierte teilen) → vorgeschlagen.
+        assertEquals(listOf("Hauptstrasse"), r.suggest("haupt", includeBuiltIn = false, includeUser = true))
+        // Ohne sie → nicht.
+        assertTrue(r.suggest("haupt", includeBuiltIn = false, includeUser = false).isEmpty())
+    }
+
+    @Test
+    fun `ein gelerntes Wort ist KEIN woertliches User-Wort (bekommt Praefix-Casing)`() {
+        val r = SuggestionRepository()
+        r.setLearnedWords(setOf("Hauptstrasse"))
+        // isLearnedWord erkennt es (case-insensitiv über WordIndex.contains) …
+        assertTrue(r.isLearnedWord("Hauptstrasse"))
+        assertTrue(r.isLearnedWord("hauptstrasse"))
+        // … aber isUserWord ist false → der ViewModel castet es wie ein Wörterbuch-Wort (Shift/Caps),
+        // statt es wörtlich zu committen. Genau das ist der Unterschied zu kuratierten Wörtern.
+        assertFalse(r.isUserWord("Hauptstrasse"))
+    }
+
+    @Test
+    fun `bei gleichem Wort gewinnt das kuratierte vor dem gelernten`() {
+        val r = SuggestionRepository()
+        r.setUserWords(setOf("Müller"))     // kuratiert (USER_WORD_FREQUENCY)
+        r.setLearnedWords(setOf("müller"))  // gelernt (LEARNED_WORD_FREQUENCY, knapp darunter)
+        // Beide auf demselben Key; die höhere (kuratierte) Frequenz bestimmt Form UND Verhalten.
+        assertEquals(listOf("Müller"), r.suggest("mü", includeBuiltIn = false, includeUser = true))
+        assertTrue(r.isUserWord("Müller")) // → wörtlich (kuratiert gewinnt)
+    }
+
+    @Test
     fun `Wort in beiden Quellen erscheint genau einmal, die User-Form gewinnt`() {
         // „haben" steht klein in der eingebauten Liste. Als Eigenwort in anderer Schreibweise landet
         // es auf DEMSELBEN kleingeschriebenen Key — der quell-übergreifende Merge muss es zu einem
