@@ -117,6 +117,13 @@ fun SettingsScreen(
                 },
             )
             SwitchRow(
+                label = stringResource(R.string.settings_suggest_learned_words),
+                checked = settings.learnedWordsEnabled,
+                onChange = { value ->
+                    scope.launch { repository.update { it.copy(learnedWordsEnabled = value) } }
+                },
+            )
+            SwitchRow(
                 label = stringResource(R.string.settings_bar_always_visible),
                 checked = settings.barAlwaysVisible,
                 onChange = { value ->

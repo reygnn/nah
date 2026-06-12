@@ -9,12 +9,19 @@ package com.github.reygnn.nah.data.suggestions
 fun interface Suggester {
     /**
      * @param includeBuiltIn die eingebaute de-CH-Wortliste einbeziehen
-     * @param includeUser die benutzerdefinierten Wörter einbeziehen
+     * @param includeUser die **kuratierten** benutzerdefinierten Wörter einbeziehen
+     * @param includeLearned die beim Tippen **gelernten** Wörter einbeziehen (eigener Schalter)
      *
-     * Beide Quellen sind unabhängig schaltbar — so kann man NUR die eigenen Wörter
-     * (ohne das Dictionary-Rauschen) bekommen.
+     * Alle drei Quellen sind unabhängig schaltbar — so kann man z. B. NUR die eigenen Wörter
+     * (ohne das Dictionary-Rauschen) bekommen, oder gelernte ohne kuratierte. (Kein Default-Wert:
+     * eine `fun interface`-SAM-Methode erlaubt keinen — die Aufrufer reichen alle drei Flags durch.)
      */
-    fun suggest(prefix: String, includeBuiltIn: Boolean, includeUser: Boolean): List<String>
+    fun suggest(
+        prefix: String,
+        includeBuiltIn: Boolean,
+        includeUser: Boolean,
+        includeLearned: Boolean,
+    ): List<String>
 
     /**
      * Stammt [word] aus den benutzerdefinierten Wörtern? Solche Einträge (Vor-/Nachnamen,

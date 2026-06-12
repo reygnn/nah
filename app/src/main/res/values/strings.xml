@@ -9,6 +9,7 @@
     <string name="settings_pick_keyboard">Choose keyboard</string>
     <string name="settings_suggestion_bar">Suggestion bar</string>
     <string name="settings_suggest_user_words">Suggest your own words</string>
+    <string name="settings_suggest_learned_words">Suggest learned words</string>
     <string name="settings_bar_always_visible">Keep the bar always visible</string>
     <string name="settings_manage_user_words">Manage your own words</string>
     <string name="settings_auto_cap">Auto-capitalise at sentence start</string>
@@ -43,7 +44,7 @@
     <string name="user_word_error_invalid">No line breaks or control characters</string>
     <string name="user_word_error_exists">Already in the list</string>
     <string name="user_words_learned_title">Learned words</string>
-    <string name="user_words_learned_description">Saved while typing (the bookmark chip). Suggested like dictionary words — they follow Shift/Caps Lock, not committed verbatim. Remove to forget one.</string>
+    <string name="user_words_learned_description">Saved while typing (the bookmark chip). Suggested like dictionary words — they follow Shift/Caps Lock, not committed verbatim — while “Suggest learned words” is enabled. Tap to edit, or remove to forget one.</string>
     <string name="user_words_learned_empty">Nothing learned yet.</string>
 
     <!-- Save word while typing (toast confirmation) -->

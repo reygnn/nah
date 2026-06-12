@@ -120,9 +120,9 @@ class WordIndexBenchmarkThrowaway {
         val nsIndex = (System.nanoTime() - t0).toDouble() / iters
 
         val repo = SuggestionRepository().apply { setUserWords(words.toSet()) }
-        repeat(50_000) { repo.suggest(key, false, true) }
+        repeat(50_000) { repo.suggest(key, false, true, false) }
         val t2 = System.nanoTime()
-        repeat(iters) { sink += repo.suggest(key, false, true).size }
+        repeat(iters) { sink += repo.suggest(key, false, true, false).size }
         val nsSuggest = (System.nanoTime() - t2).toDouble() / iters
 
         out.appendLine(

@@ -109,12 +109,13 @@ fun KeyboardContent(
                 .padding(bottom = bottomInset)
                 .padding(2.dp),
         ) {
-            // Sichtbar (mit fester Höhe), sobald die Vorschlagsfunktion aktiv ist — auch ohne
-            // aktuelle Vorschläge. So springen die Tasten beim Tippen nicht in der Höhe;
-            // ist die Funktion aus, fehlt die Leiste ganz (kein verschwendeter Platz).
-            // Zusätzlich erscheint sie, sobald ein „speichern"-Wort vorliegt, damit das Save-Chip
-            // auch bei ausgeschalteten Vorschlägen angeboten werden kann.
-            if (state.suggestionBarVisible || state.saveWord != null) {
+            // Sichtbar (mit fester Höhe), sobald eine „immer-an"-Vorschlagsquelle aktiv ist
+            // ([suggestionBarVisible]) — auch ohne aktuelle Vorschläge, damit die Tasten beim Tippen
+            // nicht in der Höhe springen. Zusätzlich blendet sie sich ON-DEMAND ein, sobald ein
+            // „speichern"-Wort ODER überhaupt Vorschläge vorliegen (z. B. ein gelernter Treffer, dessen
+            // Quelle die Leiste bewusst nicht dauerhaft reserviert) — sonst fehlt sie ganz (kein
+            // verschwendeter Platz).
+            if (state.suggestionBarVisible || state.saveWord != null || state.suggestions.isNotEmpty()) {
                 SuggestionBar(
                     suggestions = state.suggestions,
                     saveWord = state.saveWord,

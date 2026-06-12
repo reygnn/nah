@@ -96,21 +96,21 @@ class SuggestionRepositoryTest {
 
     @Test
     fun `kurzes Praefix liefert keine Vorschlaege`() {
-        assertTrue(repo.suggest("h", includeBuiltIn = true, includeUser = false).isEmpty())
+        assertTrue(repo.suggest("h", includeBuiltIn = true, includeUser = false, includeLearned = false).isEmpty())
     }
 
     @Test
     fun `eingebaute Vorschlaege erscheinen erst nach warmUp`() {
         val cold = SuggestionRepository()
         // Vor dem Warmup ist der eingebaute Index noch nicht da → nicht-eingreifend leer.
-        assertTrue(cold.suggest("ha", includeBuiltIn = true, includeUser = false).isEmpty())
+        assertTrue(cold.suggest("ha", includeBuiltIn = true, includeUser = false, includeLearned = false).isEmpty())
         cold.warmUpBuiltIn()
-        assertTrue(cold.suggest("ha", includeBuiltIn = true, includeUser = false).isNotEmpty())
+        assertTrue(cold.suggest("ha", includeBuiltIn = true, includeUser = false, includeLearned = false).isNotEmpty())
     }
 
     @Test
     fun `bekanntes Praefix liefert hoechstens MAX_SUGGESTIONS Vorschlaege aus der de-CH-Liste`() {
-        val result = repo.suggest("ha", includeBuiltIn = true, includeUser = false)
+        val result = repo.suggest("ha", includeBuiltIn = true, includeUser = false, includeLearned = false)
         assertTrue(result.isNotEmpty())
         // An die geteilte Obergrenze gebunden (nicht an eine feste Zahl), damit der Test einem
         // Bump von MAX_SUGGESTIONS folgt statt zu brechen.
@@ -123,16 +123,16 @@ class SuggestionRepositoryTest {
         val r = SuggestionRepository().apply { warmUpBuiltIn() }
         r.setUserWords(setOf("haxyz"))
         // Ohne User-Quelle: das eigene Wort taucht nicht auf.
-        assertTrue(r.suggest("ha", includeBuiltIn = true, includeUser = false).none { it == "haxyz" })
+        assertTrue(r.suggest("ha", includeBuiltIn = true, includeUser = false, includeLearned = false).none { it == "haxyz" })
         // Mit User-Quelle: hohe Frequenz → ganz vorne.
-        assertEquals("haxyz", r.suggest("ha", includeBuiltIn = true, includeUser = true).first())
+        assertEquals("haxyz", r.suggest("ha", includeBuiltIn = true, includeUser = true, includeLearned = false).first())
     }
 
     @Test
     fun `numerisches eigenes Wort wird per Ziffern-Praefix vorgeschlagen`() {
         val r = SuggestionRepository()
         r.setUserWords(setOf("8050")) // z. B. eine PLZ
-        assertEquals(listOf("8050"), r.suggest("80", includeBuiltIn = false, includeUser = true))
+        assertEquals(listOf("8050"), r.suggest("80", includeBuiltIn = false, includeUser = true, includeLearned = false))
     }
 
     @Test
@@ -142,17 +142,17 @@ class SuggestionRepositoryTest {
         // strncmp-from-start: das erste Wort matcht …
         assertEquals(
             listOf("Hauptstrasse 115"),
-            r.suggest("haupt", includeBuiltIn = false, includeUser = true),
+            r.suggest("haupt", includeBuiltIn = false, includeUser = true, includeLearned = false),
         )
         // … aber nicht ein Teilstring mitten drin (kein strstr).
-        assertTrue(r.suggest("strasse", includeBuiltIn = false, includeUser = true).isEmpty())
+        assertTrue(r.suggest("strasse", includeBuiltIn = false, includeUser = true, includeLearned = false).isEmpty())
     }
 
     @Test
     fun `case-Dublette der eingebauten Liste liefert die haeufigere Schreibweise`() {
         // GermanWordList enthält „morgen" (830) und „Morgen" (670) — auf demselben Key. Die
         // häufigere (kleine) Form muss gewinnen, obwohl die Grossschreibung später eingefügt wird.
-        assertEquals("morgen", repo.suggest("morge", includeBuiltIn = true, includeUser = false).first())
+        assertEquals("morgen", repo.suggest("morge", includeBuiltIn = true, includeUser = false, includeLearned = false).first())
     }
 
     @Test
@@ -174,8 +174,8 @@ class SuggestionRepositoryTest {
         // reproduzierbar. Die beiden Sets sind bewusst gegenläufig geordnet.
         val a = SuggestionRepository().apply { setUserWords(linkedSetOf("Müller", "müller")) }
         val b = SuggestionRepository().apply { setUserWords(linkedSetOf("müller", "Müller")) }
-        val sa = a.suggest("mü", includeBuiltIn = false, includeUser = true)
-        val sb = b.suggest("mü", includeBuiltIn = false, includeUser = true)
+        val sa = a.suggest("mü", includeBuiltIn = false, includeUser = true, includeLearned = false)
+        val sb = b.suggest("mü", includeBuiltIn = false, includeUser = true, includeLearned = false)
         assertEquals(listOf("Müller"), sa)
         assertEquals(sa, sb)
     }
@@ -189,19 +189,24 @@ class SuggestionRepositoryTest {
     fun `nur User-Quelle liefert ausschliesslich eigene Woerter`() {
         val r = SuggestionRepository()
         r.setUserWords(setOf("zzabc"))
-        assertEquals(listOf("zzabc"), r.suggest("zz", includeBuiltIn = false, includeUser = true))
+        assertEquals(listOf("zzabc"), r.suggest("zz", includeBuiltIn = false, includeUser = true, includeLearned = false))
         // Keine Quelle aktiv → leer, selbst wenn ein Wort passen würde.
-        assertTrue(r.suggest("zz", includeBuiltIn = false, includeUser = false).isEmpty())
+        assertTrue(r.suggest("zz", includeBuiltIn = false, includeUser = false, includeLearned = false).isEmpty())
     }
 
     @Test
-    fun `gelernte Woerter erscheinen nur unter includeUser`() {
+    fun `gelernte Woerter erscheinen nur unter includeLearned`() {
         val r = SuggestionRepository()
         r.setLearnedWords(setOf("Hauptstrasse"))
-        // Mit der „eigene Wörter"-Quelle (die sich gelernte und kuratierte teilen) → vorgeschlagen.
-        assertEquals(listOf("Hauptstrasse"), r.suggest("haupt", includeBuiltIn = false, includeUser = true))
-        // Ohne sie → nicht.
-        assertTrue(r.suggest("haupt", includeBuiltIn = false, includeUser = false).isEmpty())
+        // Eigener Schalter: nur includeLearned bezieht sie ein …
+        assertEquals(
+            listOf("Hauptstrasse"),
+            r.suggest("haupt", includeBuiltIn = false, includeUser = false, includeLearned = true),
+        )
+        // … der kuratierte „eigene Wörter"-Schalter (includeUser) tut es NICHT mehr (getrennte Quellen).
+        assertTrue(
+            r.suggest("haupt", includeBuiltIn = false, includeUser = true, includeLearned = false).isEmpty(),
+        )
     }
 
     @Test
@@ -222,7 +227,10 @@ class SuggestionRepositoryTest {
         r.setUserWords(setOf("Müller"))     // kuratiert (USER_WORD_FREQUENCY)
         r.setLearnedWords(setOf("müller"))  // gelernt (LEARNED_WORD_FREQUENCY, knapp darunter)
         // Beide auf demselben Key; die höhere (kuratierte) Frequenz bestimmt Form UND Verhalten.
-        assertEquals(listOf("Müller"), r.suggest("mü", includeBuiltIn = false, includeUser = true))
+        assertEquals(
+            listOf("Müller"),
+            r.suggest("mü", includeBuiltIn = false, includeUser = true, includeLearned = true),
+        )
         assertTrue(r.isUserWord("Müller")) // → wörtlich (kuratiert gewinnt)
     }
 
@@ -233,7 +241,7 @@ class SuggestionRepositoryTest {
         // Eintrag zusammenfassen, und die User-Frequenz (≫ Listen-Spitze) muss die Form bestimmen.
         val r = SuggestionRepository().apply { warmUpBuiltIn() }
         r.setUserWords(setOf("Haben"))
-        val result = r.suggest("hab", includeBuiltIn = true, includeUser = true)
+        val result = r.suggest("hab", includeBuiltIn = true, includeUser = true, includeLearned = false)
         assertEquals(1, result.count { it.equals("haben", ignoreCase = true) }) // nicht doppelt
         assertEquals("Haben", result.first())                                   // User-Form gewinnt
         assertFalse("haben" in result)                                          // Kleinform verdeckt

@@ -7,6 +7,7 @@
     <string name="settings_pick_keyboard">Tastatur auswählen</string>
     <string name="settings_suggestion_bar">Vorschlagsleiste</string>
     <string name="settings_suggest_user_words">Eigene Wörter vorschlagen</string>
+    <string name="settings_suggest_learned_words">Gelernte Wörter vorschlagen</string>
     <string name="settings_bar_always_visible">Leiste immer sichtbar</string>
     <string name="settings_manage_user_words">Eigene Wörter verwalten</string>
     <string name="settings_auto_cap">Auto-Grossschreibung am Satzanfang</string>
@@ -41,7 +42,7 @@
     <string name="user_word_error_invalid">Keine Zeilenumbrüche oder Steuerzeichen</string>
     <string name="user_word_error_exists">Schon in der Liste</string>
     <string name="user_words_learned_title">Gelernte Wörter</string>
-    <string name="user_words_learned_description">Beim Tippen gespeichert (das Lesezeichen-Chip). Werden wie Wörterbuch-Wörter vorgeschlagen — sie richten sich nach Shift/Caps-Lock, nicht wörtlich. Zum Vergessen entfernen.</string>
+    <string name="user_words_learned_description">Beim Tippen gespeichert (das Lesezeichen-Chip). Werden wie Wörterbuch-Wörter vorgeschlagen — sie richten sich nach Shift/Caps-Lock, nicht wörtlich —, solange „Gelernte Wörter vorschlagen“ aktiv ist. Zum Bearbeiten antippen oder zum Vergessen entfernen.</string>
     <string name="user_words_learned_empty">Noch nichts gelernt.</string>
 
     <!-- Wort beim Tippen speichern (Toast-Bestätigung) -->

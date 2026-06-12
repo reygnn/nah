@@ -85,9 +85,10 @@ class KeyboardViewModel(
     /** Öffnet die App-Einstellungen (per Long-Press auf der Ebenen-Umschalttaste, siehe
      *  [KeyAction.SETTINGS]). Der Service startet die Activity; der ViewModel kennt kein Android. */
     private val onSettingsRequested: () -> Unit = {},
-    /** Speichert das angetippte Wort in die eigene (backuppbare) Wortliste. Der Service persistiert
-     *  es off-state über `UserWordRepository` und bestätigt per Toast; der ViewModel kennt weder
-     *  DataStore noch Android (siehe [onSaveWordTap]). */
+    /** Speichert das angetippte Wort als **gelerntes** Wort. Der Service persistiert es off-state über
+     *  `LearnedWordRepository` (NICHT den kuratierten `UserWordRepository` — gelernte Wörter werden wie
+     *  Wörterbuch-Wörter an Shift/Caps angepasst, nicht wörtlich committet) und bestätigt per Toast; der
+     *  ViewModel kennt weder DataStore noch Android (siehe [onSaveWordTap]). */
     private val onSaveWordRequested: (String) -> Unit = {},
 ) {
 
@@ -246,8 +247,8 @@ class KeyboardViewModel(
     fun onAlternative(text: String) = commitWithShift(text)
 
     /**
-     * Das als „speichern"-Chip angebotene Wort wurde angetippt: in die eigene, backuppbare Wortliste
-     * legen. **Fasst KEINEN Text an** — anders als [onSuggestionTap] wird hier nichts ersetzt oder
+     * Das als „speichern"-Chip angebotene Wort wurde angetippt: in die gelernten Wörter (eigener,
+     * backuppbarer Store) legen. **Fasst KEINEN Text an** — anders als [onSuggestionTap] wird hier nichts ersetzt oder
      * committet, das oberste Gesetz bleibt also unberührt. Der Service persistiert über den Callback
      * (off-state) und bestätigt per Toast.
      *
@@ -610,18 +611,27 @@ class KeyboardViewModel(
         // sticht auch settings.barAlwaysVisible: über sensibler Eingabe bleibt die Leiste immer aus.
         if (field.isPassword || field.noSuggestions) return emptyList<String>() to false
         val s = suggester
-        val anySource = settings.suggestionsEnabled || settings.userWordsEnabled
-        // Leiste reserviert (feste Höhe), wenn eine Vorschlagsquelle aktiv ist ODER der Nutzer sie
+        // „Immer-an"-Quellen, die die Leiste DAUERHAFT reservieren (feste Höhe): Wörterbuch + kuratierte
+        // eigene Wörter. Gelernte Wörter sind dagegen ON-DEMAND — sie tragen zur Vorschlagsliste bei,
+        // reservieren die Leiste aber NICHT: da sie per Default an sind, stünde sie sonst bei jedem
+        // Nutzer leer-reserviert da. Für einen gelernten Treffer blendet sich die Leiste wie das Save-Chip
+        // nur bei Bedarf ein (KeyboardContent zeigt sie auch, sobald Vorschläge vorliegen).
+        val reservingSource = settings.suggestionsEnabled || settings.userWordsEnabled
+        val anySource = reservingSource || settings.learnedWordsEnabled
+        // Leiste reserviert (feste Höhe), wenn eine „immer-an"-Quelle aktiv ist ODER der Nutzer sie
         // ausdrücklich immer sichtbar haben will (barAlwaysVisible) — so springt sie beim Tippen nicht.
-        // Ist beides aus, fehlt die Leiste ganz (kein verschwendeter Platz); ein Save-Chip blendet sie
-        // bei Bedarf trotzdem ein (siehe KeyboardContent), nur eben nicht dauerhaft reserviert.
-        val barVisible = anySource || settings.barAlwaysVisible
+        val barVisible = reservingSource || settings.barAlwaysVisible
         // Ohne aktive Vorschlagsquelle gibt es keine Vorschläge (die Leiste kann aber reserviert sein).
         // Bei einer aktiven Auswahl ebenfalls keine: onSuggestionTap löscht nur das Präfix vor dem Cursor
         // und committet darüber — bei bestehender Selektion würde derselbe Tap zusätzlich die markierte
         // Stelle ersetzen (commitText überschreibt die Auswahl) und so fertigen Text ungewollt anfassen.
         val list = if (s != null && anySource && prefix.length >= 2 && !hasSelection && atEnd) {
-            s.suggest(prefix.lowercase(), settings.suggestionsEnabled, settings.userWordsEnabled)
+            s.suggest(
+                prefix.lowercase(),
+                settings.suggestionsEnabled,
+                settings.userWordsEnabled,
+                settings.learnedWordsEnabled,
+            )
                 // Einen Vorschlag ausblenden, der exakt das schon Getippte committen würde — seit
                 // Vorschläge keinen Trailing-Space mehr anhängen (siehe onSuggestionTap), wäre sein
                 // Antippen ein reiner No-op (Präfix löschen, identisch wieder committen). Das passiert
@@ -641,8 +651,10 @@ class KeyboardViewModel(
      * bewusste Nutzerwahl), aber gegated: nie über sensibler Eingabe, nur am Wortende ohne Auswahl, nur
      * ein echtes Wort, und nicht, was schon in der Liste steht.
      *
-     * Das Token wird **wörtlich** (mit getippter Schreibweise) gespeichert — eigene Wörter sind in
-     * ihrer Gross-/Kleinschreibung massgeblich (vgl. [committedForm]/[Suggester.isUserWord]).
+     * **Gespeichert** wird die getippte Schreibweise als Basis (im `LearnedWordRepository`). Beim
+     * **Vorschlagen** wird ein gelerntes Wort dann aber NICHT wörtlich committet, sondern wie ein
+     * Wörterbuch-Wort an Shift/Caps angepasst (vgl. [committedForm]/[Suggester.isLearnedWord]) — anders
+     * als ein kuratiertes eigenes Wort ([Suggester.isUserWord]). Speicher-Form ≠ Commit-Form.
      */
     private fun computeSaveWord(prefix: String, atEnd: Boolean): String? {
         // Privacy: nie anbieten, eine Eingabe aus einem Passwort- oder „keine Vorschläge"-Feld

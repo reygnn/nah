@@ -66,7 +66,9 @@ fun UserWordsScreen(repository: UserWordRepository, learnedRepository: LearnedWo
     val learnedWords by learnedRepository.words.collectAsStateWithLifecycle(initialValue = emptySet())
     var input by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
-    var editing by remember { mutableStateOf<String?>(null) }
+    // Welcher Eintrag wird gerade bearbeitet — inkl. aus welchem Store (kuratiert vs. gelernt), damit
+    // der Bearbeiten-Dialog beim Speichern das richtige Repository trifft.
+    var editing by remember { mutableStateOf<EditTarget?>(null) }
 
     Surface(modifier = Modifier.fillMaxSize()) {
         // Eine scrollbare Liste über beide Abschnitte (kuratiert + gelernt), damit sie zusammen
@@ -138,7 +140,7 @@ fun UserWordsScreen(repository: UserWordRepository, learnedRepository: LearnedWo
                             style = MaterialTheme.typography.bodyLarge,
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable { editing = word }
+                                .clickable { editing = EditTarget(word, learned = false) }
                                 .padding(vertical = 12.dp),
                         )
                         TextButton(onClick = { scope.launch { repository.remove(word) } }) {
@@ -149,7 +151,8 @@ fun UserWordsScreen(repository: UserWordRepository, learnedRepository: LearnedWo
             }
 
             // Abschnitt „Gelernte Wörter": beim Tippen gespeichert, werden wie Wörterbuch-Wörter
-            // gecast (nicht wörtlich). Nur entfernbar — neue kommen über das Lesezeichen-Chip dazu.
+            // gecast (nicht wörtlich). Antippen korrigiert die Schreibweise (z. B. wenn die Basis durch
+            // Auto-Cap am Satzanfang gross eingefangen wurde); neue kommen über das Lesezeichen-Chip dazu.
             item { HorizontalDivider() }
             item {
                 Text(
@@ -177,11 +180,13 @@ fun UserWordsScreen(repository: UserWordRepository, learnedRepository: LearnedWo
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        // Wie kuratiert: Antippen zum Korrigieren der Schreibweise.
                         Text(
                             word,
                             style = MaterialTheme.typography.bodyLarge,
                             modifier = Modifier
                                 .weight(1f)
+                                .clickable { editing = EditTarget(word, learned = true) }
                                 .padding(vertical = 12.dp),
                         )
                         TextButton(onClick = { scope.launch { learnedRepository.remove(word) } }) {
@@ -195,7 +200,7 @@ fun UserWordsScreen(repository: UserWordRepository, learnedRepository: LearnedWo
 
     val target = editing
     if (target != null) {
-        var draft by remember(target) { mutableStateOf(target) }
+        var draft by remember(target) { mutableStateOf(target.word) }
         var dialogError by remember(target) { mutableStateOf<String?>(null) }
         AlertDialog(
             onDismissRequest = { editing = null },
@@ -213,7 +218,13 @@ fun UserWordsScreen(repository: UserWordRepository, learnedRepository: LearnedWo
                 TextButton(
                     onClick = {
                         scope.launch {
-                            val reason = repository.update(target, draft)
+                            // Denselben Eintrag im richtigen Store aktualisieren (beide erben update()
+                            // aus StringSetWordStore).
+                            val reason = if (target.learned) {
+                                learnedRepository.update(target.word, draft)
+                            } else {
+                                repository.update(target.word, draft)
+                            }
                             if (reason == null) editing = null else dialogError = reason.message(context)
                         }
                     },
@@ -226,6 +237,11 @@ fun UserWordsScreen(repository: UserWordRepository, learnedRepository: LearnedWo
         )
     }
 }
+
+/** Der gerade im Dialog bearbeitete Eintrag samt Herkunft: [learned] = true → gelernter Store
+ *  ([LearnedWordRepository]), sonst kuratiert ([UserWordRepository]). Steuert, welches Repository
+ *  das Speichern trifft. */
+private data class EditTarget(val word: String, val learned: Boolean)
 
 private fun UserWordError.message(context: Context): String = when (this) {
     UserWordError.TooShort ->

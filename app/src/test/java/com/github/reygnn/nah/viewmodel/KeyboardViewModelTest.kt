@@ -477,8 +477,8 @@ class KeyboardViewModelTest {
     @Test
     fun `vorschlaege sind standardmaessig aus`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo") })
-            .apply { applySettings(Settings()) } // beide Quellen aus (Default)
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> listOf("hallo") })
+            .apply { applySettings(Settings(learnedWordsEnabled = false)) } // ALLE Quellen aus
         vm.type("ha")
         assertTrue(vm.state.value.suggestions.isEmpty())
     }
@@ -486,7 +486,7 @@ class KeyboardViewModelTest {
     @Test
     fun `vorschlaege erscheinen wenn aktiviert`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo", "haben") })
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> listOf("hallo", "haben") })
             .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
         vm.type("ha")
         assertEquals(listOf("hallo", "haben"), vm.state.value.suggestions)
@@ -496,7 +496,7 @@ class KeyboardViewModelTest {
     fun `nur eigene Woerter aktiviert zeigt User-Vorschlaege ohne die Liste`() {
         val fake = FakeIc()
         // Fake unterscheidet die Quellen über die Flags, die der ViewModel durchreicht.
-        val suggester = Suggester { _, builtIn, user ->
+        val suggester = Suggester { _, builtIn, user, _ ->
             buildList {
                 if (builtIn) add("hallo")
                 if (user) add("reygnn")
@@ -512,7 +512,7 @@ class KeyboardViewModelTest {
     @Test
     fun `leiste bleibt reserviert wenn aktiviert aber gerade keine Vorschläge`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> emptyList() })
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> emptyList() })
             .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
         // Nur ein Zeichen (< Mindestpräfix) → keine Vorschläge, aber die Leiste
         // belegt weiter Platz, damit die Tastatur nicht in der Höhe springt.
@@ -524,8 +524,8 @@ class KeyboardViewModelTest {
     @Test
     fun `keine Leiste wenn die Funktion ganz aus ist`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo") })
-            .apply { applySettings(Settings()) } // beide Quellen aus
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> listOf("hallo") })
+            .apply { applySettings(Settings(learnedWordsEnabled = false)) } // ALLE Quellen aus
         vm.type("ha")
         assertFalse(vm.state.value.suggestionBarVisible)
     }
@@ -533,7 +533,7 @@ class KeyboardViewModelTest {
     @Test
     fun `mitten im Wort gibt es keine Vorschläge`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo") })
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> listOf("hallo") })
             .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
         vm.type("hallo")
         fake.select(2, 2) // Cursor mitten ins Wort: "ha|llo"
@@ -545,7 +545,7 @@ class KeyboardViewModelTest {
     @Test
     fun `bei aktiver Auswahl gibt es keine Vorschläge`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo") })
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> listOf("hallo") })
             .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
         vm.type("ha")
         assertEquals(listOf("hallo"), vm.state.value.suggestions) // Präfix am Wortende → Vorschlag
@@ -564,7 +564,7 @@ class KeyboardViewModelTest {
         // unterwegs. Ohne Schutz wuerde der commitText in onSuggestionTap die Auswahl ersetzen und
         // fertigen Text zerstoeren (Bruch des obersten Gesetzes).
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo") })
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> listOf("hallo") })
             .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
         fake.buffer.append("WICHTIG ha") // „WICHTIG " ist fertig, „ha" das unfertige Praefix
         fake.select(10, 10)
@@ -585,7 +585,7 @@ class KeyboardViewModelTest {
         // Präfix ist also NICHT leer — erst die Live-Auswahlprüfung (getSelectedText) verhindert,
         // dass der commitText den markierten fertigen Text ersetzt (oberstes Gesetz).
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo") })
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> listOf("hallo") })
             .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
         fake.buffer.append("halloWELT") // „hallo" = Präfix vor dem Cursor, „WELT" wird gleich markiert
         fake.select(5, 5)
@@ -608,7 +608,7 @@ class KeyboardViewModelTest {
         // ein Tap dann fertigen Text („hal" → „hallo l"). Pinnt den Schutz unabhängig von der
         // Echo-Reihenfolge.
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { p, _, _ -> if (p.length >= 2) listOf("hallo") else emptyList() })
+        val vm = vm(fake, suggester = Suggester { p, _, _, _ -> if (p.length >= 2) listOf("hallo") else emptyList() })
             .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
         fake.buffer.append("ha")
         fake.select(2, 2)
@@ -628,7 +628,7 @@ class KeyboardViewModelTest {
     @Test
     fun `ziffern-praefix loest vorschlaege aus, auch auf der Symbolebene`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { prefix, _, _ ->
+        val vm = vm(fake, suggester = Suggester { prefix, _, _, _ ->
             if (prefix == "80") listOf("8050") else emptyList()
         }).apply { applySettings(Settings(userWordsEnabled = true, autoCapEnabled = false)) }
         vm.onKey(FunctionKey(KeyAction.SYMBOLS)) // Ziffern liegen auf der Symbolebene
@@ -646,7 +646,7 @@ class KeyboardViewModelTest {
         // Anfassen fertigen Texts. (Dictionary-Woerter sind alphabetisch und treffen ein Ziffern-
         // Praefix nie, eine Ziffern-Ersetzung ist also stets ein woertliches Eigenwort.)
         val suggester = object : Suggester {
-            override fun suggest(prefix: String, includeBuiltIn: Boolean, includeUser: Boolean) =
+            override fun suggest(prefix: String, includeBuiltIn: Boolean, includeUser: Boolean, includeLearned: Boolean) =
                 if (includeUser && prefix == "80") listOf("8050") else emptyList()
             override fun isUserWord(word: String) = word == "8050"
         }
@@ -663,7 +663,7 @@ class KeyboardViewModelTest {
     @Test
     fun `phrase-vorschlag fuegt die ganze Phrase ein, ersetzt nur das getippte Wort`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { prefix, _, _ ->
+        val vm = vm(fake, suggester = Suggester { prefix, _, _, _ ->
             if ("hauptstrasse 115".startsWith(prefix)) listOf("Hauptstrasse 115") else emptyList()
         }).apply { applySettings(Settings(userWordsEnabled = true, autoCapEnabled = false)) }
         vm.type("haupt")
@@ -677,7 +677,7 @@ class KeyboardViewModelTest {
     @Test
     fun `vorschlag-tap am Satzanfang uebernimmt die Grossschreibung des Praefix`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("der") })
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> listOf("der") })
             .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = true)) }
         vm.onStartInput()      // leeres Feld → Auto-Cap armiert SHIFTED
         vm.type("de")          // „De" (erstes Zeichen gross)
@@ -688,14 +688,14 @@ class KeyboardViewModelTest {
 
     /** Suggester, der seine Treffer als eigene Wörter meldet (wörtlich zu committen). */
     private fun userWordSuggester(vararg words: String) = object : Suggester {
-        override fun suggest(prefix: String, includeBuiltIn: Boolean, includeUser: Boolean) = words.toList()
+        override fun suggest(prefix: String, includeBuiltIn: Boolean, includeUser: Boolean, includeLearned: Boolean) = words.toList()
         override fun isUserWord(word: String) = words.contains(word)
     }
 
     /** Suggester, der seine Treffer als GELERNTE Wörter meldet: isUserWord bleibt false (→ Präfix-
      *  Casing wie ein Wörterbuch-Wort), nur isLearnedWord trifft (für den Save-Dedup). */
     private fun learnedWordSuggester(vararg words: String) = object : Suggester {
-        override fun suggest(prefix: String, includeBuiltIn: Boolean, includeUser: Boolean) = words.toList()
+        override fun suggest(prefix: String, includeBuiltIn: Boolean, includeUser: Boolean, includeLearned: Boolean) = words.toList()
         override fun isLearnedWord(word: String) = words.contains(word)
     }
 
@@ -743,7 +743,7 @@ class KeyboardViewModelTest {
     @Test
     fun `vorschlag-tap unter Caps-Lock schreibt den ganzen Vorschlag gross`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("der") })
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> listOf("der") })
             .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
         vm.onKey(FunctionKey(KeyAction.SHIFT))
         vm.onKey(FunctionKey(KeyAction.SHIFT)) // CAPS
@@ -755,7 +755,7 @@ class KeyboardViewModelTest {
     @Test
     fun `vorschlag-tap mit nur einem Caps-Buchstaben als Praefix schreibt nur den ersten gross`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("der") })
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> listOf("der") })
             .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
         vm.onKey(FunctionKey(KeyAction.SHIFT))
         vm.onKey(FunctionKey(KeyAction.SHIFT)) // CAPS
@@ -770,7 +770,7 @@ class KeyboardViewModelTest {
     @Test
     fun `vorschlag-tap behaelt die Eigen-Schreibweise eines klein getippten Nomens`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("Zeit") })
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> listOf("Zeit") })
             .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
         vm.type("ze")          // klein getippt
         vm.onSuggestionTap("Zeit")
@@ -781,7 +781,7 @@ class KeyboardViewModelTest {
     @Test
     fun `vorschlag haengt keinen Space an, ein folgendes Satzzeichen klebt direkt am Wort`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo") })
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> listOf("hallo") })
             .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
         vm.type("hal")
         vm.onSuggestionTap("hallo")
@@ -799,7 +799,7 @@ class KeyboardViewModelTest {
     fun `ein Vorschlag, der exakt das schon Getippte committen wuerde, wird ausgeblendet`() {
         val fake = FakeIc()
         // Liefert den Exakt-Treffer „der" UND eine echte Vervollständigung „deren".
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("der", "deren") })
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> listOf("der", "deren") })
             .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
         vm.type("der")
         // „der" == getipptes Wort → Antippen wäre ein No-op (kein Trailing-Space mehr) → ausgeblendet.
@@ -810,7 +810,7 @@ class KeyboardViewModelTest {
     @Test
     fun `eine Nomen-Grossschreibung (zeit zu Zeit) bleibt sichtbar, ist kein No-op`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("Zeit") })
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> listOf("Zeit") })
             .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
         vm.type("zeit")
         // Klein getipptes „zeit" → der Vorschlag committet „Zeit" (≠ „zeit"), korrigiert also die
@@ -952,7 +952,7 @@ class KeyboardViewModelTest {
     @Test
     fun `vorschlag-tap ersetzt nur das aktuelle Wort, nie fertigen Text`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("welt") })
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> listOf("welt") })
             .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
         vm.type("hallo")
         vm.onKey(FunctionKey(KeyAction.SPACE))
@@ -1031,7 +1031,7 @@ class KeyboardViewModelTest {
     @Test
     fun `ein Passwortfeld unterdrueckt Vorschlaege trotz aktivierter Funktion`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo") })
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> listOf("hallo") })
             .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
         vm.onStartInput(FieldContext(isPassword = true))
         vm.type("ha")
@@ -1042,7 +1042,7 @@ class KeyboardViewModelTest {
     @Test
     fun `ein Feld mit NO_SUGGESTIONS-Flag unterdrueckt die Vorschlaege`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo") })
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> listOf("hallo") })
             .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
         // Kein Passwortfeld, aber das Ziel-Feld bittet ausdrücklich um keine Vorschläge (OTP/Kreditkarte).
         vm.onStartInput(FieldContext(noSuggestions = true))
@@ -1065,7 +1065,7 @@ class KeyboardViewModelTest {
             numberLayout = number,
             phoneLayout = phone,
             inputConnectionProvider = { ic },
-            suggester = Suggester { _, _, _ -> listOf("hallo") },
+            suggester = Suggester { _, _, _, _ -> listOf("hallo") },
         ).apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
         vm.onSelectionChanged(2, 2) // löst refreshForCursor aus: before="ha", after=null
         assertTrue(vm.state.value.suggestions.isEmpty())
@@ -1150,7 +1150,7 @@ class KeyboardViewModelTest {
     fun `ein unveraenderter Selektions-Callback rechnet nichts neu`() {
         val fake = FakeIc()
         var calls = 0
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> calls++; listOf("hallo") })
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> calls++; listOf("hallo") })
             .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
         fake.buffer.append("ha")
         fake.select(2, 2)
@@ -1165,7 +1165,7 @@ class KeyboardViewModelTest {
     @Test
     fun `ein Tastendruck liest den Kontext vor dem Cursor nur einmal`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> listOf("hallo") })
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> listOf("hallo") })
             .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = true)) }
         clearMocks(fake.ic, answers = false) // Zähler zurücksetzen, gestubbte Antworten behalten
         vm.onKey(CharKey('h'))
@@ -1212,7 +1212,7 @@ class KeyboardViewModelTest {
         for (seed in 0 until seeds) {
             val rng = Random(seed)
             val fake = FakeIc()
-            val vm = vm(fake, suggester = Suggester { prefix, _, _ ->
+            val vm = vm(fake, suggester = Suggester { prefix, _, _, _ ->
                 if (prefix.length >= 2) listOf(prefix.lowercase() + "xy") else emptyList()
             }).apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = seed % 2 == 0)) }
             vm.onStartInput(FieldContext())
@@ -1458,9 +1458,36 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `gelernte Woerter werden per Default vorgeschlagen, ohne den eigene-Woerter-Schalter`() {
+        val fake = FakeIc()
+        // Fake liefert nur unter includeLearned — prüft, dass der VM den Lern-Flag (Default an)
+        // durchreicht, ohne dass suggestionsEnabled/userWordsEnabled an sind.
+        val suggester = Suggester { _, _, _, includeLearned -> if (includeLearned) listOf("hallo") else emptyList() }
+        val vm = vm(fake, suggester = suggester).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.type("ha")
+        assertEquals(listOf("hallo"), vm.state.value.suggestions)
+        // Gelernte Wörter sind on-demand: die Leiste wird NICHT dauerhaft reserviert (sonst stünde sie
+        // per Default bei jedem leer da). Sie blendet sich nur ein, wenn ein Treffer vorliegt (UI).
+        assertFalse(vm.state.value.suggestionBarVisible)
+    }
+
+    @Test
+    fun `learnedWordsEnabled aus reicht includeLearned=false durch`() {
+        val fake = FakeIc()
+        val suggester = Suggester { _, _, _, includeLearned -> if (includeLearned) listOf("hallo") else emptyList() }
+        val vm = vm(fake, suggester = suggester).apply {
+            // Eine andere Quelle ist an (die Leiste rechnet), aber der Lern-Schalter ist aus.
+            applySettings(Settings(suggestionsEnabled = true, learnedWordsEnabled = false, autoCapEnabled = false))
+        }
+        vm.type("ha")
+        assertTrue(vm.state.value.suggestions.isEmpty()) // der Fake liefert nichts ohne includeLearned
+        assertTrue(vm.state.value.suggestionBarVisible)   // suggestionsEnabled reserviert die Leiste
+    }
+
+    @Test
     fun `barAlwaysVisible reserviert die Leiste auch ohne aktive Vorschlagsquelle`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> emptyList() })
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> emptyList() })
             .apply { applySettings(Settings(barAlwaysVisible = true, autoCapEnabled = false)) }
         // Beide Vorschlagsquellen aus, aber die Leiste soll trotzdem reserviert bleiben (kein Springen).
         vm.type("h")
@@ -1471,7 +1498,7 @@ class KeyboardViewModelTest {
     @Test
     fun `barAlwaysVisible reserviert die Leiste NICHT ueber einem Passwortfeld`() {
         val fake = FakeIc()
-        val vm = vm(fake, suggester = Suggester { _, _, _ -> emptyList() })
+        val vm = vm(fake, suggester = Suggester { _, _, _, _ -> emptyList() })
             .apply { applySettings(Settings(barAlwaysVisible = true, autoCapEnabled = false)) }
         vm.onStartInput(FieldContext(isPassword = true))
         vm.type("ge")

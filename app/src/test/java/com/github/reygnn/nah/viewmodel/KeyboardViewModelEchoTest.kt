@@ -96,7 +96,7 @@ class KeyboardViewModelEchoTest {
     @Test
     fun `mit Vorschlaegen halbiert die Entdopplung die Reads pro Wort`() {
         val fake = CountingIc()
-        val vm = vm(fake) { _, _, _ -> listOf("hallo") } // simpler Suggester
+        val vm = vm(fake) { _, _, _, _ -> listOf("hallo") } // simpler Suggester
         vm.onStartInput(FieldContext())
         vm.applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = true))
 
@@ -128,7 +128,7 @@ class KeyboardViewModelEchoTest {
         val fake = CountingIc()
         // Präfix + Marker (nicht exakt-gleich, sonst entfernte ihn der No-op-Filter in
         // computeSuggestions); beweist trotzdem, welches Präfix der synchrone Read gesehen hat.
-        val vm = vm(fake) { prefix, _, _ -> listOf(prefix + "x") }
+        val vm = vm(fake) { prefix, _, _, _ -> listOf(prefix + "x") }
         vm.onStartInput(FieldContext())
         vm.applySettings(Settings(suggestionsEnabled = true))
 

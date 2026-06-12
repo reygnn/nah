@@ -75,7 +75,12 @@ class SuggestionRepository : Suggester {
         }
     }
 
-    override fun suggest(prefix: String, includeBuiltIn: Boolean, includeUser: Boolean): List<String> {
+    override fun suggest(
+        prefix: String,
+        includeBuiltIn: Boolean,
+        includeUser: Boolean,
+        includeLearned: Boolean,
+    ): List<String> {
         if (prefix.length < MIN_PREFIX_LENGTH) return emptyList()
 
         // Nach kleingeschriebenem Wort dedupen; höhere Frequenz gewinnt, womit
@@ -89,13 +94,11 @@ class SuggestionRepository : Suggester {
             }
         }
 
-        // Gelernte Wörter teilen sich den „eigene Wörter"-Schalter mit den kuratierten (beides sind
-        // persönliche Wörter); ihr Casing-Unterschied liegt allein in isUserWord/isLearnedWord, nicht
-        // im Ranking. Sie ranken knapp unter den kuratierten (LEARNED < USER), aber über der Liste.
-        if (includeUser) {
-            userIndex?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
-            learnedIndex?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
-        }
+        // Kuratierte und gelernte Wörter sind getrennt schaltbar (eigene Flags), teilen sich aber das
+        // Ranking: ihr Casing-Unterschied liegt allein in isUserWord/isLearnedWord, nicht in der
+        // Frequenz. Gelernte ranken knapp unter den kuratierten (LEARNED < USER), beide über der Liste.
+        if (includeUser) userIndex?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
+        if (includeLearned) learnedIndex?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
         if (includeBuiltIn) builtInIndex?.let { collect(it.getSuggestions(prefix, MAX_SUGGESTIONS)) }
 
         // Geteilte Ordnung mit WordIndex.getSuggestions (SUGGESTION_ORDER): höchste Frequenz zuerst,

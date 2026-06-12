@@ -26,6 +26,7 @@ class SettingsRepository(private val context: Context) {
     private object Keys {
         val suggestionsEnabled = booleanPreferencesKey("suggestions_enabled")
         val userWordsEnabled = booleanPreferencesKey("user_words_enabled")
+        val learnedWordsEnabled = booleanPreferencesKey("learned_words_enabled")
         val barAlwaysVisible = booleanPreferencesKey("bar_always_visible")
         val autoCapEnabled = booleanPreferencesKey("auto_cap_enabled")
         val letterColorHintsEnabled = booleanPreferencesKey("letter_color_hints_enabled")
@@ -42,6 +43,7 @@ class SettingsRepository(private val context: Context) {
             val next = transform(prefs.toSettings())
             prefs[Keys.suggestionsEnabled] = next.suggestionsEnabled
             prefs[Keys.userWordsEnabled] = next.userWordsEnabled
+            prefs[Keys.learnedWordsEnabled] = next.learnedWordsEnabled
             prefs[Keys.barAlwaysVisible] = next.barAlwaysVisible
             prefs[Keys.autoCapEnabled] = next.autoCapEnabled
             prefs[Keys.letterColorHintsEnabled] = next.letterColorHintsEnabled
@@ -51,6 +53,7 @@ class SettingsRepository(private val context: Context) {
     private fun Preferences.toSettings(): Settings = Settings(
         suggestionsEnabled = this[Keys.suggestionsEnabled] ?: DEFAULT.suggestionsEnabled,
         userWordsEnabled = this[Keys.userWordsEnabled] ?: DEFAULT.userWordsEnabled,
+        learnedWordsEnabled = this[Keys.learnedWordsEnabled] ?: DEFAULT.learnedWordsEnabled,
         barAlwaysVisible = this[Keys.barAlwaysVisible] ?: DEFAULT.barAlwaysVisible,
         autoCapEnabled = this[Keys.autoCapEnabled] ?: DEFAULT.autoCapEnabled,
         letterColorHintsEnabled = this[Keys.letterColorHintsEnabled] ?: DEFAULT.letterColorHintsEnabled,

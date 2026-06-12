@@ -219,7 +219,7 @@ class KeyboardViewModelShiftInvariantTest {
         for (seed in 0 until seeds) {
             val rng = Random(seed)
             val fake = FakeIc()
-            val vm = vm(fake, suggester = Suggester { prefix, _, _ ->
+            val vm = vm(fake, suggester = Suggester { prefix, _, _, _ ->
                 // + "x": nicht präfix-gleich, sonst entfernt der No-op-Filter den Vorschlag und der
                 // Suggestion-Tap-Pfad (Op 10) würde nie feuern (stiller Coverage-Verlust).
                 if (prefix.length >= 2) listOf(prefix.lowercase() + "x") else emptyList()
