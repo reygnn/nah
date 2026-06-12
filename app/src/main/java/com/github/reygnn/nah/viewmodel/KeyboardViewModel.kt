@@ -5,6 +5,7 @@ import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
 import androidx.compose.runtime.Immutable
 import com.github.reygnn.nah.data.suggestions.Suggester
+import com.github.reygnn.nah.data.suggestions.UserWordValidation
 import com.github.reygnn.nah.layout.CharKey
 import com.github.reygnn.nah.layout.FunctionKey
 import com.github.reygnn.nah.layout.KeyAction
@@ -55,6 +56,11 @@ data class KeyboardUiState(
     val colorHints: Boolean = false,
     /** Hat die Zwischenablage Text? Steuert, ob die Einfügen-Taste aktiv ist. */
     val pasteAvailable: Boolean = false,
+    /** Das aktuell getippte, noch nicht gespeicherte Wort, das als „speichern"-Chip angeboten wird
+     *  (`null` = gerade keins). Folgt **live** dem getippten Wort, solange der Cursor am Wortende steht.
+     *  Antippen legt es in die eigene, backuppbare Wortliste — **kein Eingriff in fertigen Text**
+     *  (siehe [KeyboardViewModel.onSaveWordTap]). */
+    val saveWord: String? = null,
 )
 
 /**
@@ -79,6 +85,10 @@ class KeyboardViewModel(
     /** Öffnet die App-Einstellungen (per Long-Press auf der Ebenen-Umschalttaste, siehe
      *  [KeyAction.SETTINGS]). Der Service startet die Activity; der ViewModel kennt kein Android. */
     private val onSettingsRequested: () -> Unit = {},
+    /** Speichert das angetippte Wort in die eigene (backuppbare) Wortliste. Der Service persistiert
+     *  es off-state über `UserWordRepository` und bestätigt per Toast; der ViewModel kennt weder
+     *  DataStore noch Android (siehe [onSaveWordTap]). */
+    private val onSaveWordRequested: (String) -> Unit = {},
 ) {
 
     private val _state = MutableStateFlow(KeyboardUiState(layout = alphaLayout))
@@ -234,6 +244,22 @@ class KeyboardViewModel(
      * kein Autocorrect, committet genau das Gewählte.
      */
     fun onAlternative(text: String) = commitWithShift(text)
+
+    /**
+     * Das als „speichern"-Chip angebotene Wort wurde angetippt: in die eigene, backuppbare Wortliste
+     * legen. **Fasst KEINEN Text an** — anders als [onSuggestionTap] wird hier nichts ersetzt oder
+     * committet, das oberste Gesetz bleibt also unberührt. Der Service persistiert über den Callback
+     * (off-state) und bestätigt per Toast.
+     *
+     * Das Chip sofort entfernen: ein Speichern bewegt weder Cursor noch Text, es käme also kein Refresh,
+     * der es wegräumt. Das Wegnehmen hier verhindert zugleich, dass ein Doppel-Tap dasselbe Wort zweimal
+     * zu speichern versucht.
+     */
+    fun onSaveWordTap(word: String) {
+        if (word.isEmpty()) return
+        onSaveWordRequested(word)
+        if (_state.value.saveWord != null) _state.value = _state.value.copy(saveWord = null)
+    }
 
     /** Committet [text] mit Shift-Casing: SHIFTED grossschreibt nur den ersten
      *  Buchstaben („qu"→„Qu", „sch"→„Sch"), CAPS alles. */
@@ -555,7 +581,14 @@ class KeyboardViewModel(
      */
     private fun refreshForCursor(reconsiderAutoCap: Boolean) {
         val before = readContextBeforeCursor()
-        val (suggestions, barVisible) = computeSuggestions(before)
+        // Präfix + Wortende-Lage EINMAL bestimmen und an Vorschläge UND Save-Chip weiterreichen:
+        // beide hängen an derselben Frage „steht ein unfertiges Wort am Cursor?", also genügt ein
+        // einziger `getTextAfterCursor`-Read (atWordEnd) statt je einem pro Konsument. Der Read fällt
+        // nur an, wenn überhaupt ein ≥2-Zeichen-Präfix ohne aktive Auswahl vorliegt (sonst kein Wort).
+        val prefix = wordBeforeCursor(before)
+        val atEnd = if (prefix.length >= 2 && !hasSelection) atWordEnd() else false
+        val (suggestions, barVisible) = computeSuggestions(prefix, atEnd)
+        val saveWord = computeSaveWord(prefix, atEnd)
         // null = unverändert lassen (Feature aus, Spezialfeld, manuelles Shift, fehlende IC).
         val autoCapShift = if (reconsiderAutoCap) computeAutoCapShift(before) else null
         // Ein nicht-null Ergebnis armiert genau dann, wenn es SHIFTED ist (siehe
@@ -564,25 +597,30 @@ class KeyboardViewModel(
         _state.value = _state.value.copy(
             suggestions = suggestions,
             suggestionBarVisible = barVisible,
+            saveWord = saveWord,
             shift = autoCapShift ?: _state.value.shift,
         )
     }
 
-    /** Vorschläge + ob die Leiste Platz reserviert, aus dem bereits gelesenen [before]. */
-    private fun computeSuggestions(before: String?): Pair<List<String>, Boolean> {
+    /** Vorschläge + ob die Leiste Platz reserviert, aus dem bereits ermittelten [prefix] und seiner
+     *  Wortende-Lage [atEnd] (beide in [refreshForCursor] aus EINEM Read bestimmt). */
+    private fun computeSuggestions(prefix: String, atEnd: Boolean): Pair<List<String>, Boolean> {
+        // Passwortfeld oder ein Feld mit „keine Vorschläge"-Flag (OTP/Kreditkarte/Benutzername) → gar
+        // keine Leiste (kein Schulter-Surfen über sensibler Eingabe, ausdrückliches Feld-Signal). Das
+        // sticht auch settings.barAlwaysVisible: über sensibler Eingabe bleibt die Leiste immer aus.
+        if (field.isPassword || field.noSuggestions) return emptyList<String>() to false
         val s = suggester
         val anySource = settings.suggestionsEnabled || settings.userWordsEnabled
-        // Funktion ganz aus, Passwortfeld oder ein Feld mit „keine Vorschläge"-Flag (OTP/Kreditkarte/
-        // Benutzername) → gar keine Leiste (kein verschwendeter Platz, kein Schulter-Surfen über
-        // sensibler Eingabe, und das ausdrückliche Feld-Signal wird respektiert).
-        if (s == null || !anySource || field.isPassword || field.noSuggestions) return emptyList<String>() to false
-        // Ab hier ist die Leiste reserviert (feste Höhe), auch ohne aktuelle Vorschläge.
-        // Bei einer aktiven Auswahl keine Vorschläge: onSuggestionTap löscht nur das Präfix
-        // vor dem Cursor und committet darüber — bei bestehender Selektion würde derselbe Tap
-        // zusätzlich die markierte Stelle ersetzen (commitText überschreibt die Auswahl) und so
-        // fertigen Text ungewollt anfassen. Die Leiste bleibt reserviert, nur leer.
-        val prefix = wordBeforeCursor(before)
-        val list = if (prefix.length >= 2 && !hasSelection && atWordEnd()) {
+        // Leiste reserviert (feste Höhe), wenn eine Vorschlagsquelle aktiv ist ODER der Nutzer sie
+        // ausdrücklich immer sichtbar haben will (barAlwaysVisible) — so springt sie beim Tippen nicht.
+        // Ist beides aus, fehlt die Leiste ganz (kein verschwendeter Platz); ein Save-Chip blendet sie
+        // bei Bedarf trotzdem ein (siehe KeyboardContent), nur eben nicht dauerhaft reserviert.
+        val barVisible = anySource || settings.barAlwaysVisible
+        // Ohne aktive Vorschlagsquelle gibt es keine Vorschläge (die Leiste kann aber reserviert sein).
+        // Bei einer aktiven Auswahl ebenfalls keine: onSuggestionTap löscht nur das Präfix vor dem Cursor
+        // und committet darüber — bei bestehender Selektion würde derselbe Tap zusätzlich die markierte
+        // Stelle ersetzen (commitText überschreibt die Auswahl) und so fertigen Text ungewollt anfassen.
+        val list = if (s != null && anySource && prefix.length >= 2 && !hasSelection && atEnd) {
             s.suggest(prefix.lowercase(), settings.suggestionsEnabled, settings.userWordsEnabled)
                 // Einen Vorschlag ausblenden, der exakt das schon Getippte committen würde — seit
                 // Vorschläge keinen Trailing-Space mehr anhängen (siehe onSuggestionTap), wäre sein
@@ -594,7 +632,36 @@ class KeyboardViewModel(
         } else {
             emptyList()
         }
-        return list to true
+        return list to barVisible
+    }
+
+    /**
+     * Das Wort, das gerade als „speichern"-Chip angeboten wird — oder `null` = keins. **Live**: folgt
+     * dem getippten Wort, sobald der Cursor am Wortende steht. **Immer aktiv** (kein Settings-Schalter,
+     * bewusste Nutzerwahl), aber gegated: nie über sensibler Eingabe, nur am Wortende ohne Auswahl, nur
+     * ein echtes Wort, und nicht, was schon in der Liste steht.
+     *
+     * Das Token wird **wörtlich** (mit getippter Schreibweise) gespeichert — eigene Wörter sind in
+     * ihrer Gross-/Kleinschreibung massgeblich (vgl. [committedForm]/[Suggester.isUserWord]).
+     */
+    private fun computeSaveWord(prefix: String, atEnd: Boolean): String? {
+        // Privacy: nie anbieten, eine Eingabe aus einem Passwort- oder „keine Vorschläge"-Feld
+        // (OTP/2FA/Benutzername/Kreditkarte) in eine dauerhafte, backuppbare Liste zu schreiben.
+        if (field.isPassword || field.noSuggestions) return null
+        // Wie bei den Vorschlägen: nur am Wortende und ohne aktive Auswahl (atEnd ist in
+        // refreshForCursor aus demselben Read bestimmt).
+        if (hasSelection || !atEnd) return null
+        // Ein echtes WORT: innerhalb der Wortlisten-Grenzen (dieselben wie UserWordValidation, damit
+        // ein angebotenes Wort beim Speichern nicht doch an der Länge scheitert) UND mit mindestens
+        // einem Buchstaben — so taucht in einem Zahlenfeld nicht für jede getippte PIN/Zahl ein
+        // Speichern-Chip auf (es geht um Wörter, nicht um Ziffernfolgen).
+        if (prefix.length < UserWordValidation.MIN_LENGTH || prefix.length > UserWordValidation.MAX_LENGTH) return null
+        if (prefix.none { it.isLetter() }) return null
+        // Schon gespeichert → nichts anzubieten. Der User-Index wird IMMER vorgehalten (siehe NahIme),
+        // also greift das auch, wenn die eigenen Wörter als Vorschlagsquelle gerade abgeschaltet sind.
+        // Fehlt der Suggester (Tests ohne Quelle), kann nicht dedupliziert werden → im Zweifel anbieten.
+        if (suggester?.isUserWord(prefix) == true) return null
+        return prefix
     }
 
     /**

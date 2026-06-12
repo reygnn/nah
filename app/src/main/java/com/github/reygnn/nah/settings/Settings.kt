@@ -12,6 +12,10 @@ data class Settings(
     /** Benutzerdefinierte Wörter vorschlagen. Unabhängig von [suggestionsEnabled],
      *  damit man NUR die eigenen Wörter (ohne die de-CH-Liste) bekommen kann. Standard AUS. */
     val userWordsEnabled: Boolean = false,
+    /** Leiste immer reserviert (feste Höhe), auch ohne aktive Vorschlagsquelle — so springt sie beim
+     *  Tippen nicht, wenn das Live-„speichern"-Chip erscheint/verschwindet. Standard AUS (ist eine
+     *  Vorschlagsquelle an, ist die Leiste ohnehin reserviert). Über sensiblen Feldern bleibt sie aus. */
+    val barAlwaysVisible: Boolean = false,
     /** Auto-Grossschreibung am Satzanfang (toggelbar). Kein Autocorrect. */
     val autoCapEnabled: Boolean = true,
     /** „Stützräder": Vokale und die häufigsten Konsonanten farbig einfärben, bis das

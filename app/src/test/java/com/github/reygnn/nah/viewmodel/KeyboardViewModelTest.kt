@@ -14,6 +14,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -94,6 +95,7 @@ class KeyboardViewModelTest {
         fake: FakeIc,
         suggester: Suggester? = null,
         clipboardText: () -> String? = { null },
+        onSaveWord: (String) -> Unit = {},
     ): KeyboardViewModel {
         // Im Service löst der Paste-Pfad den Inhalt asynchron off-main auf und reicht ihn
         // über commitClipboardText zurück; im Test bilden wir genau diesen Rückweg synchron
@@ -107,6 +109,7 @@ class KeyboardViewModelTest {
             inputConnectionProvider = { fake.ic },
             suggester = suggester,
             onPasteRequested = { vm.commitClipboardText(clipboardText()) },
+            onSaveWordRequested = onSaveWord,
         )
         return vm
     }
@@ -1320,5 +1323,127 @@ class KeyboardViewModelTest {
         vm.onKey(FunctionKey(KeyAction.BACKSPACE))
         // Ohne vorheriges onSelectionChanged wird die Auswahl entfernt, nicht ein Zeichen.
         assertEquals("ho", fake.buffer.toString())
+    }
+
+    // --- Wort speichern: live mitlaufendes saveWord-Chip ---
+
+    @Test
+    fun `ein getipptes Wort am Wortende wird live als saveWord angeboten`() {
+        val fake = FakeIc()
+        // Immer aktiv (kein Settings-Schalter); Vorschläge bewusst AUS → das Chip hängt nicht daran.
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.type("ha")
+        assertEquals("ha", vm.state.value.saveWord) // folgt live dem getippten Wort
+        vm.type("llo")
+        assertEquals("hallo", vm.state.value.saveWord)
+    }
+
+    @Test
+    fun `saveWord uebernimmt die getippte Schreibweise woertlich`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.onKey(FunctionKey(KeyAction.SHIFT)) // armiert den ersten getippten Buchstaben gross
+        vm.type("hauptstrasse")
+        // Eigene Wörter sind in ihrer Schreibweise massgeblich → genau „Hauptstrasse", nicht klein.
+        assertEquals("Hauptstrasse", fake.buffer.toString())
+        assertEquals("Hauptstrasse", vm.state.value.saveWord)
+    }
+
+    @Test
+    fun `ein bereits gespeichertes Wort wird nicht zum Speichern angeboten`() {
+        val fake = FakeIc()
+        // isUserWord meldet „hallo" als schon vorhanden (der User-Index wird immer vorgehalten).
+        val vm = vm(fake, suggester = userWordSuggester("hallo"))
+            .apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.type("hallo")
+        assertNull(vm.state.value.saveWord)
+    }
+
+    @Test
+    fun `kein saveWord ueber einem Passwortfeld`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.onStartInput(FieldContext(isPassword = true))
+        vm.type("geheim")
+        // Privacy: ein Passwort gehört nie in eine dauerhafte, backuppbare Liste.
+        assertNull(vm.state.value.saveWord)
+    }
+
+    @Test
+    fun `kein saveWord ueber einem Feld mit NO_SUGGESTIONS-Flag`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.onStartInput(FieldContext(noSuggestions = true)) // OTP/Benutzername/Kreditkarte
+        vm.type("token")
+        assertNull(vm.state.value.saveWord)
+    }
+
+    @Test
+    fun `kein saveWord fuer ein reines Ziffern-Token`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.onKey(CharKey('8')); vm.onKey(CharKey('0')); vm.onKey(CharKey('5')); vm.onKey(CharKey('0'))
+        assertEquals("8050", fake.buffer.toString())
+        // Es geht um WÖRTER — ohne Buchstabe (z. B. eine PIN/Zahl) kein Speichern-Chip.
+        assertNull(vm.state.value.saveWord)
+    }
+
+    @Test
+    fun `kein saveWord mitten im Wort`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.type("hallo")
+        assertEquals("hallo", vm.state.value.saveWord)
+        fake.select(2, 2)              // Cursor mitten ins Wort: „ha|llo"
+        vm.onSelectionChanged(2, 2)
+        // Hinter dem Cursor steht noch „llo" → nicht am Wortende, kein Save-Angebot.
+        assertNull(vm.state.value.saveWord)
+    }
+
+    @Test
+    fun `kein saveWord fuer ein zu kurzes Token`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.type("h") // ein Zeichen < Mindestlänge (UserWordValidation.MIN_LENGTH)
+        assertNull(vm.state.value.saveWord)
+    }
+
+    @Test
+    fun `saveWord antippen fordert das Speichern an und fasst keinen Text an`() {
+        val fake = FakeIc()
+        var saved: String? = null
+        val vm = vm(fake, onSaveWord = { saved = it })
+            .apply { applySettings(Settings(autoCapEnabled = false)) }
+        vm.type("hallo")
+        assertEquals("hallo", vm.state.value.saveWord)
+        vm.onSaveWordTap("hallo")
+        // Der Service bekommt das Wort zum Persistieren …
+        assertEquals("hallo", saved)
+        // … aber im Eingabefeld wird NICHTS verändert (oberstes Gesetz) …
+        assertEquals("hallo", fake.buffer.toString())
+        // … und das Chip ist sofort weg (kein Doppel-Speichern, kein Flackern).
+        assertNull(vm.state.value.saveWord)
+    }
+
+    @Test
+    fun `barAlwaysVisible reserviert die Leiste auch ohne aktive Vorschlagsquelle`() {
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> emptyList() })
+            .apply { applySettings(Settings(barAlwaysVisible = true, autoCapEnabled = false)) }
+        // Beide Vorschlagsquellen aus, aber die Leiste soll trotzdem reserviert bleiben (kein Springen).
+        vm.type("h")
+        assertTrue(vm.state.value.suggestions.isEmpty())
+        assertTrue(vm.state.value.suggestionBarVisible)
+    }
+
+    @Test
+    fun `barAlwaysVisible reserviert die Leiste NICHT ueber einem Passwortfeld`() {
+        val fake = FakeIc()
+        val vm = vm(fake, suggester = Suggester { _, _, _ -> emptyList() })
+            .apply { applySettings(Settings(barAlwaysVisible = true, autoCapEnabled = false)) }
+        vm.onStartInput(FieldContext(isPassword = true))
+        vm.type("ge")
+        // Über sensibler Eingabe bleibt die Leiste aus — das sticht barAlwaysVisible.
+        assertFalse(vm.state.value.suggestionBarVisible)
     }
 }

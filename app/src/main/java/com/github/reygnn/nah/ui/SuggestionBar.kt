@@ -5,17 +5,22 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.github.reygnn.nah.data.suggestions.SuggestionRepository
 
@@ -33,12 +38,20 @@ import com.github.reygnn.nah.data.suggestions.SuggestionRepository
  * Horizontal scrollbar ([LazyRow]): die Chips sind content-breit (jedes Wort ganz sichtbar, kein
  * Abschneiden) und links gepackt; passen mehr Vorschläge als auf den Schirm, scrollt man sie heran.
  * So darf [SuggestionRepository.MAX_SUGGESTIONS] über 3 liegen, ohne dass die Chips quetschen.
+ *
+ * Ganz links — optional und klar abgesetzt — das **„speichern"-Chip** ([saveWord]): das gerade
+ * getippte, noch nicht gespeicherte Wort. Bewusst andersfarbig (Akzent-Container) und mit Lesezeichen-
+ * Icon, weil sein Antippen etwas grundlegend anderes tut als ein Vorschlag-Chip: es **ersetzt keinen
+ * Text**, sondern legt das Wort in die eigene, backuppbare Liste ([onSaveWord]). Die optische Trennung
+ * verhindert, dass man es mit einem (präfix-ersetzenden) Vorschlag verwechselt.
  */
 @Composable
 fun SuggestionBar(
     suggestions: List<String>,
     modifier: Modifier = Modifier,
+    saveWord: String? = null,
     onSuggestion: (String) -> Unit,
+    onSaveWord: (String) -> Unit = {},
 ) {
     LazyRow(
         modifier = modifier
@@ -49,6 +62,37 @@ fun SuggestionBar(
         contentPadding = PaddingValues(horizontal = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
+        // Das „speichern"-Chip zuerst (feste Position links, vorhersagbar) und sichtbar abgesetzt vom
+        // Akzent-Container — seine Wirkung (Wort speichern) ist eine andere als die der Vorschläge.
+        if (saveWord != null) {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .clickable { onSaveWord(saveWord) }
+                        .padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        imageVector = NahIcons.SaveWord,
+                        contentDescription = null, // sehende App, keine Screenreader-Unterstützung
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Text(
+                        text = saveWord,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        // Wie die Vorschläge bewusst NICHT mit der System-Schriftskalierung wachsend
+                        // (fixe Leistenhöhe, siehe nonScaledSp).
+                        fontSize = nonScaledSp(16.dp),
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
         // Geteilte Obergrenze (kein hartcodiertes „3"): die Datenquelle kappt bereits auf
         // SuggestionRepository.MAX_SUGGESTIONS, hier dieselbe Konstante als zweite Sicherung.
         items(suggestions.take(SuggestionRepository.MAX_SUGGESTIONS)) { word ->

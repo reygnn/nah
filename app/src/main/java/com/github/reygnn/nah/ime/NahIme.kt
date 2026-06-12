@@ -7,6 +7,7 @@ import android.inputmethodservice.InputMethodService
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.FrameLayout
+import android.widget.Toast
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -17,8 +18,11 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.github.reygnn.nah.R
 import com.github.reygnn.nah.data.suggestions.SuggestionRepository
+import com.github.reygnn.nah.data.suggestions.UserWordError
 import com.github.reygnn.nah.data.suggestions.UserWordRepository
+import com.github.reygnn.nah.data.suggestions.UserWordValidation
 import com.github.reygnn.nah.layout.OptimizedLayout
 import com.github.reygnn.nah.settings.SettingsActivity
 import com.github.reygnn.nah.settings.SettingsRepository
@@ -74,6 +78,7 @@ class NahIme :
             suggester = suggester,
             onPasteRequested = ::requestPaste,
             onSettingsRequested = ::openSettings,
+            onSaveWordRequested = ::saveUserWord,
         )
 
         var builtInWarmStarted = false
@@ -250,6 +255,28 @@ class NahIme :
             Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         )
         requestHideSelf(0)
+    }
+
+    /**
+     * Speichert das in der Vorschlagsleiste angetippte Wort in die eigene, backuppbare Wortliste
+     * ([UserWordRepository]) und bestätigt per Toast. Aus `KeyboardViewModel.onSaveWordTap` über den
+     * `onSaveWordRequested`-Callback aufgerufen — der ViewModel kennt weder DataStore noch Android.
+     * `add` validiert erneut gegen den aktuellen Stand (Duplikat ohne Race); die nicht-Duplikat-Fehler
+     * sind hier praktisch unerreichbar (der ViewModel bietet nur 2–50-Zeichen-Wörter ohne Steuerzeichen
+     * an), werden aber der Vollständigkeit halber gemeldet. Das gespeicherte Wort fliesst über den
+     * `words`-Flow zurück in den Suggester und taucht so automatisch in „Eigene Wörter verwalten" auf.
+     */
+    private fun saveUserWord(word: String) {
+        lifecycleScope.launch {
+            val message = when (userWordRepository.add(word)) {
+                null -> getString(R.string.word_saved, word)
+                UserWordError.AlreadyExists -> getString(R.string.word_save_exists, word)
+                UserWordError.TooShort -> getString(R.string.user_word_error_too_short, UserWordValidation.MIN_LENGTH)
+                UserWordError.TooLong -> getString(R.string.user_word_error_too_long, UserWordValidation.MAX_LENGTH)
+                UserWordError.InvalidCharacters -> getString(R.string.user_word_error_invalid)
+            }
+            Toast.makeText(this@NahIme, message, Toast.LENGTH_SHORT).show()
+        }
     }
 
     /**

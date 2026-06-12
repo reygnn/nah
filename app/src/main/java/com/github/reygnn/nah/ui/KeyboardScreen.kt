@@ -67,6 +67,7 @@ fun KeyboardScreen(viewModel: KeyboardViewModel) {
             onKey = viewModel::onKey,
             onAlternative = viewModel::onAlternative,
             onSuggestion = viewModel::onSuggestionTap,
+            onSaveWord = viewModel::onSaveWordTap,
         )
     }
 }
@@ -78,6 +79,7 @@ fun KeyboardContent(
     onKey: (com.github.reygnn.nah.layout.KeyboardKey) -> Unit,
     onAlternative: (String) -> Unit,
     onSuggestion: (String) -> Unit,
+    onSaveWord: (String) -> Unit = {},
 ) {
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     // Den realen Navigationsleisten-Inset NUR als Wert lesen (nicht via navigationBarsPadding(),
@@ -107,13 +109,17 @@ fun KeyboardContent(
                 .padding(bottom = bottomInset)
                 .padding(2.dp),
         ) {
-            // Sichtbar (mit fester Höhe), sobald die Funktion aktiv ist — auch ohne
+            // Sichtbar (mit fester Höhe), sobald die Vorschlagsfunktion aktiv ist — auch ohne
             // aktuelle Vorschläge. So springen die Tasten beim Tippen nicht in der Höhe;
             // ist die Funktion aus, fehlt die Leiste ganz (kein verschwendeter Platz).
-            if (state.suggestionBarVisible) {
+            // Zusätzlich erscheint sie, sobald ein „speichern"-Wort vorliegt, damit das Save-Chip
+            // auch bei ausgeschalteten Vorschlägen angeboten werden kann.
+            if (state.suggestionBarVisible || state.saveWord != null) {
                 SuggestionBar(
                     suggestions = state.suggestions,
+                    saveWord = state.saveWord,
                     onSuggestion = onSuggestion,
+                    onSaveWord = onSaveWord,
                 )
             }
             state.layout.rows.forEach { row ->

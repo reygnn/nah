@@ -7,6 +7,7 @@
     <string name="settings_pick_keyboard">Tastatur auswählen</string>
     <string name="settings_suggestion_bar">Vorschlagsleiste</string>
     <string name="settings_suggest_user_words">Eigene Wörter vorschlagen</string>
+    <string name="settings_bar_always_visible">Leiste immer sichtbar</string>
     <string name="settings_manage_user_words">Eigene Wörter verwalten</string>
     <string name="settings_auto_cap">Auto-Grossschreibung am Satzanfang</string>
     <string name="settings_color_hints">Lern-Farben (Vokale &amp; häufige Konsonanten)</string>
@@ -39,4 +40,8 @@
     <string name="user_word_error_too_long">Höchstens %1$d Zeichen</string>
     <string name="user_word_error_invalid">Keine Zeilenumbrüche oder Steuerzeichen</string>
     <string name="user_word_error_exists">Schon in der Liste</string>
+
+    <!-- Wort beim Tippen speichern (Toast-Bestätigung) -->
+    <string name="word_saved">„%1$s“ gespeichert</string>
+    <string name="word_save_exists">„%1$s“ ist schon in deinen Wörtern</string>
 </resources>

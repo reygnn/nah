@@ -116,6 +116,13 @@ fun SettingsScreen(
                     scope.launch { repository.update { it.copy(userWordsEnabled = value) } }
                 },
             )
+            SwitchRow(
+                label = stringResource(R.string.settings_bar_always_visible),
+                checked = settings.barAlwaysVisible,
+                onChange = { value ->
+                    scope.launch { repository.update { it.copy(barAlwaysVisible = value) } }
+                },
+            )
             Button(onClick = onManageUserWords, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.settings_manage_user_words))
             }
