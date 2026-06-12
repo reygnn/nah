@@ -124,6 +124,13 @@ class SuggestionRepository : Suggester {
      */
     override fun isLearnedWord(word: String): Boolean = learnedIndex?.contains(word) ?: false
 
+    /**
+     * Liegt [word] im eingebauten Index? `false`, solange er (lazy, siehe [warmUpBuiltIn]) noch nicht
+     * gebaut ist — der Aufruf materialisiert ihn NIE eigens. Nur zum Save-Dedup genutzt (siehe
+     * [Suggester.isBuiltInWord]).
+     */
+    override fun isBuiltInWord(word: String): Boolean = builtInIndex?.contains(word) ?: false
+
     companion object {
         private const val MIN_PREFIX_LENGTH = 2
         /** Obergrenze der angezeigten Vorschläge — der einzige Wert dieser Art. Nicht nur intern

@@ -43,4 +43,15 @@ fun interface Suggester {
      * bleibt. Default `false` (Fakes/Tests verhalten sich wie Wörterbuch).
      */
     fun isLearnedWord(word: String): Boolean = false
+
+    /**
+     * Steht [word] in der **eingebauten** de-CH-Wortliste (`GermanWordList`)? Nur genutzt, um beim
+     * Live-Speichern ein Wort NICHT als „gelernt" anzubieten, das die eingebaute Liste — **sofern sie
+     * als Vorschlagsquelle aktiv ist** — ohnehin schon (gleich gecast) vorschlägt; ein gelernter Eintrag
+     * wäre dann ein reines Duplikat (siehe `KeyboardViewModel.computeSaveWord`). Bewusst wirkungslos,
+     * solange die Liste als Quelle aus ist: dann ist „als gelerntes Wort speichern" der einzige Weg, das
+     * Wort vorgeschlagen zu bekommen. Liefert vor dem (lazy) Aufbau des Index `false` — er wird hierfür
+     * NIE eigens materialisiert. Default `false` (Fakes/Tests verhalten sich wie ohne eingebaute Liste).
+     */
+    fun isBuiltInWord(word: String): Boolean = false
 }

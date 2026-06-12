@@ -649,7 +649,8 @@ class KeyboardViewModel(
      * Das Wort, das gerade als „speichern"-Chip angeboten wird — oder `null` = keins. **Live**: folgt
      * dem getippten Wort, sobald der Cursor am Wortende steht. **Immer aktiv** (kein Settings-Schalter,
      * bewusste Nutzerwahl), aber gegated: nie über sensibler Eingabe, nur am Wortende ohne Auswahl, nur
-     * ein echtes Wort, und nicht, was schon in der Liste steht.
+     * ein echtes Wort, nicht, was schon in den eigenen/gelernten Listen steht, und — nur bei aktiver
+     * Wörterbuch-Quelle — auch nichts, was die eingebaute Liste ohnehin schon vorschlägt.
      *
      * **Gespeichert** wird die getippte Schreibweise als Basis (im `LearnedWordRepository`). Beim
      * **Vorschlagen** wird ein gelerntes Wort dann aber NICHT wörtlich committet, sondern wie ein
@@ -674,6 +675,13 @@ class KeyboardViewModel(
         // bei abgeschalteter Vorschlagsquelle. Fehlt der Suggester (Tests ohne Quelle), kann nicht
         // dedupliziert werden → im Zweifel anbieten.
         if (suggester?.isUserWord(prefix) == true || suggester?.isLearnedWord(prefix) == true) return null
+        // Zusätzlich nicht anbieten, was die eingebaute Liste — sofern sie als Vorschlagsquelle AKTIV ist
+        // (settings.suggestionsEnabled) — ohnehin schon, und gleich gecast, vorschlägt: ein gelernter
+        // Eintrag wäre dann ein reines Duplikat. An suggestionsEnabled gekoppelt (wie der userWordsEnabled-
+        // Gate in committedForm), damit bei AUSgeschalteter Liste das Speichern als Lern-Wort weiterhin
+        // geht — dann ist es der einzige Weg, das Wort überhaupt vorgeschlagen zu bekommen. isBuiltInWord
+        // baut den (grossen) Lazy-Index nie eigens auf → false, solange er fehlt (kurzes Startfenster).
+        if (settings.suggestionsEnabled && suggester?.isBuiltInWord(prefix) == true) return null
         return prefix
     }
 

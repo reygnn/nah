@@ -699,6 +699,14 @@ class KeyboardViewModelTest {
         override fun isLearnedWord(word: String) = words.contains(word)
     }
 
+    /** Suggester, der seine Treffer als eingebaute Wörterbuch-Wörter meldet (nur unter includeBuiltIn,
+     *  isBuiltInWord trifft) — für den Save-Dedup gegen die eingebaute Liste bei aktiver Wörterbuch-Quelle. */
+    private fun builtInWordSuggester(vararg words: String) = object : Suggester {
+        override fun suggest(prefix: String, includeBuiltIn: Boolean, includeUser: Boolean, includeLearned: Boolean) =
+            if (includeBuiltIn) words.toList() else emptyList()
+        override fun isBuiltInWord(word: String) = words.contains(word)
+    }
+
     @Test
     fun `eigenes Wort wird unter Caps-Lock NICHT grossgeschrieben`() {
         val fake = FakeIc()
@@ -1440,6 +1448,30 @@ class KeyboardViewModelTest {
             .apply { applySettings(Settings(autoCapEnabled = false)) }
         vm.type("hallo")
         assertNull(vm.state.value.saveWord)
+    }
+
+    @Test
+    fun `ein Wort der eingebauten Liste wird bei aktiven Vorschlaegen nicht zum Speichern angeboten`() {
+        val fake = FakeIc()
+        // isBuiltInWord meldet „hallo" als eingebautes Wort; die Liste ist als Quelle AN.
+        val vm = vm(fake, suggester = builtInWordSuggester("hallo"))
+            .apply { applySettings(Settings(suggestionsEnabled = true, autoCapEnabled = false)) }
+        vm.type("hallo")
+        // Die Liste schlägt „hallo" ohnehin (gleich gecast) vor → ein gelernter Eintrag wäre ein
+        // reines Duplikat, also kein Save-Chip.
+        assertNull(vm.state.value.saveWord)
+    }
+
+    @Test
+    fun `ein Wort der eingebauten Liste wird bei abgeschalteten Vorschlaegen weiterhin zum Speichern angeboten`() {
+        val fake = FakeIc()
+        // Liste als Quelle AUS (Default): „hallo" als gelerntes Wort zu speichern ist dann der EINZIGE
+        // Weg, es vorgeschlagen zu bekommen → das Save-Chip muss bleiben. Der Built-in-Dedup ist bewusst
+        // an suggestionsEnabled gekoppelt (anders als der store-basierte User-/Learned-Dedup).
+        val vm = vm(fake, suggester = builtInWordSuggester("hallo"))
+            .apply { applySettings(Settings(suggestionsEnabled = false, autoCapEnabled = false)) }
+        vm.type("hallo")
+        assertEquals("hallo", vm.state.value.saveWord)
     }
 
     @Test
