@@ -110,10 +110,20 @@ deliberate scope choice for a single-user personal keyboard, not an oversight.
 - **Optional suggestion bar** — prefix-index-backed, fed by a baked-in de-CH word list
   plus your own words/phrases (independently toggleable). **Off by default**, and
   *non-intrusive*: tapping a suggestion only replaces the current unfinished
-  prefix, never finished text. (Settings are reached via a long-press on the
-  layer-toggle key — see above — not from this strip.)
+  prefix, never finished text. An optional *keep the bar always visible* setting
+  reserves its height so it doesn't jump as chips come and go. (Settings are
+  reached via a long-press on the layer-toggle key — see above — not from this strip.)
+- **Save a word while typing** — the word at the cursor is offered as a distinct
+  chip (bookmark icon, accent colour) at the left of the bar; one tap stores it in
+  a backuppable *learned words* list and surfaces the bar even when suggestions are
+  off. It never touches finished text. Learned words are then suggested and
+  **re-cased to the prefix like dictionary words** (Shift / Caps Lock) — unlike the
+  curated custom words below, which stay verbatim.
 - **Custom words & phrases** — add your own (letters, digits, spaces — e.g. a
-  postal code or `Hauptstrasse 115`), matched strncmp-style from the start.
+  postal code or `Hauptstrasse 115`), matched strncmp-style from the start and
+  committed **verbatim** (their casing is authoritative — names, addresses,
+  emails). Curated and learned words are managed in two sections of the same
+  settings screen.
 - **Paste key** — always visible at the bottom-left, inserts the clipboard
   verbatim (no autocorrect, no shift-casing). Dims when the clipboard holds no
   text and updates live when you copy while typing. Reads only metadata for the
@@ -149,9 +159,10 @@ layout/     KeyboardKey / KeyAction, KeyboardLayout (row + weight based),
 ui/         KeyboardScreen / TapKey / SuggestionBar / NahColors / NahIcons,
             LongPressGesture (pure long-press state machine) — Compose.
 settings/   Settings, SettingsRepository (DataStore), SettingsActivity,
-            UserWordsActivity (manage own words).
+            UserWordsActivity (manage curated + learned words).
 data/suggestions/  WordIndex (sorted array + binary search), GermanWordList,
-            SuggestionRepository, UserWordRepository, UserWordValidation.
+            SuggestionRepository, UserWordRepository, LearnedWordRepository,
+            UserWordValidation.
 tools/      optimize_layout.py — the layout optimiser (reproducible);
             word_index_benchmark.md — suggestion-cost measurement + corpus threshold.
 ```
@@ -171,7 +182,8 @@ Covered: the layout's travel property (must beat QWERTZ), the ViewModel state
 machine (commit / backspace / shift / caps / layer switch / auto-cap / the
 "suggestion never replaces finished text" invariant), the WordIndex, and the pure
 units lifted out of the Compose/Service layer (PasteGuard, LongPressGesture,
-FieldContext, user-word validation, the self-echo dedup). A seed-reproducible
+FieldContext, user-word validation, curated-vs-learned word casing, the
+self-echo dedup). A seed-reproducible
 **invariant fuzzer** runs thousands of random op sequences against the hard
 invariants (finished text never altered, shown == typed, no stranded shift).
 
