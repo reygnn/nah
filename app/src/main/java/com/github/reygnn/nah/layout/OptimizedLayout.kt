@@ -106,7 +106,12 @@ object OptimizedLayout {
             charRow("789"),
             charRow("*0#"),
             listOf(
-                FunctionKey(KeyAction.PASTE, weight = 1f),
+                // Long-Press leert die Zwischenablage (CLR) — sichtbares Chip-Popup, schieben+loslassen.
+                FunctionKey(
+                    KeyAction.PASTE,
+                    weight = 1f,
+                    longPressActions = listOf(KeyAction.CLEAR_CLIPBOARD),
+                ),
                 // Voll-Mesh: Tap → Alpha; Long-Press → die übrigen Ebenen (Symbol + Ziffernpad) + ⚙.
                 FunctionKey(
                     KeyAction.ALPHA,
@@ -148,7 +153,12 @@ object OptimizedLayout {
             charRow("789"),
             charRow(",0."),
             listOf(
-                FunctionKey(KeyAction.PASTE, weight = 1f),
+                // Long-Press leert die Zwischenablage (CLR) — sichtbares Chip-Popup, schieben+loslassen.
+                FunctionKey(
+                    KeyAction.PASTE,
+                    weight = 1f,
+                    longPressActions = listOf(KeyAction.CLEAR_CLIPBOARD),
+                ),
                 // Voll-Mesh: Tap → Alpha; Long-Press → die übrigen Ebenen (Symbol + Wählfeld) + ⚙.
                 FunctionKey(
                     KeyAction.ALPHA,
@@ -175,7 +185,12 @@ object OptimizedLayout {
         // (Paste↔⇧, SYM↔w, ,↔t, Space↔n+d, .↔g, ⏎↔⌫). Damit sind , und . zugleich genau eine
         // Buchstabentastenbreite (fat-finger-tauglich); der Preis ist eine etwas schmalere
         // Leertaste (2/7 statt der früheren ~36 %), die aber die mit Abstand breiteste Taste bleibt.
-        FunctionKey(KeyAction.PASTE, weight = 1f),
+        // Long-Press leert die Zwischenablage (CLR) — sichtbares Chip-Popup, schieben+loslassen.
+        FunctionKey(
+            KeyAction.PASTE,
+            weight = 1f,
+            longPressActions = listOf(KeyAction.CLEAR_CLIPBOARD),
+        ),
         // Long-Press der Umschalttaste erreicht alle per Tap NICHT erreichbaren Ebenen plus die
         // Einstellungen → zusammen mit dem Tap kommt man von jeder Ebene auf jede andere (Voll-Mesh).
         // Auf Alpha (Tap → Symbol) wie auf der Symbolebene (Tap → Alpha) sind die fehlenden Ebenen

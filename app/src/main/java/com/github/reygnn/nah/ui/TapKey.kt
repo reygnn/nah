@@ -325,8 +325,10 @@ fun TapKey(
             )
         }
         // Sichtbarer Hinweis „diese Taste hat ein Long-Press-Menü". Dieselbe Bedingung wie die
-        // Geste oben (longPressItems) → der Marker erscheint exakt dann, wenn das Halten etwas tut.
-        if (longPressItems.isNotEmpty()) {
+        // Geste oben (longPressItems) plus `enabled` → der Marker erscheint exakt dann, wenn das
+        // Halten etwas tut. Ohne `enabled` prangte er sonst auf der gedimmten Einfügen-Taste bei
+        // leerer Zwischenablage, obwohl dort weder Einfügen noch Leeren möglich ist.
+        if (longPressItems.isNotEmpty() && enabled) {
             Box(
                 Modifier
                     .align(Alignment.TopEnd)

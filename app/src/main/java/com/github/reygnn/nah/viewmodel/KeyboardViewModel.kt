@@ -82,6 +82,10 @@ class KeyboardViewModel(
      *  Einfüge-Tap nie den Main-Thread (kein ANR). Inhalt-Zugriff weiterhin NUR bei dieser
      *  expliziten Nutzeraktion, nicht laufend. */
     private val onPasteRequested: () -> Unit = {},
+    /** Leert die Zwischenablage (per Long-Press auf der Einfügen-Taste, siehe
+     *  [KeyAction.CLEAR_CLIPBOARD]). Der Service ruft `clearPrimaryClip()` und quittiert; der
+     *  ViewModel kennt kein Android. Schaltet die Einfügen-Taste danach inaktiv (kein Text mehr). */
+    private val onClearClipboardRequested: () -> Unit = {},
     /** Öffnet die App-Einstellungen (per Long-Press auf der Ebenen-Umschalttaste, siehe
      *  [KeyAction.SETTINGS]). Der Service startet die Activity; der ViewModel kennt kein Android. */
     private val onSettingsRequested: () -> Unit = {},
@@ -315,6 +319,9 @@ class KeyboardViewModel(
             // Einfügen anfordern — der Service löst den Inhalt off-main auf und committet
             // ihn über commitClipboardText (kein UI-Thread-Block, siehe onPasteRequested).
             KeyAction.PASTE -> onPasteRequested()
+            // Per Long-Press auf der Einfügen-Taste erreichbar — der Service leert die
+            // Zwischenablage und meldet danach über onPasteAvailabilityChanged(false) zurück.
+            KeyAction.CLEAR_CLIPBOARD -> onClearClipboardRequested()
             KeyAction.RETURN -> {
                 // Verlangt das Feld eine Editor-Action (Suchen/Senden/Los/Weiter),
                 // diese auslösen statt blind ein Enter zu schicken — sonst landet in

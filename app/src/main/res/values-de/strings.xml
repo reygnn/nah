@@ -48,4 +48,7 @@
     <!-- Wort beim Tippen speichern (Toast-Bestätigung) -->
     <string name="word_saved">„%1$s“ gespeichert</string>
     <string name="word_save_exists">„%1$s“ ist schon in deinen Wörtern</string>
+
+    <!-- Zwischenablage leeren (Long-Press auf der Einfügen-Taste; Toast-Bestätigung) -->
+    <string name="clipboard_cleared">Zwischenablage geleert</string>
 </resources>

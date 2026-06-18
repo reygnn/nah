@@ -203,6 +203,25 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `CLEAR_CLIPBOARD-Aktion leert die Zwischenablage ohne Text anzufassen`() {
+        val fake = FakeIc()
+        var cleared = 0
+        val vm = KeyboardViewModel(
+            alphaLayout = alpha,
+            symbolsLayout = symbols,
+            numberLayout = number,
+            phoneLayout = phone,
+            inputConnectionProvider = { fake.ic },
+            onClearClipboardRequested = { cleared++ },
+        )
+        vm.onStartInput(FieldContext())
+        // Per Long-Press auf der Einfügen-Taste committet TapKey FunctionKey(CLEAR_CLIPBOARD) über onKey.
+        vm.onKey(FunctionKey(KeyAction.CLEAR_CLIPBOARD))
+        assertEquals(1, cleared)
+        assertEquals("", fake.buffer.toString()) // kein Commit, kein Eingriff in den Text
+    }
+
+    @Test
     fun `pasteAvailable kommt aus onStartInput`() {
         val fake = FakeIc()
         val vm = vm(fake)

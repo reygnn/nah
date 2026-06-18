@@ -73,6 +73,10 @@ enum class KeyAction(val label: String) {
     PERIOD("."),
     COMMA(","),
     PASTE("Insert"), // clipboard paste (icon key; the label is unused — rendered as an icon)
+    // Nur als Long-Press-Ziel der Einfügen-Taste verwendet, nie als eigene Tastenfläche — der
+    // [label] „CLR" (passt ins 3-Buchstaben-Schema NUM/TEL/OPT) ist zugleich der Chip-Text. Leert
+    // die Zwischenablage; der Service verdrahtet die Aktion über onClearClipboardRequested.
+    CLEAR_CLIPBOARD("CLR"),
     // Long-Press-Ziele der Ebenen-Umschalttaste (nie eigene Tastenfläche) — der [label] ist zugleich
     // der Chip-Text. Einheitliches 3-Buchstaben-Schema: NUM = grosses Ziffern-Pad (, . -),
     // TEL = Wählfeld (* # +). Zusammen mit SYM/ABC erreicht man so von jeder Ebene jede andere.

@@ -80,6 +80,7 @@ class NahIme :
             inputConnectionProvider = { currentInputConnection },
             suggester = suggester,
             onPasteRequested = ::requestPaste,
+            onClearClipboardRequested = ::clearClipboard,
             onSettingsRequested = ::openSettings,
             onSaveWordRequested = ::saveLearnedWord,
         )
@@ -220,6 +221,19 @@ class NahIme :
                 if (pasteGuard.mayCommit(token)) viewModel.commitClipboardText(text)
             }
         }
+    }
+
+    /**
+     * Leert die Zwischenablage (Long-Press auf der Einfügen-Taste, siehe [KeyAction.CLEAR_CLIPBOARD]).
+     * `clearPrimaryClip()` setzt den Primär-Clip zurück; danach die Einfügen-Taste sofort selbst inaktiv
+     * schalten (nicht auf den Best-Effort-`OnPrimaryClipChangedListener` warten, der für eine nicht
+     * fokussierte App ausbleiben kann) und per Toast quittieren. Schreibt nur — kein Inhalt-Read, also
+     * kein „Zwischenablage gelesen"-Hinweis.
+     */
+    private fun clearClipboard() {
+        clipboard?.clearPrimaryClip()
+        viewModel.onPasteAvailabilityChanged(false)
+        Toast.makeText(this, R.string.clipboard_cleared, Toast.LENGTH_SHORT).show()
     }
 
     /** Der Zwischenablage-Text fürs Einfügen. Liest den Inhalt (bewusst nur bei der

@@ -174,6 +174,20 @@ class OptimizedLayoutTravelTest {
     }
 
     @Test
+    fun `die Einfuege-Taste bietet auf jeder Ebene Zwischenablage-Leeren per Long-Press`() {
+        listOf(
+            OptimizedLayout.deCh(),
+            OptimizedLayout.symbols(),
+            OptimizedLayout.number(),
+            OptimizedLayout.phone(),
+        ).forEach { layout ->
+            val paste = layout.rows.flatten()
+                .filterIsInstance<FunctionKey>().first { it.action == KeyAction.PASTE }
+            assertEquals(listOf(KeyAction.CLEAR_CLIPBOARD), paste.longPressActions)
+        }
+    }
+
+    @Test
     fun `die Punkt-Taste bietet auf der Buchstabenebene Frage- und Ausrufezeichen per Long-Press`() {
         val alphaPeriod = OptimizedLayout.deCh().rows.flatten()
             .filterIsInstance<FunctionKey>().first { it.action == KeyAction.PERIOD }

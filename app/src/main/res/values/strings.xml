@@ -50,4 +50,7 @@
     <!-- Save word while typing (toast confirmation) -->
     <string name="word_saved">Saved “%1$s”</string>
     <string name="word_save_exists">“%1$s” is already in your words</string>
+
+    <!-- Clear clipboard (long-press on the paste key; toast confirmation) -->
+    <string name="clipboard_cleared">Clipboard cleared</string>
 </resources>
