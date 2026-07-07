@@ -103,6 +103,28 @@ class FieldContextTest {
     }
 
     @Test
+    fun `URL- und E-Mail-Felder werden als uri erkannt`() {
+        val url = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+        val email = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+        val webEmail = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS
+        assertTrue(ctx(inputType = url).uri)
+        assertTrue(ctx(inputType = email).uri)
+        assertTrue(ctx(inputType = webEmail).uri)
+    }
+
+    @Test
+    fun `ein gewoehnliches Textfeld ist nicht uri`() {
+        assertFalse(ctx(inputType = InputType.TYPE_CLASS_TEXT).uri)
+    }
+
+    @Test
+    fun `die URI-Variation zaehlt nur in der Textklasse`() {
+        // Dieselben Variation-Bits bedeuten in anderen Klassen etwas anderes und dürfen nicht als uri gelten.
+        val numberSameBits = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_TEXT_VARIATION_URI
+        assertFalse(ctx(inputType = numberSameBits).uri)
+    }
+
+    @Test
     fun `Anfangs-Auswahl wird uebernommen, Unbekanntes (-1) auf 0 gezogen`() {
         val field = ctx(initialSelStart = 3, initialSelEnd = 7)
         assertEquals(3, field.initialSelStart)

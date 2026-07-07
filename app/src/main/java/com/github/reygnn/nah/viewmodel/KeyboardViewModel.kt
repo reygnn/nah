@@ -192,7 +192,7 @@ class KeyboardViewModel(
             // ECHTER Feldwechsel: mit definiertem Shift (OFF) beginnen — ein vom letzten Feld
             // übrig gebliebenes CAPS-Lock soll nicht in ein neues, fremdes Feld lecken — und
             // Ebene/Einfügen/Shift in derselben Emission setzen. refreshForCursor armiert danach
-            // ggf. wieder SHIFTED; computeAutoCapShift lässt Passwort-/Zahlenfelder selbst aus.
+            // ggf. wieder SHIFTED; computeAutoCapShift lässt Passwort-/Zahlen-/URL-/E-Mail-Felder selbst aus.
             autoCapArmed = false
             userDisarmedAutoCap = false // neues Feld → ein Entwaffnen aus dem alten Feld gilt nicht mehr
             _state.value = _state.value.copy(
@@ -726,6 +726,7 @@ class KeyboardViewModel(
         if (userDisarmedAutoCap) return null
         if (field.isPassword) return null // case-sensitive: nie automatisch grossschreiben
         if (field.numeric) return null // Zahl-/Telefonfeld kennt keinen „Satzanfang"
+        if (field.uri) return null // URL/E-Mail: der Punkt ist Domain-Trenner, kein Satzende (→ „google.Com")
         val shift = _state.value.shift
         if (shift == ShiftState.CAPS) return null
         // Ein manuell gesetztes SHIFTED (nicht von Auto-Cap) nicht durch einen Cursor-/

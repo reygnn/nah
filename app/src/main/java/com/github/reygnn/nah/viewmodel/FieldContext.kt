@@ -42,6 +42,15 @@ data class FieldContext(
      */
     val noSuggestions: Boolean = false,
     /**
+     * URL- oder E-Mail-Feld (`TYPE_TEXT_VARIATION_URI` / `…_EMAIL_ADDRESS` / `…_WEB_EMAIL_ADDRESS`)
+     * → Auto-Grossschreibung unterdrücken. In solchen Feldern ist der Punkt ein Domain-Trenner,
+     * kein Satzende: die Satz-Heuristik würde sonst „google.Com" oder „john@gmail.Com" armieren.
+     * Gleiche Haltung wie [isPassword]/[numeric] — nah bleibt Herr der Grossschreibung, macht aber
+     * für Feldklassen, in denen sie nie erwünscht ist, eine Ausnahme (statt die `CAP_*`-Flags des
+     * Feldes zu lesen, die nah bewusst ignoriert). Betrifft NUR die Auto-Cap, nicht die Vorschläge.
+     */
+    val uri: Boolean = false,
+    /**
      * Cursor-/Auswahlposition beim Feldstart (aus `EditorInfo.initialSel*`). Ohne
      * diese wüsste der selektionsbewusste Backspace bis zum ersten `onUpdateSelection`
      * nichts von einer bereits im Zielfeld bestehenden Auswahl. Unbekannt (`-1`) → 0.
@@ -68,6 +77,7 @@ data class FieldContext(
             phone = isPhoneInputType(inputType),
             isPassword = isPasswordInputType(inputType),
             noSuggestions = isNoSuggestionsInputType(inputType),
+            uri = isUriInputType(inputType),
             initialSelStart = initialSelStart.coerceAtLeast(0),
             initialSelEnd = initialSelEnd.coerceAtLeast(0),
         )
@@ -106,6 +116,23 @@ data class FieldContext(
         private fun isNoSuggestionsInputType(inputType: Int): Boolean =
             (inputType and InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_TEXT &&
                 (inputType and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) != 0
+
+        /**
+         * URL- oder E-Mail-Feld. Nur in der Textklasse ausgewertet (die Variation-Bits sind nur
+         * dort so definiert), gleiche Masken-Logik wie [isPasswordInputType]. Der Web-URL-Typ hat
+         * keine eigene Variation — `<input type="url">` kommt als `TYPE_TEXT_VARIATION_URI` an —,
+         * darum reicht diese eine URI-Variation neben den beiden E-Mail-Varianten.
+         */
+        private fun isUriInputType(inputType: Int): Boolean {
+            if ((inputType and InputType.TYPE_MASK_CLASS) != InputType.TYPE_CLASS_TEXT) return false
+            return when (inputType and InputType.TYPE_MASK_VARIATION) {
+                InputType.TYPE_TEXT_VARIATION_URI,
+                InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
+                InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS,
+                -> true
+                else -> false
+            }
+        }
 
         /**
          * Passwort-Varianten (Text sichtbar/unsichtbar/Web, sowie numerisches PIN-Feld) —

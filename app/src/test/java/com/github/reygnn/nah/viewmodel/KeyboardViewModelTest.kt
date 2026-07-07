@@ -409,6 +409,33 @@ class KeyboardViewModelTest {
     }
 
     @Test
+    fun `auto-cap armiert nicht am Anfang eines URL-Feldes`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }
+        // Ein leerer Puffer wäre in einem normalen Feld ein Satzanfang (→ SHIFTED, s. o.). In einem
+        // URL-/E-Mail-Feld gibt es keinen „Satzanfang" — sonst begänne die Eingabe grossgeschrieben.
+        vm.onStartInput(FieldContext(uri = true))
+        assertEquals(ShiftState.OFF, vm.state.value.shift)
+        vm.type("g")
+        assertEquals("g", fake.buffer.toString())
+    }
+
+    @Test
+    fun `auto-cap armiert nicht nach dem Punkt in einem URL-Feld`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }
+        vm.onStartInput(FieldContext(uri = true))
+        vm.type("google")
+        vm.onKey(FunctionKey(KeyAction.PERIOD))
+        // Der Punkt ist hier ein Domain-Trenner, kein Satzende → KEIN SHIFTED. Gegenprobe: derselbe
+        // Ablauf im normalen Feld armiert SHIFTED (Test „auto-cap aktiviert shift nach einem Satzzeichen").
+        assertEquals(ShiftState.OFF, vm.state.value.shift)
+        vm.type("com")
+        // Das ist der ganze Punkt der Übung: „google.com", nicht „google.Com".
+        assertEquals("google.com", fake.buffer.toString())
+    }
+
+    @Test
     fun `auto-cap kapitalisiert nicht, wenn die InputConnection fehlt`() {
         // Ohne IC darf recomputeAutoCap das fehlende Ergebnis nicht als leeren Satzanfang
         // werten und faelschlich SHIFTED armieren (Punkt 4 der Code-Analyse).
