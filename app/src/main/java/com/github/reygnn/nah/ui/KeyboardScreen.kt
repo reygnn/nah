@@ -68,6 +68,7 @@ fun KeyboardScreen(viewModel: KeyboardViewModel) {
             onAlternative = viewModel::onAlternative,
             onSuggestion = viewModel::onSuggestionTap,
             onSaveWord = viewModel::onSaveWordTap,
+            onCursorMove = viewModel::moveCursor,
         )
     }
 }
@@ -80,6 +81,7 @@ fun KeyboardContent(
     onAlternative: (String) -> Unit,
     onSuggestion: (String) -> Unit,
     onSaveWord: (String) -> Unit = {},
+    onCursorMove: (Int) -> Unit = {},
 ) {
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     // Den realen Navigationsleisten-Inset NUR als Wert lesen (nicht via navigationBarsPadding(),
@@ -152,6 +154,7 @@ fun KeyboardContent(
                                 .fillMaxHeight(),
                             onKey = onKey,
                             onAlternative = onAlternative,
+                            onCursorMove = onCursorMove,
                         )
                     }
                 }

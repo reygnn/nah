@@ -13,6 +13,7 @@ import com.github.reygnn.nah.layout.KeyboardKey
 import com.github.reygnn.nah.layout.KeyboardLayout
 import com.github.reygnn.nah.settings.Settings
 import java.util.Locale
+import kotlin.math.abs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -238,6 +239,30 @@ class KeyboardViewModel(
         when (key) {
             is CharKey -> onChar(key)
             is FunctionKey -> onFunction(key.action)
+        }
+    }
+
+    /**
+     * Bewegt den Cursor um [steps] Zeichen (negativ = links, positiv = rechts) — getrieben von der
+     * Links/Rechts-Wischgeste auf der Leertaste (siehe `ui/TapKey` / [ui.SpaceSwipeGesture]). Feuert
+     * echte DPAD-Tastenereignisse ans Zielfeld; das erledigt Clamping an den Texträndern,
+     * Graphem-Cluster und RTL selbst, der ViewModel muss also keine Textlänge tracken.
+     *
+     * **Ändert nie Text** — bewegt nur den Cursor; das oberste Gesetz (fertiger Text wird nie
+     * angetastet) bleibt unberührt. Das ausgelöste `onUpdateSelection`-Echo frischt über
+     * [onSelectionChanged] Auto-Cap und Vorschläge zur neuen Position auf; hier ist daher bewusst
+     * KEINE eigene Vorhersage/Refresh nötig (anders als bei den commit-Pfaden).
+     */
+    fun moveCursor(steps: Int) {
+        if (steps == 0) return
+        val code = if (steps < 0) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT
+        // Je Schritt ein Down+Up-KeyEvent durch die InputConnection (der IMS-Helfer
+        // sendDownUpKeyEvents gehört dem Service, nicht der IC — der ViewModel kennt nur die IC).
+        safeIc { ic ->
+            repeat(abs(steps)) {
+                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
+                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
+            }
         }
     }
 

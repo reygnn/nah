@@ -35,6 +35,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
@@ -78,6 +79,11 @@ private const val REPEAT_MS = 55L
  */
 private val MARKER_SIZE = 7.dp
 private val MARKER_INSET = 4.dp
+
+/** Space-Wisch-Cursor: horizontale Fingerreise pro Cursor-Schritt (ein Zeichen) und zugleich die
+ *  Totzone — erst nach dieser Strecke kippt ein Druck auf der Leertaste vom Leerzeichen-Tap in die
+ *  Cursor-Bewegung (siehe [SpaceSwipeGesture]). Tunebar; klein = flinker, gross = ruhiger. */
+private val SPACE_SWIPE_STEP = 18.dp
 
 /** Long-Press-Popup: Grösse eines Alternativ-Chips und Abstand über der Taste. */
 private val CHIP_WIDTH = 46.dp
@@ -124,6 +130,7 @@ fun TapKey(
     enabled: Boolean = true,
     onKey: (KeyboardKey) -> Unit,
     onAlternative: (String) -> Unit = {},
+    onCursorMove: (Int) -> Unit = {},
 ) {
     val label = when (key) {
         // Dieselbe Casing-Quelle wie das Commit (siehe ShiftState.applyTo) — so zeigt die
@@ -177,6 +184,10 @@ fun TapKey(
     // teilen dieselbe Halten-wiederholt-Geste.
     val isRepeating = (key is FunctionKey && key.action == KeyAction.BACKSPACE) ||
         (key is CharKey && key.autoRepeat)
+    // Die Leertaste trägt zusätzlich zum Tap (= Leerzeichen) eine Links/Rechts-Wischgeste zur
+    // Cursor-Positionierung — eine Ein-Finger-Präzision, die Antippen im Text nicht bietet. Sie
+    // ändert nie Text (nur der Cursor bewegt sich), das oberste Gesetz bleibt also unberührt.
+    val isSpaceSwipe = key is FunctionKey && key.action == KeyAction.SPACE
     // Vereinheitlichte Long-Press-Einträge: CharKey-Alternativen committen einen String, die
     // Shortcuts der Umschalttaste lösen eine KeyAction aus — beide über dieselbe sichtbare Geste.
     val longPressItems: List<LongPressItem> = when (key) {
@@ -285,6 +296,38 @@ fun TapKey(
                 }
             }
         }
+        isSpaceSwipe -> Modifier
+            .indication(interactionSource, ripple())
+            .pointerInput(key) {
+                val gesture = SpaceSwipeGesture(SPACE_SWIPE_STEP.toPx())
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val press = PressInteraction.Press(down.position)
+                    scope.launch { interactionSource.emit(press) } // Ripple an
+                    // try/finally wie bei der Long-Press-Geste: der Ripple-Release MUSS laufen, auch
+                    // wenn die Geste mittendrin abbricht (Pointer-Reset / Rekomposition).
+                    try {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            val steps = gesture.onDrag(change.positionChange().x)
+                            if (steps != 0) {
+                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                onCursorMove(steps)
+                            }
+                            // Sobald gewischt wird, das Event verbrauchen (kein Parent nimmt die
+                            // Bewegung als Scroll/Swipe mit) — vorher NICHT, damit ein reiner Tap
+                            // ungestört bleibt.
+                            if (gesture.moved) change.consume()
+                            if (!change.pressed) break
+                        }
+                        // Nie gewischt → es war ein normaler Tap: Leerzeichen committen (wie bisher).
+                        if (gesture.commitsSpaceOnRelease) tap()
+                    } finally {
+                        scope.launch { interactionSource.emit(PressInteraction.Release(press)) } // Ripple aus
+                    }
+                }
+            }
         else -> Modifier.clickable { tap() }
     }
 
