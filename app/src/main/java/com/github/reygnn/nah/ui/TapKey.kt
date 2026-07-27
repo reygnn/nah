@@ -299,8 +299,12 @@ fun TapKey(
         isSpaceSwipe -> Modifier
             .indication(interactionSource, ripple())
             .pointerInput(key) {
-                val gesture = SpaceSwipeGesture(SPACE_SWIPE_STEP.toPx())
+                val stepPx = SPACE_SWIPE_STEP.toPx()
                 awaitEachGesture {
+                    // Pro Berührung eine frische Zustandsmaschine: `moved`/`accumulated` dürfen
+                    // NICHT über Gesten hinweg leben, sonst bliebe nach dem ersten Wisch für
+                    // immer `moved == true` und kein Tap committet je wieder ein Leerzeichen.
+                    val gesture = SpaceSwipeGesture(stepPx)
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val press = PressInteraction.Press(down.position)
                     scope.launch { interactionSource.emit(press) } // Ripple an
