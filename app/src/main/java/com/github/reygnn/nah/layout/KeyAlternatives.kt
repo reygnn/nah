@@ -17,7 +17,6 @@ package com.github.reygnn.nah.layout
 object KeyAlternatives {
     val map: Map<Char, List<String>> = mapOf(
         'q' to listOf("q"),                 // qu-Taste → einzelnes q
-        'c' to listOf("ch", "ck"),          // häufige Konsonanten-Cluster
         's' to listOf("sch", "st", "sp"),
         'p' to listOf("pf", "ph"),
         // „er"/„en" sind die zwei häufigsten de-Bigramme — als Long-Press auf r bzw. n je ein

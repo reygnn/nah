@@ -233,7 +233,7 @@ class OptimizedLayoutTravelTest {
     @Test
     fun `Konsonanten-Cluster auf den Long-Press-Tasten`() {
         val keys = OptimizedLayout.deCh().rows.flatten().filterIsInstance<CharKey>()
-        assertEquals(listOf("ch", "ck"), keys.first { it.char == 'c' }.alternatives)
+        assertEquals(emptyList<String>(), keys.first { it.char == 'c' }.alternatives)
         assertEquals(listOf("sch", "st", "sp"), keys.first { it.char == 's' }.alternatives)
         assertEquals(listOf("pf", "ph"), keys.first { it.char == 'p' }.alternatives)
         // „er"/„en" (die zwei häufigsten Bigramme) als Einfinger-Shortcuts auf r bzw. n.
