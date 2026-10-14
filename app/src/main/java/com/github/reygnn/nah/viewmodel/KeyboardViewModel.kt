@@ -779,7 +779,11 @@ class KeyboardViewModel(
         // ein einzelner Shift-Tap entwaffnet das auto-armierte SHIFTED sofort wieder (siehe
         // cycleShift/autoCapArmed). Genau wie „3.14" NICHT armiert (Ziffer ist kein Satzende),
         // ist dies die andere Seite derselben simplen, deterministischen Regel.
-        val shouldCap = last == null || last == '\n' || last in SENTENCE_ENDERS
+        // Ein Satzende armiert erst, wenn danach Whitespace folgt (wie iOS): „a.b" oder „file.txt"
+        // tippen sich ohne Shift-Korrektur, „a. b" wird weiterhin grossgeschrieben. Die Leerschlag-
+        // Eingabe selbst rechnet Auto-Cap neu und armiert dann.
+        val gapAfterEnder = before.substring(meaningful.length).any { it.isWhitespace() }
+        val shouldCap = last == null || last == '\n' || (last in SENTENCE_ENDERS && gapAfterEnder)
         return if (shouldCap) ShiftState.SHIFTED else ShiftState.OFF
     }
 

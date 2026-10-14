@@ -366,10 +366,25 @@ class KeyboardViewModelTest {
         vm.type("hallo")        // → "Hallo", danach mitten im Wort: Shift fällt auf OFF
         assertEquals(ShiftState.OFF, vm.state.value.shift)
         vm.onKey(FunctionKey(KeyAction.PERIOD))
-        // Nach dem Punkt armiert Auto-Cap den nächsten Buchstaben gross.
+        // Direkt nach dem Punkt noch nicht — erst der Leerschlag macht ihn zum Satzende.
+        assertEquals(ShiftState.OFF, vm.state.value.shift)
+        vm.onKey(FunctionKey(KeyAction.SPACE))
         assertEquals(ShiftState.SHIFTED, vm.state.value.shift)
         vm.type("d")
-        assertEquals("Hallo.D", fake.buffer.toString())
+        assertEquals("Hallo. D", fake.buffer.toString())
+    }
+
+    @Test
+    fun `auto-cap armiert nicht direkt nach einem Punkt ohne Leerschlag`() {
+        val fake = FakeIc()
+        val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = true)) }
+        vm.onStartInput()
+        vm.onKey(FunctionKey(KeyAction.SHIFT)) // Satzanfang-Auto-Shift entwaffnen → kleines „a"
+        vm.type("a")
+        vm.onKey(FunctionKey(KeyAction.PERIOD))
+        assertEquals(ShiftState.OFF, vm.state.value.shift)
+        vm.type("b")
+        assertEquals("a.b", fake.buffer.toString())
     }
 
     @Test
@@ -379,10 +394,11 @@ class KeyboardViewModelTest {
         vm.onStartInput()
         vm.type("hallo")
         vm.onKey(FunctionKey(KeyAction.QUESTION)) // Long-Press-Ziel der Punkt-Taste
-        // ? ist ein Satzende → der nächste Buchstabe wird gross armiert (wie nach einem Punkt).
+        // ? ist ein Satzende → nach dem Leerschlag wird der nächste Buchstabe gross armiert.
+        vm.onKey(FunctionKey(KeyAction.SPACE))
         assertEquals(ShiftState.SHIFTED, vm.state.value.shift)
         vm.type("w")
-        assertEquals("Hallo?W", fake.buffer.toString())
+        assertEquals("Hallo? W", fake.buffer.toString())
     }
 
     @Test
