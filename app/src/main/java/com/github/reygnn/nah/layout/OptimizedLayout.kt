@@ -201,17 +201,25 @@ object OptimizedLayout {
             weight = 1f,
             longPressActions = listOf(KeyAction.NUMPAD, KeyAction.DIALPAD, KeyAction.SETTINGS),
         ),
-        FunctionKey(KeyAction.COMMA, weight = 1f),
-        FunctionKey(KeyAction.SPACE, weight = 2f),
-        // Auf der Buchstabenebene (toggle == SYMBOLS) bietet die Punkt-Taste ? und ! per
-        // Long-Press an — so braucht es für ein Frage-/Ausrufezeichen keinen Wechsel auf die
-        // Symbolebene. Auf der Symbolebene selbst liegen ? und ! ohnehin offen → dort kein
+        // Auf der Buchstabenebene (toggle == SYMBOLS) bieten Komma und Punkt je ein Satzzeichen per
+        // Long-Press an — „!" auf dem Komma, „?" auf dem Punkt — so braucht es dafür keinen Wechsel
+        // auf die Symbolebene. Auf der Symbolebene selbst liegen ? und ! ohnehin offen → dort kein
         // (redundantes) Long-Press, also auch kein Eck-Marker.
+        if (toggle == KeyAction.SYMBOLS) {
+            FunctionKey(
+                KeyAction.COMMA,
+                weight = 1f,
+                longPressActions = listOf(KeyAction.EXCLAMATION),
+            )
+        } else {
+            FunctionKey(KeyAction.COMMA, weight = 1f)
+        },
+        FunctionKey(KeyAction.SPACE, weight = 2f),
         if (toggle == KeyAction.SYMBOLS) {
             FunctionKey(
                 KeyAction.PERIOD,
                 weight = 1f,
-                longPressActions = listOf(KeyAction.QUESTION, KeyAction.EXCLAMATION),
+                longPressActions = listOf(KeyAction.QUESTION),
             )
         } else {
             FunctionKey(KeyAction.PERIOD, weight = 1f)

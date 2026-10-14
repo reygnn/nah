@@ -390,7 +390,7 @@ class KeyboardViewModelTest {
         val fake = FakeIc()
         val vm = vm(fake).apply { applySettings(Settings(autoCapEnabled = false)) }
         vm.type("hey")
-        vm.onKey(FunctionKey(KeyAction.EXCLAMATION)) // Long-Press-Ziel der Punkt-Taste
+        vm.onKey(FunctionKey(KeyAction.EXCLAMATION)) // Long-Press-Ziel der Komma-Taste
         assertEquals("hey!", fake.buffer.toString())
     }
 

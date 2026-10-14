@@ -188,14 +188,14 @@ class OptimizedLayoutTravelTest {
     }
 
     @Test
-    fun `die Punkt-Taste bietet auf der Buchstabenebene Frage- und Ausrufezeichen per Long-Press`() {
-        val alphaPeriod = OptimizedLayout.deCh().rows.flatten()
-            .filterIsInstance<FunctionKey>().first { it.action == KeyAction.PERIOD }
-        assertEquals(listOf(KeyAction.QUESTION, KeyAction.EXCLAMATION), alphaPeriod.longPressActions)
-        // Auf der Symbolebene liegen ? und ! offen → der Punkt trägt dort kein (redundantes) Long-Press.
-        val symbolsPeriod = OptimizedLayout.symbols().rows.flatten()
-            .filterIsInstance<FunctionKey>().first { it.action == KeyAction.PERIOD }
-        assertTrue(symbolsPeriod.longPressActions.isEmpty())
+    fun `auf der Buchstabenebene liegt das Fragezeichen auf dem Punkt und das Ausrufezeichen auf dem Komma`() {
+        val alpha = OptimizedLayout.deCh().rows.flatten().filterIsInstance<FunctionKey>()
+        assertEquals(listOf(KeyAction.QUESTION), alpha.first { it.action == KeyAction.PERIOD }.longPressActions)
+        assertEquals(listOf(KeyAction.EXCLAMATION), alpha.first { it.action == KeyAction.COMMA }.longPressActions)
+        // Auf der Symbolebene liegen ? und ! offen → Punkt und Komma tragen dort kein (redundantes) Long-Press.
+        val symbols = OptimizedLayout.symbols().rows.flatten().filterIsInstance<FunctionKey>()
+        assertTrue(symbols.first { it.action == KeyAction.PERIOD }.longPressActions.isEmpty())
+        assertTrue(symbols.first { it.action == KeyAction.COMMA }.longPressActions.isEmpty())
     }
 
     @Test
