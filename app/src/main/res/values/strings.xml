@@ -61,4 +61,6 @@
     <string name="user_words_import_done">Imported %1$d own and %2$d learned words.</string>
     <string name="user_words_import_invalid">Not a valid nah word backup.</string>
     <string name="user_words_import_failed">Import failed.</string>
+    <string name="user_words_export_empty">Nothing to export — both lists are empty. An existing backup is left untouched.</string>
+    <string name="user_words_import_too_large">File too large — not a nah word backup.</string>
 </resources>

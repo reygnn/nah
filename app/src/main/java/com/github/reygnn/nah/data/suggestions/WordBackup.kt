@@ -21,7 +21,9 @@ import java.util.Locale
  */
 @Serializable
 data class WordBackup(
-    @SerialName("format") val format: String = FORMAT,
+    // No default: a JSON file without a format tag ({} or some foreign file) must fail to decode
+    // instead of passing as an empty nah backup.
+    @SerialName("format") val format: String,
     @SerialName("version") val version: Int = VERSION,
     /** Export time, ISO 8601 with offset (e.g. `2026-10-18T10:45:12+02:00`). Informational only —
      *  restore ignores it; `null` in hand-written files. */
@@ -41,6 +43,9 @@ data class WordBackup(
         const val FILE_EXTENSION = ".json"
         /** Same filename timestamp pattern as Kolibri's backup export (`yyyy-MM-dd_HHmmss`). */
         const val FILE_DATE_PATTERN = "yyyy-MM-dd_HHmmss"
+        /** Import read cap. A real backup is a few KB (entries are ≤ 50 chars); anything larger
+         *  is not ours and must not be pulled into memory whole. */
+        const val MAX_FILE_BYTES = 1_000_000
 
         // Locale.ROOT: ASCII digits and Gregorian year regardless of the device locale (as in
         // Kolibri's FilenameBuilder); only the time zone is device-local.
@@ -67,6 +72,7 @@ data class WordBackup(
             json.encodeToString(
                 serializer(),
                 WordBackup(
+                    format = FORMAT,
                     exportedAt = DateTimeFormatter.ISO_OFFSET_DATE_TIME
                         .format(ZonedDateTime.ofInstant(now, zone).withNano(0)),
                     userWords = userWords.sortedBy { it.lowercase() },

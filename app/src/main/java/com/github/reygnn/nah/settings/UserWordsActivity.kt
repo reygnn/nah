@@ -133,7 +133,21 @@ fun UserWordsScreen(repository: UserWordRepository, learnedRepository: LearnedWo
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     OutlinedButton(
-                        onClick = { exportLauncher.launch(WordBackup.fileName(Instant.now(), ZoneId.systemDefault())) },
+                        onClick = {
+                            // Check before opening the picker: CreateDocument already creates the
+                            // file, and an empty export must never be offered as a backup target.
+                            scope.launch {
+                                if (repository.words.first().isEmpty() && learnedRepository.words.first().isEmpty()) {
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.user_words_export_empty),
+                                        Toast.LENGTH_LONG,
+                                    ).show()
+                                } else {
+                                    exportLauncher.launch(WordBackup.fileName(Instant.now(), ZoneId.systemDefault()))
+                                }
+                            }
+                        },
                         modifier = Modifier.weight(1f),
                     ) { Text(stringResource(R.string.user_words_export)) }
                     OutlinedButton(
@@ -309,6 +323,12 @@ private suspend fun exportWords(
 ): String {
     val userWords = repository.words.first()
     val learnedWords = learnedRepository.words.first()
+    // Both empty is far more likely a lost store (a corrupt file is silently reset to empty, a read
+    // IOException is caught to empty) than a real state worth saving — writing it could overwrite
+    // the user's only good backup, so refuse instead.
+    if (userWords.isEmpty() && learnedWords.isEmpty()) {
+        return context.getString(R.string.user_words_export_empty)
+    }
     val json = WordBackup.encode(userWords, learnedWords, Instant.now(), ZoneId.systemDefault())
     return try {
         withContext(Dispatchers.IO) {
@@ -333,10 +353,16 @@ private suspend fun importWords(
     repository: UserWordRepository,
     learnedRepository: LearnedWordRepository,
 ): String {
-    val text = try {
+    val text: String? = try {
         withContext(Dispatchers.IO) {
-            context.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() }
+            val input = context.contentResolver.openInputStream(uri)
                 ?: throw IOException("No input stream for $uri")
+            input.use {
+                // Read one byte past the cap to detect oversized files without loading them whole;
+                // null = too large.
+                val bytes = it.readNBytes(WordBackup.MAX_FILE_BYTES + 1)
+                if (bytes.size > WordBackup.MAX_FILE_BYTES) null else bytes.decodeToString()
+            }
         }
     } catch (e: IOException) {
         Log.w(TAG, "Import failed", e)
@@ -345,6 +371,7 @@ private suspend fun importWords(
         Log.w(TAG, "Import failed", e)
         return context.getString(R.string.user_words_import_failed)
     }
+    if (text == null) return context.getString(R.string.user_words_import_too_large)
     val backup = WordBackup.decode(text) ?: return context.getString(R.string.user_words_import_invalid)
     val addedUser = repository.addAll(backup.userWords)
     val addedLearned = learnedRepository.addAll(backup.learnedWords)

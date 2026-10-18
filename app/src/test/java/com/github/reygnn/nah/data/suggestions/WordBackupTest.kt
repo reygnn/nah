@@ -66,6 +66,12 @@ class WordBackupTest {
     }
 
     @Test
+    fun `decode rejects JSON without a format tag`() {
+        assertNull(WordBackup.decode("{}"))
+        assertNull(WordBackup.decode("""{"version":1,"userWords":["Hallo"]}"""))
+    }
+
+    @Test
     fun `decode rejects a newer format version`() {
         assertNull(WordBackup.decode("""{"format":"nah-words","version":2,"userWords":["Hallo"]}"""))
     }

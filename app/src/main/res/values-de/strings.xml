@@ -59,4 +59,6 @@
     <string name="user_words_import_done">%1$d eigene und %2$d gelernte Wörter importiert.</string>
     <string name="user_words_import_invalid">Keine gültige nah-Wortsicherung.</string>
     <string name="user_words_import_failed">Import fehlgeschlagen.</string>
+    <string name="user_words_export_empty">Nichts zu exportieren — beide Listen sind leer. Eine bestehende Sicherung bleibt unangetastet.</string>
+    <string name="user_words_import_too_large">Datei zu gross — keine nah-Wortsicherung.</string>
 </resources>
