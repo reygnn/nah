@@ -13,11 +13,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,7 +55,12 @@ fun SuggestionBar(
     onSuggestion: (String) -> Unit,
     onSaveWord: (String) -> Unit = {},
 ) {
+    val listState = rememberLazyListState()
+    // New prefix → new list: jump back to the start so a previous scroll position never hides the
+    // best-ranked suggestions (and the save chip) after the next keystroke.
+    LaunchedEffect(suggestions, saveWord) { listState.scrollToItem(0) }
     LazyRow(
+        state = listState,
         modifier = modifier
             .fillMaxWidth()
             .height(44.dp)
