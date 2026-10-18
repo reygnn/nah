@@ -5,15 +5,20 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.Instant
+import java.time.ZoneId
 
 class WordBackupTest {
+
+    private val now = Instant.parse("2026-10-18T08:45:12.345Z")
+    private val zurich = ZoneId.of("Europe/Zurich")
 
     @Test
     fun `encode then decode round-trips both lists`() {
         val user = setOf("Hauptstrasse 115", "max@firma.ch", "Zürich")
         val learned = setOf("nah", "Grüezi")
 
-        val decoded = WordBackup.decode(WordBackup.encode(user, learned))
+        val decoded = WordBackup.decode(WordBackup.encode(user, learned, now, zurich))
 
         assertNotNull(decoded)
         assertEquals(user, decoded!!.userWords.toSet())
@@ -22,11 +27,30 @@ class WordBackupTest {
 
     @Test
     fun `encode sorts case-insensitively and tags format and version`() {
-        val json = WordBackup.encode(setOf("beta", "Alpha"), emptySet())
+        val json = WordBackup.encode(setOf("beta", "Alpha"), emptySet(), now, zurich)
 
         assertTrue(json.indexOf("Alpha") < json.indexOf("beta"))
         assertTrue(json.contains("\"format\": \"nah-words\""))
         assertTrue(json.contains("\"version\": 1"))
+    }
+
+    @Test
+    fun `encode stamps the export time as ISO 8601 with local offset, without millis`() {
+        val decoded = WordBackup.decode(WordBackup.encode(setOf("Hallo"), emptySet(), now, zurich))
+
+        assertEquals("2026-10-18T10:45:12+02:00", decoded!!.exportedAt)
+    }
+
+    @Test
+    fun `fileName carries local date and time like Kolibri`() {
+        assertEquals("nah_words_2026-10-18_104512.json", WordBackup.fileName(now, zurich))
+    }
+
+    @Test
+    fun `decode accepts a backup without exportedAt`() {
+        val decoded = WordBackup.decode("""{"format":"nah-words","version":1,"userWords":["Hallo"]}""")
+
+        assertNull(decoded!!.exportedAt)
     }
 
     @Test

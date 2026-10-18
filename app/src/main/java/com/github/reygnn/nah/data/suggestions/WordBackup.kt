@@ -4,6 +4,11 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * Pure, JVM-testable JSON format for backing up both word lists (curated [UserWordRepository] and
@@ -18,6 +23,9 @@ import kotlinx.serialization.json.Json
 data class WordBackup(
     @SerialName("format") val format: String = FORMAT,
     @SerialName("version") val version: Int = VERSION,
+    /** Export time, ISO 8601 with offset (e.g. `2026-10-18T10:45:12+02:00`). Informational only —
+     *  restore ignores it; `null` in hand-written files. */
+    @SerialName("exportedAt") val exportedAt: String? = null,
     @SerialName("userWords") val userWords: List<String> = emptyList(),
     @SerialName("learnedWords") val learnedWords: List<String> = emptyList(),
 ) {
@@ -29,7 +37,14 @@ data class WordBackup(
         const val FORMAT = "nah-words"
         const val VERSION = 1
         const val MIME_TYPE = "application/json"
-        const val FILE_NAME = "nah-words.json"
+        const val FILE_PREFIX = "nah_words_"
+        const val FILE_EXTENSION = ".json"
+        /** Same filename timestamp pattern as Kolibri's backup export (`yyyy-MM-dd_HHmmss`). */
+        const val FILE_DATE_PATTERN = "yyyy-MM-dd_HHmmss"
+
+        // Locale.ROOT: ASCII digits and Gregorian year regardless of the device locale (as in
+        // Kolibri's FilenameBuilder); only the time zone is device-local.
+        private val fileDateFormatter = DateTimeFormatter.ofPattern(FILE_DATE_PATTERN, Locale.ROOT)
 
         private val json = Json {
             prettyPrint = true
@@ -37,11 +52,23 @@ data class WordBackup(
             encodeDefaults = true
         }
 
-        /** Serialises both lists, sorted case-insensitively so diffs between backups stay readable. */
-        fun encode(userWords: Set<String>, learnedWords: Set<String>): String =
+        /** `nah_words_2026-10-18_104512.json` — the suggested name for an export at [now] in [zone]. */
+        fun fileName(now: Instant, zone: ZoneId): String =
+            FILE_PREFIX + fileDateFormatter.format(now.atZone(zone)) + FILE_EXTENSION
+
+        /** Serialises both lists, sorted case-insensitively so diffs between backups stay readable,
+         *  stamped with the export time [now] in [zone]. */
+        fun encode(
+            userWords: Set<String>,
+            learnedWords: Set<String>,
+            now: Instant,
+            zone: ZoneId,
+        ): String =
             json.encodeToString(
                 serializer(),
                 WordBackup(
+                    exportedAt = DateTimeFormatter.ISO_OFFSET_DATE_TIME
+                        .format(ZonedDateTime.ofInstant(now, zone).withNano(0)),
                     userWords = userWords.sortedBy { it.lowercase() },
                     learnedWords = learnedWords.sortedBy { it.lowercase() },
                 ),

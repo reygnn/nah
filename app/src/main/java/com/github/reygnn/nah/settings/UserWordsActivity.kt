@@ -47,6 +47,8 @@ import com.github.reygnn.nah.data.suggestions.UserWordValidation
 import com.github.reygnn.nah.data.suggestions.WordBackup
 import com.github.reygnn.nah.ui.NahTheme
 import java.io.IOException
+import java.time.Instant
+import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -131,7 +133,7 @@ fun UserWordsScreen(repository: UserWordRepository, learnedRepository: LearnedWo
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     OutlinedButton(
-                        onClick = { exportLauncher.launch(WordBackup.FILE_NAME) },
+                        onClick = { exportLauncher.launch(WordBackup.fileName(Instant.now(), ZoneId.systemDefault())) },
                         modifier = Modifier.weight(1f),
                     ) { Text(stringResource(R.string.user_words_export)) }
                     OutlinedButton(
@@ -307,7 +309,7 @@ private suspend fun exportWords(
 ): String {
     val userWords = repository.words.first()
     val learnedWords = learnedRepository.words.first()
-    val json = WordBackup.encode(userWords, learnedWords)
+    val json = WordBackup.encode(userWords, learnedWords, Instant.now(), ZoneId.systemDefault())
     return try {
         withContext(Dispatchers.IO) {
             // "wt" truncates when overwriting an existing file, so no stale tail remains.
