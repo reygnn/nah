@@ -18,8 +18,7 @@
         <!-- Launcher-Icon → Einstellungen -->
         <activity
             android:name=".settings.SettingsActivity"
-            android:exported="true"
-            android:label="@string/app_name">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -29,14 +28,12 @@
         <!-- Verwaltung der eigenen Wörter (aus den Einstellungen geöffnet) -->
         <activity
             android:name=".settings.UserWordsActivity"
-            android:exported="false"
-            android:label="@string/app_name" />
+            android:exported="false" />
 
         <!-- Tipp-Training / Dojo (aus den Einstellungen geöffnet) -->
         <activity
             android:name=".settings.DojoActivity"
-            android:exported="false"
-            android:label="@string/app_name" />
+            android:exported="false" />
 
         <!-- Die eigentliche IME -->
         <service

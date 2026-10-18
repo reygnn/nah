@@ -25,7 +25,7 @@
     <string name="dojo_level_words">Wörter</string>
     <string name="dojo_mode_random">Zufall</string>
     <string name="dojo_mode_guided">Der Reihe nach</string>
-    <string name="dojo_game_over">Game Over · %1$d Punkte — tippe einen Buchstaben für eine neue Runde</string>
+    <string name="dojo_game_over">Game Over · Punkte: %1$d — tippe einen Buchstaben für eine neue Runde</string>
 
     <!-- Eigene Wörter -->
     <string name="user_words_title">Eigene Wörter</string>
@@ -54,9 +54,9 @@
     <string name="user_words_backup_description">Backup: beide Listen als JSON-Datei. Sie enthält deine persönlichen Einträge (Namen, Adressen) — sicher aufbewahren. Import fügt nur hinzu, entfernt oder ändert nie bestehende Wörter.</string>
     <string name="user_words_export">Exportieren</string>
     <string name="user_words_import">Importieren</string>
-    <string name="user_words_export_done">%1$d eigene und %2$d gelernte Wörter exportiert.</string>
+    <string name="user_words_export_done">Exportiert — eigene Wörter: %1$d, gelernte Wörter: %2$d.</string>
     <string name="user_words_export_failed">Export fehlgeschlagen.</string>
-    <string name="user_words_import_done">%1$d eigene und %2$d gelernte Wörter importiert.</string>
+    <string name="user_words_import_done">Importiert — eigene Wörter: %1$d, gelernte Wörter: %2$d.</string>
     <string name="user_words_import_invalid">Keine gültige nah-Wortsicherung.</string>
     <string name="user_words_import_failed">Import fehlgeschlagen.</string>
     <string name="user_words_export_empty">Nichts zu exportieren — beide Listen sind leer. Eine bestehende Sicherung bleibt unangetastet.</string>

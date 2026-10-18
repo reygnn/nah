@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- Lint suggests merging mipmap-anydpi-v26 into mipmap-anydpi (minSdk 36), but aapt2 always
+         versions <adaptive-icon> resources to v26 — without the qualifier the launcher icons are
+         "not found" at link time. Keep the folder, silence the false positive for it only. -->
+    <issue id="ObsoleteSdkInt">
+        <ignore path="src/main/res/mipmap-anydpi-v26" />
+    </issue>
+</lint>
