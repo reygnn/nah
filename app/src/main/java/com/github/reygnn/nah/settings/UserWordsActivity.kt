@@ -50,7 +50,6 @@ import java.io.IOException
 import java.time.Instant
 import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -137,12 +136,9 @@ fun UserWordsScreen(repository: UserWordRepository, learnedRepository: LearnedWo
                             // Check before opening the picker: CreateDocument already creates the
                             // file, and an empty export must never be offered as a backup target.
                             scope.launch {
-                                if (repository.words.first().isEmpty() && learnedRepository.words.first().isEmpty()) {
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(R.string.user_words_export_empty),
-                                        Toast.LENGTH_LONG,
-                                    ).show()
+                                val blocker = exportBlocker(context, repository, learnedRepository)
+                                if (blocker != null) {
+                                    Toast.makeText(context, blocker, Toast.LENGTH_LONG).show()
                                 } else {
                                     exportLauncher.launch(WordBackup.fileName(Instant.now(), ZoneId.systemDefault()))
                                 }
@@ -321,16 +317,16 @@ private suspend fun exportWords(
     repository: UserWordRepository,
     learnedRepository: LearnedWordRepository,
 ): String {
-    val userWords = repository.words.first()
-    val learnedWords = learnedRepository.words.first()
-    // Both empty is far more likely a lost store (a corrupt file is silently reset to empty, a read
-    // IOException is caught to empty) than a real state worth saving — writing it could overwrite
-    // the user's only good backup, so refuse instead.
-    if (userWords.isEmpty() && learnedWords.isEmpty()) {
-        return context.getString(R.string.user_words_export_empty)
-    }
-    val json = WordBackup.encode(userWords, learnedWords, Instant.now(), ZoneId.systemDefault())
     return try {
+        // read(), not words: a read error must fail the export, not silently drop one list.
+        val userWords = repository.read()
+        val learnedWords = learnedRepository.read()
+        // Both empty is far more likely a lost store (a corrupt file is silently reset to empty) than
+        // a real state worth saving — writing it could overwrite the user's only good backup.
+        if (userWords.isEmpty() && learnedWords.isEmpty()) {
+            return context.getString(R.string.user_words_export_empty)
+        }
+        val json = WordBackup.encode(userWords, learnedWords, Instant.now(), ZoneId.systemDefault())
         withContext(Dispatchers.IO) {
             // "wt" truncates when overwriting an existing file, so no stale tail remains.
             context.contentResolver.openOutputStream(uri, "wt")?.use { it.write(json.toByteArray()) }
@@ -344,6 +340,23 @@ private suspend fun exportWords(
         Log.w(TAG, "Export failed", e)
         context.getString(R.string.user_words_export_failed)
     }
+}
+
+/** Why the export must not even open the picker (CreateDocument already creates the file): both
+ *  lists empty, or a store can't be read. `null` = go ahead. */
+private suspend fun exportBlocker(
+    context: Context,
+    repository: UserWordRepository,
+    learnedRepository: LearnedWordRepository,
+): String? = try {
+    if (repository.read().isEmpty() && learnedRepository.read().isEmpty()) {
+        context.getString(R.string.user_words_export_empty)
+    } else {
+        null
+    }
+} catch (e: IOException) {
+    Log.w(TAG, "Export pre-check failed", e)
+    context.getString(R.string.user_words_export_failed)
 }
 
 /** Reads a backup from [uri] and merges it into both stores (add-only); returns the result message. */

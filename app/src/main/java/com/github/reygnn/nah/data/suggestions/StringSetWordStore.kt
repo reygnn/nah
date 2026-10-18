@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import java.io.IOException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 /**
@@ -31,6 +32,15 @@ abstract class StringSetWordStore(
             // Transiente Lese-IOException → leere Liste statt den Collector zu töten (s. Klassen-Doc).
             .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
             .map { it[key] ?: emptySet() }
+
+    /**
+     * One-shot read **without** the IOException fallback of [words]: a read error is thrown to the
+     * caller instead of looking like an empty list. For the backup export, where a silently empty
+     * list would produce an incomplete backup that still reports success. Keyboard and UI keep using
+     * [words]. (A corrupt file reset to empty by the store's corruption handler still reads as empty —
+     * indistinguishable from a list the user emptied.)
+     */
+    suspend fun read(): Set<String> = dataStore.data.first()[key] ?: emptySet()
 
     /**
      * Fügt ein Wort hinzu. `null` = erfolgreich, sonst der Ablehnungsgrund. Dieselbe [UserWordValidation]
