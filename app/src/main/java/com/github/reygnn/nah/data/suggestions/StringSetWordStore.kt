@@ -50,6 +50,21 @@ abstract class StringSetWordStore(
             current.filterNot { it.equals(old, ignoreCase = true) }.toSet() + word
         }
 
+    /**
+     * Merges [incoming] into the store in a single transaction (backup restore). Never removes or
+     * rewrites existing entries; invalid entries and duplicates are skipped (see [WordBackup.merge]).
+     * Returns the number of entries actually added.
+     */
+    suspend fun addAll(incoming: List<String>): Int {
+        var added = 0
+        dataStore.edit { prefs ->
+            val merged = WordBackup.merge(prefs[key] ?: emptySet(), incoming)
+            added = merged.added
+            if (merged.added > 0) prefs[key] = merged.words
+        }
+        return added
+    }
+
     suspend fun remove(word: String) {
         dataStore.edit { prefs ->
             prefs[key] = (prefs[key] ?: emptySet())

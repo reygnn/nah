@@ -1,9 +1,14 @@
 package com.github.reygnn.nah.settings
 
 import android.content.Context
+import android.net.Uri
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -17,6 +22,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -38,8 +44,15 @@ import com.github.reygnn.nah.data.suggestions.LearnedWordRepository
 import com.github.reygnn.nah.data.suggestions.UserWordError
 import com.github.reygnn.nah.data.suggestions.UserWordRepository
 import com.github.reygnn.nah.data.suggestions.UserWordValidation
+import com.github.reygnn.nah.data.suggestions.WordBackup
 import com.github.reygnn.nah.ui.NahTheme
+import java.io.IOException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+private const val TAG = "UserWordsActivity"
 
 /** Verwaltung der eigenen Wörter: oben die **kuratierten** (hinzufügen/bearbeiten/entfernen, werden
  *  wörtlich committet), darunter die beim Tippen **gelernten** (nur entfernen, werden wie Wörterbuch-
@@ -70,6 +83,26 @@ fun UserWordsScreen(repository: UserWordRepository, learnedRepository: LearnedWo
     // der Bearbeiten-Dialog beim Speichern das richtige Repository trifft.
     var editing by remember { mutableStateOf<EditTarget?>(null) }
 
+    // Backup via the system file picker (SAF) — no storage permission, the user picks the location.
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(WordBackup.MIME_TYPE),
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val message = exportWords(context, uri, repository, learnedRepository)
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val message = importWords(context, uri, repository, learnedRepository)
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     Surface(modifier = Modifier.fillMaxSize()) {
         // Eine scrollbare Liste über beide Abschnitte (kuratiert + gelernt), damit sie zusammen
         // scrollen statt verschachtelter LazyColumns. Statische Kopfzeilen liegen als eigene items.
@@ -85,6 +118,33 @@ fun UserWordsScreen(repository: UserWordRepository, learnedRepository: LearnedWo
             }
             item {
                 Text(stringResource(R.string.user_words_description), style = MaterialTheme.typography.bodyMedium)
+            }
+            item {
+                Text(
+                    stringResource(R.string.user_words_backup_description),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedButton(
+                        onClick = { exportLauncher.launch(WordBackup.FILE_NAME) },
+                        modifier = Modifier.weight(1f),
+                    ) { Text(stringResource(R.string.user_words_export)) }
+                    OutlinedButton(
+                        // Some providers report .json as text/plain or octet-stream — accept those
+                        // too; decode() rejects anything that isn't a nah backup anyway.
+                        onClick = {
+                            importLauncher.launch(
+                                arrayOf(WordBackup.MIME_TYPE, "text/plain", "application/octet-stream"),
+                            )
+                        },
+                        modifier = Modifier.weight(1f),
+                    ) { Text(stringResource(R.string.user_words_import)) }
+                }
             }
             item {
                 Row(
@@ -236,6 +296,57 @@ fun UserWordsScreen(repository: UserWordRepository, learnedRepository: LearnedWo
             },
         )
     }
+}
+
+/** Writes both lists to [uri] as JSON; returns the user-facing result message. */
+private suspend fun exportWords(
+    context: Context,
+    uri: Uri,
+    repository: UserWordRepository,
+    learnedRepository: LearnedWordRepository,
+): String {
+    val userWords = repository.words.first()
+    val learnedWords = learnedRepository.words.first()
+    val json = WordBackup.encode(userWords, learnedWords)
+    return try {
+        withContext(Dispatchers.IO) {
+            // "wt" truncates when overwriting an existing file, so no stale tail remains.
+            context.contentResolver.openOutputStream(uri, "wt")?.use { it.write(json.toByteArray()) }
+                ?: throw IOException("No output stream for $uri")
+        }
+        context.getString(R.string.user_words_export_done, userWords.size, learnedWords.size)
+    } catch (e: IOException) {
+        Log.w(TAG, "Export failed", e)
+        context.getString(R.string.user_words_export_failed)
+    } catch (e: SecurityException) {
+        Log.w(TAG, "Export failed", e)
+        context.getString(R.string.user_words_export_failed)
+    }
+}
+
+/** Reads a backup from [uri] and merges it into both stores (add-only); returns the result message. */
+private suspend fun importWords(
+    context: Context,
+    uri: Uri,
+    repository: UserWordRepository,
+    learnedRepository: LearnedWordRepository,
+): String {
+    val text = try {
+        withContext(Dispatchers.IO) {
+            context.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() }
+                ?: throw IOException("No input stream for $uri")
+        }
+    } catch (e: IOException) {
+        Log.w(TAG, "Import failed", e)
+        return context.getString(R.string.user_words_import_failed)
+    } catch (e: SecurityException) {
+        Log.w(TAG, "Import failed", e)
+        return context.getString(R.string.user_words_import_failed)
+    }
+    val backup = WordBackup.decode(text) ?: return context.getString(R.string.user_words_import_invalid)
+    val addedUser = repository.addAll(backup.userWords)
+    val addedLearned = learnedRepository.addAll(backup.learnedWords)
+    return context.getString(R.string.user_words_import_done, addedUser, addedLearned)
 }
 
 /** Der gerade im Dialog bearbeitete Eintrag samt Herkunft: [learned] = true → gelernter Store

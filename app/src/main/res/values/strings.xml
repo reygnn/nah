@@ -53,4 +53,12 @@
 
     <!-- Clear clipboard (long-press on the paste key; toast confirmation) -->
     <string name="clipboard_cleared">Clipboard cleared</string>
+    <string name="user_words_backup_description">Backup: both lists as a JSON file. It contains your personal entries (names, addresses) — keep it somewhere private. Import only adds words, it never removes or changes existing ones.</string>
+    <string name="user_words_export">Export</string>
+    <string name="user_words_import">Import</string>
+    <string name="user_words_export_done">Exported %1$d own and %2$d learned words.</string>
+    <string name="user_words_export_failed">Export failed.</string>
+    <string name="user_words_import_done">Imported %1$d own and %2$d learned words.</string>
+    <string name="user_words_import_invalid">Not a valid nah word backup.</string>
+    <string name="user_words_import_failed">Import failed.</string>
 </resources>

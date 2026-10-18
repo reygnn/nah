@@ -51,4 +51,12 @@
 
     <!-- Zwischenablage leeren (Long-Press auf der Einfügen-Taste; Toast-Bestätigung) -->
     <string name="clipboard_cleared">Zwischenablage geleert</string>
+    <string name="user_words_backup_description">Backup: beide Listen als JSON-Datei. Sie enthält deine persönlichen Einträge (Namen, Adressen) — sicher aufbewahren. Import fügt nur hinzu, entfernt oder ändert nie bestehende Wörter.</string>
+    <string name="user_words_export">Exportieren</string>
+    <string name="user_words_import">Importieren</string>
+    <string name="user_words_export_done">%1$d eigene und %2$d gelernte Wörter exportiert.</string>
+    <string name="user_words_export_failed">Export fehlgeschlagen.</string>
+    <string name="user_words_import_done">%1$d eigene und %2$d gelernte Wörter importiert.</string>
+    <string name="user_words_import_invalid">Keine gültige nah-Wortsicherung.</string>
+    <string name="user_words_import_failed">Import fehlgeschlagen.</string>
 </resources>

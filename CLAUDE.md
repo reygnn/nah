@@ -70,7 +70,7 @@ app/src/main/java/com/github/reygnn/nah/
   data/suggestions/  WordIndex (sortiertes Array + Binärsuche), GermanWordList,
                SuggestionRepository (Suggester: eingebaute Liste + unabhängig
                schaltbarer User-Index), UserWordRepository (DataStore),
-               UserWordValidation (rein).
+               UserWordValidation (rein), WordBackup (JSON-Export/-Import, rein).
 tools/         optimize_layout.py — der Layout-Optimierer (Wegwerf, reproduzierbar).
 ```
 

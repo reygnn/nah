@@ -124,6 +124,11 @@ deliberate scope choice for a single-user personal keyboard, not an oversight.
   committed **verbatim** (their casing is authoritative — names, addresses,
   emails). Curated and learned words are managed in two sections of the same
   settings screen.
+- **Word backup** — export both lists to a JSON file you pick (system file
+  picker, no storage permission) and import it again. Import only *adds*
+  (validated, duplicates skipped), never removes or changes existing words. The
+  own-words list is excluded from Google cloud backup on purpose (PII), so this
+  file is the way to carry it across a reset or reinstall.
 - **Paste key** — always visible at the bottom-left, inserts the clipboard
   verbatim (no autocorrect, no shift-casing). Dims when the clipboard holds no
   text and updates live when you copy while typing. Reads only metadata for the
