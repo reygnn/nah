@@ -33,9 +33,10 @@ Session-Start. Kurz und handlungsleitend halten.
 
 ## Stack
 
-- Kotlin 2.3.21, Jetpack Compose + Material 3, Compose BOM 2026.05.01
+- Kotlin 2.3.21, Jetpack Compose + Material 3, Compose BOM 2026.09.00
 - AGP 9.2.1 + Gradle 9.5.1, **built-in Kotlin** (kein `org.jetbrains.kotlin.android`)
-- min/target/compile SDK 36 (Android 16 only), `jvmTarget = JVM_21`
+- min/target SDK 36 (Android 16 only), **compileSdk 37** (Compose 1.12/core-ktx 1.19 verlangen es;
+  targetSdk bleibt bewusst 36), `jvmTarget = JVM_21`
 - Single-Module `:app`, **kein DI** (plain `ViewModel` + `StateFlow` + DataStore)
 - Tests: JUnit 4, MockK, kotlinx-coroutines-test; Robolectric nur für echtes
   Android-Runtime (DataStore → `DojoStatsRepositoryTest`), sonst JVM-only

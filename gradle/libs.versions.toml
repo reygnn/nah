@@ -1,15 +1,15 @@
 [versions]
 agp = "9.2.1"                       # built-in Kotlin since 9.0 — no org.jetbrains.kotlin.android
 kotlin = "2.3.21"
-coreKtx = "1.18.0"
+coreKtx = "1.19.1"
 lifecycle = "2.10.0"
 activityCompose = "1.13.0"
-composeBom = "2026.05.01"
+composeBom = "2026.09.00"
 datastore = "1.2.1"
 coroutines = "1.11.0"
 kotlinxSerialization = "1.11.0"
 savedstate = "1.4.0"
-mockk = "1.14.9"
+mockk = "1.14.11"
 junit = "4.13.2"
 robolectric = "4.16.1"          # nur für Tests mit echtem Android-Runtime (DataStore), siehe SDK 36
 

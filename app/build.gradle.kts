@@ -8,7 +8,9 @@ plugins {
 
 android {
     namespace = "com.github.reygnn.nah"
-    compileSdk = 36
+    // compileSdk 37 because Compose 1.12 (BOM 2026.08+) and core-ktx 1.19 require it. targetSdk
+    // deliberately stays 36: compiling against 37 changes no runtime behaviour, targeting it would.
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.github.reygnn.nah"
